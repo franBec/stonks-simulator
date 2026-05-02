@@ -1,5 +1,5 @@
 COBC = cobc
-COBC_FLAGS = -x -free -I src/copybooks
+COBC_FLAGS = -x -I src/copybooks
 SRC = src
 BIN = bin
 

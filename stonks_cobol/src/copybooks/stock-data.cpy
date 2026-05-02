@@ -1,6 +1,6 @@
-*> STOCK DATA COPYBOOK
-      *> 10 Meme stocks for STONKS Simulator
-      *> Used by TRADE-VALIDATOR and other programs
+      * STOCK DATA COPYBOOK
+      * 10 Meme stocks for STONKS Simulator
+      * Used by TRADE-VALIDATOR and other programs
 
        01 WS-STOCK-ENTRY.
           05 WS-STOCK-SYMBOL    PIC X(4).

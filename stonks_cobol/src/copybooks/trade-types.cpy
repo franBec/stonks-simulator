@@ -1,8 +1,8 @@
-*> TRADE TYPES COPYBOOK
-      *> Shared record layouts for trade request/response
-      *> Covers TRADE-VALIDATOR, PORTFOLIO-MGR, COMPLIANCE-MGR
+      * TRADE TYPES COPYBOOK
+      * Shared record layouts for trade request/response
+      * Covers TRADE-VALIDATOR, PORTFOLIO-MGR, COMPLIANCE-MGR
 
-      *> REQUEST FIELDS
+      * REQUEST FIELDS
        01 WS-TRADE-REQUEST.
           05 WS-REQ-ACTION      PIC X(4).
           05 WS-REQ-SYMBOL      PIC X(4).
@@ -10,7 +10,7 @@
           05 WS-REQ-PRICE       PIC 9(7)V99.
           05 WS-REQ-CASH        PIC 9(9)V99.
 
-      *> RESPONSE FIELDS
+      * RESPONSE FIELDS
        01 WS-TRADE-RESPONSE.
           05 WS-RES-STATUS      PIC X(10).
           05 WS-RES-ERROR-CODE PIC X(4).
@@ -18,17 +18,17 @@
           05 WS-RES-TOTAL-COST  PIC 9(9)V99.
           05 WS-RES-REMAINING   PIC S9(9)V99.
 
-      *> ERROR CODES
+      * ERROR CODES
        01 WS-ERROR-CODES.
           05 WS-ERR-INVALID-SYMBOL PIC X(4) VALUE 'S001'.
           05 WS-ERR-INSUFF-FUNDS   PIC X(4) VALUE 'S222'.
           05 WS-ERR-INSUFF-SHARES  PIC X(4) VALUE 'S223'.
           05 WS-ERR-INVALID-QTY    PIC X(4) VALUE 'S224'.
-          05 WS-ERR-INVALID-ACTION  PIC X(4) VALUE 'S225'.
+          05 WS-ERR-INVALID-ACTION PIC X(4) VALUE 'S225'.
           05 WS-ERR-INVALID-PRICE  PIC X(4) VALUE 'S226'.
           05 WS-ERR-SYSTEM         PIC X(4) VALUE 'S999'.
 
-      *> WORK FIELDS
+      * WORK FIELDS
        01 WS-TOTAL-COST       PIC 9(9)V99.
        01 WS-REMAINING-CASH   PIC S9(9)V99.
        01 WS-INPUT-LENGTH     PIC 9(4).
