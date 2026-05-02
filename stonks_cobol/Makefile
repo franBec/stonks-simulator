@@ -36,4 +36,7 @@ test: test-valid-buy test-insufficient-funds test-invalid-symbol test-invalid-qu
 clean:
 	rm -rf $(BIN)
 
-.PHONY: all test test-valid-buy test-insufficient-funds test-invalid-symbol test-invalid-quantity test-invalid-action clean
+lint:
+	@./scripts/cobol-lint.sh
+
+.PHONY: all test test-valid-buy test-insufficient-funds test-invalid-symbol test-invalid-quantity test-invalid-action lint clean
