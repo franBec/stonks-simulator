@@ -219,7 +219,7 @@ stonks-simulator/
 ├── docker-compose.yml	# Coolify compatible production deployment
 ├── stonks_java/        # Java Spring Boot App
 ├── stonks_cobol/       # COBOL Trading Engine
-├── stonks_react/       # React Vite SPA
+├── stonks_vite_app/    # React Vite SPA
 └── database/           # Database artifacts
 ```
 
