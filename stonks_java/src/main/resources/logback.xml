@@ -1,0 +1,16 @@
+<configuration>
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="ch.qos.logback.core.encoder.LayoutWrappingEncoder">
+            <layout class="dev.pollito.stonks_java.config.log.MaskingPatternLayout">
+                <maskPattern>(?i)((?:authorization|proxy-authorization|cookie|x-api-key|x-auth-token|x-csrf-token):\s+)([^\r\n,]+)</maskPattern>
+                <maskPattern>(?i)((?:password|token|secret)[\s:="]+)(\S+)</maskPattern>
+
+                <pattern>%d{yyyy-MM-dd} %d{HH:mm:ss.SSS} trace_id=%X{trace_id} span_id=%X{span_id} trace_flags=%X{trace_flags} %-5level %thread --- %logger{36} %msg%n</pattern>
+            </layout>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
+</configuration>
