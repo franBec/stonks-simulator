@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: stonks_java
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: false
