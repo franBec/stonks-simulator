@@ -6,8 +6,8 @@
        DATA DIVISION.
        WORKING-STORAGE SECTION.
 
-       COPY stock-data.
-       COPY trade-types.
+       COPY stkdata.
+       COPY trdtype.
 
        01 WS-JSON-RESPONSE      PIC X(4096).
        01 WS-DISPLAY-COST       PIC -(9)9.99.

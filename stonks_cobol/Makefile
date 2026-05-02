@@ -8,7 +8,7 @@ all: $(BIN)/trade-validator
 $(BIN):
 	mkdir -p $(BIN)
 
-$(BIN)/trade-validator: $(SRC)/trade-validator.cob $(SRC)/copybooks/stock-data.cpy $(SRC)/copybooks/trade-types.cpy | $(BIN)
+$(BIN)/trade-validator: $(SRC)/trade-validator.cob $(SRC)/copybooks/stkdata.cpy $(SRC)/copybooks/trdtype.cpy | $(BIN)
 	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/trade-validator.cob
 
 test-valid-buy: $(BIN)/trade-validator
