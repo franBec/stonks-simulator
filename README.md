@@ -1,7 +1,7 @@
 
-# STONKS SIMULATOR
+# STONKS Simulator
 
-## Overview
+![stonks](/assets/d0c251b5-747c-423a-a190-c4898b2c1620.png)
 
 _This is a work in progress. During development, tech choices might change_
 

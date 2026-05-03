@@ -3,6 +3,7 @@ plugins {
   id 'org.springframework.boot' version '4.0.6'
   id 'io.spring.dependency-management' version '1.1.7'
   id 'com.diffplug.spotless' version '8.2.1'
+  id 'org.openapi.generator' version '7.20.0'
 }
 
 group = 'dev.pollito'
@@ -49,6 +50,9 @@ dependencies {
   implementation "org.mapstruct:mapstruct:${mapstructVersion}"
   annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
   annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
+
+  implementation 'io.swagger.core.v3:swagger-annotations:2.2.45'
+  implementation 'org.openapitools:jackson-databind-nullable:0.2.9'
 }
 
 dependencyManagement {
@@ -78,4 +82,35 @@ spotless {
 tasks.named("build") {
   dependsOn 'spotlessApply'
   dependsOn 'spotlessGroovyGradleApply'
+}
+
+openApiGenerate {
+  generatorName = "spring"
+  inputSpec = layout.projectDirectory.file("src/main/resources/openapi.yaml").asFile.toString()
+  outputDir = layout.buildDirectory.dir("generated/sources/openapi").get().asFile.toString()
+
+  def basePackage = "${project.group}.${project.name}.generated".toString()
+  apiPackage = "${basePackage}.api"
+  modelPackage = "${basePackage}.model"
+
+  configOptions = [
+    interfaceOnly             : "true",
+    requestMappingMode        : "api_interface",
+    skipDefaultInterface      : "true",
+    useJakartaEe              : "true",
+    useSpringBoot3            : "true",
+    useTags                   : "true",
+  ]
+}
+
+sourceSets {
+  main {
+    java {
+      srcDir(layout.buildDirectory.dir("generated/sources/openapi/src/main/java"))
+    }
+  }
+}
+
+tasks.named('compileJava') {
+  dependsOn 'openApiGenerate'
 }

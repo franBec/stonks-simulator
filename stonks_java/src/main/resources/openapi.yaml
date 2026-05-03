@@ -1,0 +1,221 @@
+openapi: 3.0.3
+info:
+  title: Stonks Simulator API
+  version: 1.0.0
+  description: COBOL-powered meme stock trading simulator API
+  contact:
+    name: Pollito
+    url: https://springboot.pollito.tech/about/about-the-author
+servers:
+  - url: http://localhost:8080/api
+    description: dev
+  - url: https://stonks-java.pollito.tech/api
+    description: prod
+tags:
+  - name: Trades
+    description: Endpoints related to trade validation and execution
+paths:
+  /trades/validate:
+    post:
+      tags:
+        - Trades
+      operationId: validateTrade
+      summary: Validates a buy/sell trade request
+      description: |
+        Sends a trade request to the COBOL TRADE-VALIDATOR engine.
+        Returns a standard response where the data property contains the validation result.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeValidationRequest'
+      responses:
+        '200':
+          description: Trade validation result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeValidationResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Error:
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          description: Standard error response
+          properties:
+            title:
+              type: string
+              description: HTTP Reason Phrase
+              example: 'Not Found'
+            detail:
+              type: string
+              description: Description of the problem
+              example: "No static resource for request '/'."
+          required:
+            - title
+    TradeAction:
+      type: string
+      enum: [BUY, SELL]
+      description: Trade direction
+      example: BUY
+    TradeValidationRequest:
+      type: object
+      description: Trade request to be validated by the COBOL engine
+      properties:
+        action:
+          $ref: '#/components/schemas/TradeAction'
+        symbol:
+          type: string
+          description: Stock ticker symbol
+          example: GMEE
+          maxLength: 4
+        quantity:
+          type: integer
+          description: Number of shares
+          example: 10
+          minimum: 0
+        price:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Price per share
+          example: 45.00
+          minimum: 0
+        cashBalance:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Available cash balance
+          example: 10000.00
+          minimum: 0
+      required:
+        - action
+        - symbol
+        - quantity
+        - price
+        - cashBalance
+    TradeValidationResult:
+      type: object
+      description: Result returned by the COBOL TRADE-VALIDATOR
+      properties:
+        status:
+          type: string
+          enum: [ACCEPTED, REJECTED]
+          description: Validation status
+          example: ACCEPTED
+        errorCode:
+          type: string
+          description: COBOL-style error code when rejected; null when accepted
+          example: S222
+          nullable: true
+        message:
+          type: string
+          description: Human-readable validation message
+          example: "TRADE VALIDATED - PROCEED TO EXECUTION"
+          nullable: true
+        totalCost:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Total cost of the trade (quantity * price)
+          example: 450.00
+          minimum: 0
+        remainingCash:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Cash balance after the trade
+          example: 9550.00
+      required:
+        - status
+        - totalCost
+        - remainingCash
+    TradeValidationResponse:
+      description: Standard response where the data property is the trade validation result
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/TradeValidationResult'
+          required:
+            - data
+    Page:
+      type: object
+      description: Sublist of a list of objects. It allows to gain information about the position of it in the containing entire list
+      properties:
+        content:
+          default: []
+          items: {}
+          type: array
+        pageable:
+          $ref: "#/components/schemas/Pageable"
+        totalElements:
+          default: 0
+          description: Total number of items that meet the criteria
+          example: 10
+          type: integer
+        totalPages:
+          default: 0
+          description: Total pages of items that meet the criteria
+          example: 10
+          type: integer
+      required:
+        - content
+        - pageable
+        - totalElements
+        - totalPages
+    Pageable:
+      type: object
+      description: Pagination information
+      properties:
+        pageNumber:
+          description: Current page number (starts from 0)
+          example: 0
+          minimum: 0
+          type: integer
+        pageSize:
+          description: Number of items retrieved on this page
+          example: 10
+          minimum: 0
+          type: integer
+      required:
+        - pageNumber
+        - pageSize
+    ResponseMetadata:
+      type: object
+      description: Standard response
+      properties:
+        instance:
+          type: string
+          description: API endpoint that was called
+          example: '/api/something'
+        status:
+          type: integer
+          description: HTTP status code
+          example: 200
+          minimum: 100
+          maximum: 599
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the response was generated
+          example: '2026-01-03T17:11:50.826722328Z'
+        trace:
+          type: string
+          description: Unique trace identifier for debugging purposes. Under unexpected situations it can be '00000000000000000000000000000000'
+          example: '9482c151-b417-43ff-9dbb-ee12b84e5d99'
+      required:
+        - instance
+        - timestamp
+        - trace
+        - status
