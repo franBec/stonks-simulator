@@ -1,0 +1,43 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "java",
+            "name": "Java Spring Boot App",
+            "request": "launch",
+            "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
+            "projectName": "stonks_java",
+            "cwd": "${workspaceFolder}/stonks_java"
+        },
+        {
+            "type": "java",
+            "name": "Java Spring Boot App (dev profile)",
+            "request": "launch",
+            "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
+            "projectName": "stonks_java",
+            "env": {
+                "SPRING_PROFILES_ACTIVE": "dev"
+            }
+        },
+
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Open JaCoCo Report",
+            "file": "${workspaceFolder}/stonks_java/build/reports/jacoco/test/html/index.html"
+        },
+        {
+            "type": "node",
+            "request": "launch",
+            "name": "Vite Dev Server (pnpm)",
+            "runtimeExecutable": "pnpm",
+            "runtimeArgs": ["run", "dev"],
+            "cwd": "${workspaceFolder}/stonks_vite_app",
+            "console": "integratedTerminal"
+        },
+
+    ]
+}

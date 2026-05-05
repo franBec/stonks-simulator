@@ -1,0 +1,8 @@
+{
+  "gradle.nestedProjects": true,
+  "java.import.gradle.enabled": true,
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.compile.nullAnalysis.mode": "automatic",
+  "cobol-lsp.cpy-manager.paths-local": ["stonks_cobol/src/copybooks"],
+  "cobol-lsp.cpy-manager.copybook-extensions": [".cpy"]
+}
