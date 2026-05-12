@@ -1,12 +1,13 @@
 package dev.pollito.stonks_java.trading.adapter.out.cobol.mapper;
 
+import static dev.pollito.stonks_java.util.enums.EnumUtils.fromValue;
+
 import dev.pollito.stonks_java.trading.adapter.out.cobol.dto.CobolTradeValidationRequest;
 import dev.pollito.stonks_java.trading.adapter.out.cobol.dto.CobolTradeValidationResult;
 import dev.pollito.stonks_java.trading.domain.Trade;
 import dev.pollito.stonks_java.trading.domain.TradeAction;
 import dev.pollito.stonks_java.trading.domain.TradeValidation;
 import dev.pollito.stonks_java.trading.domain.ValidationStatus;
-import dev.pollito.stonks_java.util.enums.EnumUtils;
 import org.mapstruct.Mapper;
 import org.mapstruct.MappingConstants;
 
@@ -22,6 +23,6 @@ public interface TradeCobolMapper {
   }
 
   default ValidationStatus map(String status) {
-    return status == null ? null : EnumUtils.fromValue(ValidationStatus.class, status);
+    return status == null ? null : fromValue(ValidationStatus.class, status);
   }
 }

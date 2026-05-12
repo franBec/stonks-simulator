@@ -14,13 +14,12 @@ import org.springframework.stereotype.Service;
 public class CobolTradeValidatorAdapter implements TradeValidatorPort {
   private static final String PROGRAM_NAME = "trade-validator";
 
-  private final CobolProgramExecutor cobolProgramExecutor;
-  private final TradeCobolMapper tradeCobolMapper;
+  private final CobolProgramExecutor executor;
+  private final TradeCobolMapper mapper;
 
   @Override
   public TradeValidation validate(Trade trade) {
-    return tradeCobolMapper.map(
-        cobolProgramExecutor.execute(
-            PROGRAM_NAME, tradeCobolMapper.map(trade), CobolTradeValidationResult.class));
+    return mapper.map(
+        executor.execute(PROGRAM_NAME, mapper.map(trade), CobolTradeValidationResult.class));
   }
 }

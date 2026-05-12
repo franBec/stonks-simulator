@@ -14,6 +14,8 @@ servers:
 tags:
   - name: Trades
     description: Endpoints related to trade validation and execution
+  - name: Market
+    description: Endpoints related to market data and live prices
 paths:
   /trades/validate:
     post:
@@ -37,6 +39,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TradeValidationResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /market/stocks:
+    get:
+      tags:
+        - Market
+      operationId: getStocks
+      summary: Lists all meme stocks with current prices
+      description: |
+        Returns the full catalog of 10 meme stocks with their latest simulated prices,
+        price changes, and change percentages.
+      responses:
+        '200':
+          description: Current market stock prices
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MarketStocksResponse'
         default:
           description: Error
           content:
@@ -151,6 +176,64 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/TradeValidationResult'
+          required:
+            - data
+    StockPrice:
+      type: object
+      description: Current price snapshot for a single stock
+      properties:
+        symbol:
+          type: string
+          description: Stock ticker symbol
+          example: GMEE
+          maxLength: 4
+        name:
+          type: string
+          description: Full stock name
+          example: GameStonks
+        price:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Current simulated price
+          example: 47.85
+          minimum: 0
+        change:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Absolute price change since last tick
+          example: 2.35
+        changePercent:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Percentage price change since last tick
+          example: 5.17
+        timestamp:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of the price snapshot
+          example: '2026-01-03T17:11:50.826722328Z'
+      required:
+        - symbol
+        - name
+        - price
+        - change
+        - changePercent
+        - timestamp
+    MarketStocksResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
+      description: Standard response where the data property is an array of stock prices
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/StockPrice'
           required:
             - data
     Page:

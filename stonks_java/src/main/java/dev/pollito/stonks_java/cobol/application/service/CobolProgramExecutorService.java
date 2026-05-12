@@ -36,9 +36,11 @@ class CobolProgramExecutorService implements CobolProgramExecutor {
       pb.redirectErrorStream(true);
       Process process = startProcess(pb);
 
-      try (Writer writer = new OutputStreamWriter(process.getOutputStream())) {
-        writer.write(objectMapper.writeValueAsString(request));
-        writer.flush();
+      if (request != null) {
+        try (Writer writer = new OutputStreamWriter(process.getOutputStream())) {
+          writer.write(objectMapper.writeValueAsString(request));
+          writer.flush();
+        }
       }
 
       StringBuilder output = new StringBuilder();

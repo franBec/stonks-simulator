@@ -17,8 +17,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 public class TradesController implements TradesApi {
-  private final ValidateTradeUseCase validateTradeUseCase;
-  private final TradeRestMapper tradeRestMapper;
+  private final ValidateTradeUseCase useCase;
+  private final TradeRestMapper mapper;
   private final HttpServletRequest request;
 
   @Override
@@ -30,9 +30,6 @@ public class TradesController implements TradesApi {
             .status(OK.value())
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
-            .data(
-                tradeRestMapper.map(
-                    validateTradeUseCase.validateTrade(
-                        tradeRestMapper.map(tradeValidationRequest)))));
+            .data(mapper.map(useCase.validateTrade(mapper.map(tradeValidationRequest)))));
   }
 }

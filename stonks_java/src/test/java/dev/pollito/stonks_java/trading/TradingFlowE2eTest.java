@@ -1,5 +1,7 @@
 package dev.pollito.stonks_java.trading;
 
+import static dev.pollito.stonks_java.generated.model.TradeAction.BUY;
+import static dev.pollito.stonks_java.generated.model.TradeAction.SELL;
 import static dev.pollito.stonks_java.generated.model.TradeValidationResult.StatusEnum.ACCEPTED;
 import static dev.pollito.stonks_java.generated.model.TradeValidationResult.StatusEnum.REJECTED;
 import static dev.pollito.stonks_java.test.util.RestTestClientAssertions.assertResponseMetadata;
@@ -33,6 +35,12 @@ class TradingFlowE2eTest {
 
   @TestConfiguration
   static class TradingTestConfig {
+    /*
+      Without the "dev" profile active, the real COBOL-backed adapter
+      would be loaded instead of the stub — making tests slow and
+      environment-dependent. This @Primary bean overrides it with a
+      lightweight, deterministic implementation.
+    */
     @Bean
     @Primary
     public TradeValidatorPort tradeValidatorPort() {
@@ -43,9 +51,9 @@ class TradingFlowE2eTest {
   @Autowired private RestTestClient restTestClient;
 
   private static TradeValidationRequest request(
-      String action, String symbol, int qty, double price, double cash) {
+      TradeAction action, String symbol, int qty, double price, double cash) {
     return new TradeValidationRequest()
-        .action(TradeAction.fromValue(action))
+        .action(action)
         .symbol(symbol)
         .quantity(qty)
         .price(price)
@@ -54,11 +62,12 @@ class TradingFlowE2eTest {
 
   private static Stream<Arguments> validationScenarios() {
     return Stream.of(
-        Arguments.of(request("BUY", "GMEE", 10, 45.0, 10000.0), ACCEPTED, 450.0, 9550.0),
-        Arguments.of(request("BUY", "GMEE", 1000, 45.0, 100.0), REJECTED, 0.0, 0.0),
-        Arguments.of(request("BUY", "FAKE", 10, 45.0, 10000.0), REJECTED, 0.0, 0.0),
-        Arguments.of(request("BUY", "GMEE", 0, 45.0, 10000.0), REJECTED, 0.0, 0.0),
-        Arguments.of(request("SELL", "GMEE", 10, 45.0, 1000.0), ACCEPTED, 450.0, 550.0));
+        Arguments.of(request(BUY, "GMEE", 10, 45.0, 10000.0), ACCEPTED, 450.0, 9550.0),
+        Arguments.of(request(BUY, "GMEE", 1000, 45.0, 100.0), REJECTED, 0.0, 0.0),
+        Arguments.of(request(BUY, "FAKE", 10, 45.0, 10000.0), REJECTED, 0.0, 0.0),
+        Arguments.of(request(BUY, "GMEE", 0, 45.0, 10000.0), REJECTED, 0.0, 0.0),
+        Arguments.of(request(BUY, "GMEE", 10, 0.0, 10000.0), REJECTED, 0.0, 0.0),
+        Arguments.of(request(SELL, "GMEE", 10, 45.0, 1000.0), ACCEPTED, 450.0, 550.0));
   }
 
   @ParameterizedTest

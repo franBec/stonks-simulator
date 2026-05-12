@@ -14,3 +14,12 @@ stonks:
       trade-validator:
         path: "../stonks_cobol/bin/trade-validator"
         timeout-seconds: 5
+      price-engine:
+        path: "../stonks_cobol/bin/price-engine"
+        timeout-seconds: 5
+      catalog:
+        path: "../stonks_cobol/bin/catalog"
+        timeout-seconds: 5
+  market:
+    simulation:
+      interval-ms: 2000

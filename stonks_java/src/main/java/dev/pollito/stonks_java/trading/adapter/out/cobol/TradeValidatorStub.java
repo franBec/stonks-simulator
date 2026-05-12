@@ -24,7 +24,7 @@ public class TradeValidatorStub implements TradeValidatorPort {
   public TradeValidation validate(Trade trade) {
     log.warn("Using dev stub for TradeValidatorPort — no real COBOL engine is running");
 
-    if (trade.action() != TradeAction.BUY && trade.action() != TradeAction.SELL) {
+    if (trade.action() == null) {
       return rejected("S225", "JOB ABEND S225 - INVALID ACTION");
     }
 

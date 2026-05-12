@@ -1,5 +1,7 @@
 package dev.pollito.stonks_java.trading.adapter.out.cobol;
 
+import static dev.pollito.stonks_java.trading.domain.TradeAction.BUY;
+import static dev.pollito.stonks_java.trading.domain.ValidationStatus.ACCEPTED;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -10,9 +12,7 @@ import dev.pollito.stonks_java.trading.adapter.out.cobol.dto.CobolTradeValidatio
 import dev.pollito.stonks_java.trading.adapter.out.cobol.mapper.TradeCobolMapper;
 import dev.pollito.stonks_java.trading.adapter.out.cobol.mapper.TradeCobolMapperImpl;
 import dev.pollito.stonks_java.trading.domain.Trade;
-import dev.pollito.stonks_java.trading.domain.TradeAction;
 import dev.pollito.stonks_java.trading.domain.TradeValidation;
-import dev.pollito.stonks_java.trading.domain.ValidationStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -29,7 +29,7 @@ class CobolTradeValidatorAdapterTest {
 
   @Test
   void validate() {
-    Trade trade = new Trade(TradeAction.BUY, "GMEE", 10, 45.0, 10000.0);
+    Trade trade = new Trade(BUY, "GMEE", 10, 45.0, 10000.0);
     CobolTradeValidationResult result =
         new CobolTradeValidationResult("ACCEPTED", null, "Valid", 450.0, 9550.0);
 
@@ -39,10 +39,8 @@ class CobolTradeValidatorAdapterTest {
             CobolTradeValidationResult.class))
         .thenReturn(result);
 
-    TradeValidation actual = adapter.validate(trade);
-
     assertEquals(
-        new TradeValidation(ValidationStatus.ACCEPTED, null, "Valid", 450.0, 9550.0), actual);
+        new TradeValidation(ACCEPTED, null, "Valid", 450.0, 9550.0), adapter.validate(trade));
     verify(tradeCobolMapper).map(trade);
     verify(tradeCobolMapper).map(result);
     verify(cobolProgramExecutor)
