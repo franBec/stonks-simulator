@@ -47,6 +47,8 @@ paths:
 components:
   schemas:
     Error:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
       allOf:
         - $ref: '#/components/schemas/ResponseMetadata'
         - type: object
@@ -140,6 +142,8 @@ components:
         - totalCost
         - remainingCash
     TradeValidationResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
       description: Standard response where the data property is the trade validation result
       allOf:
         - $ref: '#/components/schemas/ResponseMetadata'

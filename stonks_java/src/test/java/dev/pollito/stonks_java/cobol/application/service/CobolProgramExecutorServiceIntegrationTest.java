@@ -24,7 +24,8 @@ class CobolProgramExecutorServiceIntegrationTest {
       config.setTimeoutSeconds(5);
       properties.getPrograms().put("echo", config);
 
-      CobolProgramExecutorService service = new CobolProgramExecutorService(properties, new ObjectMapper());
+      CobolProgramExecutorService service =
+          new CobolProgramExecutorService(properties, new ObjectMapper());
       TestResponse response = service.execute("echo", new TestRequest("world"), TestResponse.class);
 
       assertEquals("hello", response.value());

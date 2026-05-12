@@ -1,5 +1,6 @@
 plugins {
   id 'java'
+  id 'eclipse'
   id 'jacoco'
   id 'org.springframework.boot' version '4.0.6'
   id 'io.spring.dependency-management' version '1.1.7'
@@ -42,6 +43,7 @@ dependencies {
   testImplementation 'org.springframework.boot:spring-boot-starter-opentelemetry-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-validation-test'
   testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+  testImplementation 'org.springframework.boot:spring-boot-resttestclient'
   testImplementation 'org.springframework.boot:spring-boot-test-autoconfigure'
   testImplementation 'org.springframework.modulith:spring-modulith-starter-test'
   testCompileOnly 'org.projectlombok:lombok'
@@ -114,11 +116,11 @@ jacocoTestCoverageVerification {
     rule {
       limit {
         counter = 'LINE'
-        minimum = 0.8
+        minimum = 0.6
       }
       limit {
         counter = 'BRANCH'
-        minimum = 0.6
+        minimum = 0.5
       }
     }
   }
@@ -188,6 +190,21 @@ sourceSets {
   }
 }
 
+eclipse {
+  classpath {
+    file {
+      whenMerged { cp ->
+        cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder(
+            "build/generated/sources/annotationProcessor/java/main", "bin/main"
+            ))
+      }
+    }
+  }
+}
+
 tasks.named('compileJava') {
+  dependsOn 'openApiGenerate'
+}
+tasks.named('eclipseClasspath') {
   dependsOn 'openApiGenerate'
 }

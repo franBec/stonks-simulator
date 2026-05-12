@@ -3,6 +3,9 @@
 
 ![stonks](/assets/d0c251b5-747c-423a-a190-c4898b2c1620.png)
 
+> *"This is such a delightfully terrible idea!"*
+~ Kimi K2.6 when told we are building this project
+
 _This is a work in progress. During development, tech choices might change_
 
 A chaotic meme stock trading simulator that bridges 1959 COBOL technology with modern Java Spring Boot and React. Features AI-powered real-world events memeified into market chaos, all wrapped in a retro 3270 terminal aesthetic. Built as a portfolio piece demonstrating the absurdity of connecting 60+ years of computing technology.

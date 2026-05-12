@@ -1,6 +1,0 @@
-stonks:
-  cobol:
-    programs:
-      trade-validator:
-        path: "../stonks_cobol/bin/trade-validator"
-        timeout-seconds: 5
