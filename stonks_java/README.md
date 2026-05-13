@@ -15,6 +15,13 @@ graph TB
     chaos["chaos<br/><small>(placeholder)</small>"]
     portfolio["portfolio<br/><small>(placeholder)</small>"]
 
+    subgraph OPEN ["Shared OPEN Modules"]
+        cobol["cobol<br/><small>CobolPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
+        config["config<br/><small>web filters · jackson · scheduling</small>"]
+        generated["generated<br/><small>OpenAPI DTOs</small>"]
+        util["util<br/><small>ValuedEnum · metadata</small>"]
+    end
+
     broadcast ---> stocks
     broadcast ---> simulation
     broadcast ---> trading
@@ -29,6 +36,10 @@ graph TB
     style simulation stroke-width:2px
     style stocks stroke-width:2px
     style broadcast stroke-dasharray: 5 5
+    style cobol fill:#e6f3ff,stroke:#4a9eff
+    style config fill:#e6f3ff,stroke:#4a9eff
+    style generated fill:#e6f3ff,stroke:#4a9eff
+    style util fill:#e6f3ff,stroke:#4a9eff
 ```
 
 ---
@@ -44,37 +55,31 @@ sequenceDiagram
     participant Client as HTTP Client
     box "trading: Adapter In"
     participant TC as TradesController
-    participant TRM as TradeRestMapper
     end
     box "trading: Application"
     participant TS as TradeServiceImpl
     end
     box "trading: Adapter Out"
     participant CTA as CobolTradeValidatorAdapter
-    participant TCM as TradeCobolMapper
     end
-    box "cobol: Application"
-    participant CPE as CobolProgramExecutorService
+    box "cobol: Adapter Out"
+    participant CPE as CobolProgramExecutor
     end
     participant COBOL as trade-validator (COBOL)
 
     Client->>TC: POST /api/trades/validate
-    TC->>TRM: map(request → Trade)
-    TRM-->>TC: Trade
+    TC->>TC: map(request → Trade)
     TC->>TS: validateTrade(trade)
     TS->>CTA: validate(trade)
-    CTA->>TCM: map(Trade → CobolTradeValidationRequest)
-    TCM-->>CTA: CobolTradeValidationRequest
+    CTA->>CTA: map(Trade → CobolTradeValidationRequest)
     CTA->>CPE: execute("trade-validator", req, CobolTradeValidationResult.class)
     CPE->>COBOL: spawn process, write JSON to stdin
     COBOL-->>CPE: stdout JSON
     CPE-->>CTA: CobolTradeValidationResult
-    CTA->>TCM: map(CobolTradeValidationResult → TradeValidation)
-    TCM-->>CTA: TradeValidation
+    CTA->>CTA: map(CobolTradeValidationResult → TradeValidation)
     CTA-->>TS: TradeValidation
     TS-->>TC: TradeValidation
-    TC->>TRM: map(TradeValidation → TradeValidationResult)
-    TRM-->>TC: TradeValidationResult
+    TC->>TC: map(TradeValidation → TradeValidationResult)
     TC-->>Client: 200 TradeValidationResponse
 ```
 
@@ -85,7 +90,6 @@ sequenceDiagram
     participant Client as HTTP Client
     box "trading: Adapter In"
     participant TC as TradesController
-    participant TRM as TradeRestMapper
     end
     box "trading: Application"
     participant TS as TradeServiceImpl
@@ -95,15 +99,13 @@ sequenceDiagram
     end
 
     Client->>TC: POST /api/trades/validate
-    TC->>TRM: map(request → Trade)
-    TRM-->>TC: Trade
+    TC->>TC: map(request → Trade)
     TC->>TS: validateTrade(trade)
     TS->>TVS: validate(trade)
     Note over TVS: In-memory symbol lookup,<br/>funds check, validation logic
     TVS-->>TS: TradeValidation
     TS-->>TC: TradeValidation
-    TC->>TRM: map(TradeValidation → TradeValidationResult)
-    TRM-->>TC: TradeValidationResult
+    TC->>TC: map(TradeValidation → TradeValidationResult)
     TC-->>Client: 200 TradeValidationResponse
 ```
 
@@ -118,7 +120,6 @@ sequenceDiagram
     participant Client as HTTP Client
     box "stocks: Adapter In"
     participant SC as StocksController
-    participant SRM as StockRestMapper
     end
     box "stocks: Application"
     participant SPP as StockPriceProjector
@@ -126,8 +127,8 @@ sequenceDiagram
     box "stocks: Adapter Out"
     participant CCA as CobolCatalogAdapter
     end
-    box "cobol: Application"
-    participant CPE as CobolProgramExecutorService
+    box "cobol: Adapter Out"
+    participant CPE as CobolProgramExecutor
     end
     participant COBOL as catalog (COBOL)
 
@@ -137,6 +138,7 @@ sequenceDiagram
     CPE->>COBOL: spawn process
     COBOL-->>CPE: stdout JSON array
     CPE-->>CCA: CobolCatalogStock[]
+    CCA->>CCA: map(CobolCatalogStock → Stock)
     CCA-->>SPP: stock list
     Note over SPP: populate projection map
 
@@ -145,8 +147,7 @@ sequenceDiagram
     SC->>SPP: getStocks()
     Note over SPP: read projection snapshot
     SPP-->>SC: stock prices
-    SC->>SRM: map(StockPrice → StockPrice)
-    SRM-->>SC: StockPrice
+    SC->>SC: map(StockPrice → StockPrice)
     SC-->>Client: 200 MarketStocksResponse
 ```
 
@@ -157,7 +158,6 @@ sequenceDiagram
     participant Client as HTTP Client
     box "stocks: Adapter In"
     participant SC as StocksController
-    participant SRM as StockRestMapper
     end
     box "stocks: Application"
     participant SPP as StockPriceProjector
@@ -176,8 +176,7 @@ sequenceDiagram
     SC->>SPP: getStocks()
     Note over SPP: read projection snapshot
     SPP-->>SC: stock prices
-    SC->>SRM: map(StockPrice → StockPrice)
-    SRM-->>SC: StockPrice
+    SC->>SC: map(StockPrice → StockPrice)
     SC-->>Client: 200 MarketStocksResponse
 ```
 
@@ -201,8 +200,8 @@ sequenceDiagram
     box "simulation: Adapter Out"
     participant CPEA as CobolPriceEngineAdapter
     end
-    box "cobol: Application"
-    participant CPE as CobolProgramExecutorService
+    box "cobol: Adapter Out"
+    participant CPE as CobolProgramExecutor
     end
     participant COBOL as price-engine (COBOL)
 

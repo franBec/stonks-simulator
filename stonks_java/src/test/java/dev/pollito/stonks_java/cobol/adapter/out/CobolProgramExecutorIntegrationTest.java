@@ -1,15 +1,16 @@
-package dev.pollito.stonks_java.cobol.application.service;
+package dev.pollito.stonks_java.cobol.adapter.out;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+
 import dev.pollito.stonks_java.cobol.config.CobolProperties;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.attribute.PosixFilePermissions;
 import org.junit.jupiter.api.Test;
 
-class CobolProgramExecutorServiceIntegrationTest {
+class CobolProgramExecutorIntegrationTest {
 
   @Test
   void executesRealProcess() throws Exception {
@@ -24,8 +25,8 @@ class CobolProgramExecutorServiceIntegrationTest {
       config.setTimeoutSeconds(5);
       properties.getPrograms().put("echo", config);
 
-      CobolProgramExecutorService service =
-          new CobolProgramExecutorService(properties, new ObjectMapper());
+      CobolProgramExecutor service =
+          new CobolProgramExecutor(properties, new ObjectMapper());
       TestResponse response = service.execute("echo", new TestRequest("world"), TestResponse.class);
 
       assertEquals("hello", response.value());

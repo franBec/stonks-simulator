@@ -1,8 +1,8 @@
-package dev.pollito.stonks_java.cobol.application.service;
+package dev.pollito.stonks_java.cobol.adapter.out;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import dev.pollito.stonks_java.cobol.CobolEngineException;
-import dev.pollito.stonks_java.cobol.CobolProgramExecutor;
+import dev.pollito.stonks_java.cobol.application.port.out.CobolPortOut;
 import dev.pollito.stonks_java.cobol.config.CobolProperties;
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-class CobolProgramExecutorService implements CobolProgramExecutor {
+class CobolProgramExecutor implements CobolPortOut {
   private final CobolProperties properties;
   private final ObjectMapper objectMapper;
 

@@ -6,7 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import dev.pollito.stonks_java.cobol.CobolProgramExecutor;
+import dev.pollito.stonks_java.cobol.application.port.out.CobolPortOut;
 import dev.pollito.stonks_java.trading.adapter.out.cobol.dto.CobolTradeValidationRequest;
 import dev.pollito.stonks_java.trading.adapter.out.cobol.dto.CobolTradeValidationResult;
 import dev.pollito.stonks_java.trading.adapter.out.cobol.mapper.TradeCobolMapper;
@@ -23,7 +23,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 @ExtendWith(MockitoExtension.class)
 class CobolTradeValidatorAdapterTest {
 
-  @Mock private CobolProgramExecutor cobolProgramExecutor;
+  @Mock private CobolPortOut cobolPortOut;
   @Spy private TradeCobolMapper tradeCobolMapper = new TradeCobolMapperImpl();
   @InjectMocks private CobolTradeValidatorAdapter adapter;
 
@@ -33,7 +33,7 @@ class CobolTradeValidatorAdapterTest {
     CobolTradeValidationResult result =
         new CobolTradeValidationResult("ACCEPTED", null, "Valid", 450.0, 9550.0);
 
-    when(cobolProgramExecutor.execute(
+    when(cobolPortOut.execute(
             "trade-validator",
             new CobolTradeValidationRequest("BUY", "GMEE", 10, 45.0, 10000.0),
             CobolTradeValidationResult.class))
@@ -43,7 +43,7 @@ class CobolTradeValidatorAdapterTest {
         new TradeValidation(ACCEPTED, null, "Valid", 450.0, 9550.0), adapter.validate(trade));
     verify(tradeCobolMapper).map(trade);
     verify(tradeCobolMapper).map(result);
-    verify(cobolProgramExecutor)
+    verify(cobolPortOut)
         .execute(
             "trade-validator",
             new CobolTradeValidationRequest("BUY", "GMEE", 10, 45.0, 10000.0),

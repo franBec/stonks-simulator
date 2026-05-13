@@ -1,6 +1,6 @@
 package dev.pollito.stonks_java.simulation.adapter.out.cobol;
 
-import dev.pollito.stonks_java.cobol.CobolProgramExecutor;
+import dev.pollito.stonks_java.cobol.application.port.out.CobolPortOut;
 import dev.pollito.stonks_java.simulation.adapter.out.cobol.dto.CobolPriceEngineRequest;
 import dev.pollito.stonks_java.simulation.adapter.out.cobol.dto.CobolPriceEngineResult;
 import dev.pollito.stonks_java.simulation.application.port.out.PriceEnginePort;
@@ -13,11 +13,11 @@ import org.springframework.stereotype.Service;
 public class CobolPriceEngineAdapter implements PriceEnginePort {
   private static final String PROGRAM_NAME = "price-engine";
 
-  private final CobolProgramExecutor executor;
+  private final CobolPortOut cobolPortOut;
 
   @Override
   public BigDecimal calculate(BigDecimal currentPrice, BigDecimal volatility, String trend) {
-    return executor
+    return cobolPortOut
         .execute(
             PROGRAM_NAME,
             new CobolPriceEngineRequest(currentPrice, volatility, trend),

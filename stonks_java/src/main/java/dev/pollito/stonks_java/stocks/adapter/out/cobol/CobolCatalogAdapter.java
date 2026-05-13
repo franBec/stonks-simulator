@@ -2,7 +2,7 @@ package dev.pollito.stonks_java.stocks.adapter.out.cobol;
 
 import static java.util.Arrays.stream;
 
-import dev.pollito.stonks_java.cobol.CobolProgramExecutor;
+import dev.pollito.stonks_java.cobol.application.port.out.CobolPortOut;
 import dev.pollito.stonks_java.stocks.adapter.out.cobol.dto.CobolCatalogStock;
 import dev.pollito.stonks_java.stocks.adapter.out.cobol.mapper.StockCobolMapper;
 import dev.pollito.stonks_java.stocks.application.port.out.CatalogPort;
@@ -16,12 +16,12 @@ import org.springframework.stereotype.Service;
 public class CobolCatalogAdapter implements CatalogPort {
   private static final String PROGRAM_NAME = "catalog";
 
-  private final CobolProgramExecutor executor;
+  private final CobolPortOut cobolPortOut;
   private final StockCobolMapper mapper;
 
   @Override
   public List<Stock> getStocks() {
-    return stream(executor.execute(PROGRAM_NAME, null, CobolCatalogStock[].class))
+    return stream(cobolPortOut.execute(PROGRAM_NAME, null, CobolCatalogStock[].class))
         .map(mapper::map)
         .toList();
   }
