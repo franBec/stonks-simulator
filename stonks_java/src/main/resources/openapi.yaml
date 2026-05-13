@@ -14,8 +14,8 @@ servers:
 tags:
   - name: Trades
     description: Endpoints related to trade validation and execution
-  - name: Market
-    description: Endpoints related to market data and live prices
+  - name: Stocks
+    description: Endpoints related to stock market data and live prices
 paths:
   /trades/validate:
     post:
@@ -49,7 +49,7 @@ paths:
   /market/stocks:
     get:
       tags:
-        - Market
+        - Stocks
       operationId: getStocks
       summary: Lists all meme stocks with current prices
       description: |
@@ -61,7 +61,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MarketStocksResponse'
+                $ref: '#/components/schemas/StocksResponse'
         default:
           description: Error
           content:
@@ -222,7 +222,7 @@ components:
         - change
         - changePercent
         - timestamp
-    MarketStocksResponse:
+    StocksResponse:
       x-implements:
         - dev.pollito.stonks_java.util.metadata.ResponseMetadata
       description: Standard response where the data property is an array of stock prices

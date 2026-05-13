@@ -1,8 +1,0 @@
-package dev.pollito.stonks_java.trading.domain;
-
-public record TradeValidation(
-    ValidationStatus status,
-    String errorCode,
-    String message,
-    double totalCost,
-    double remainingCash) {}

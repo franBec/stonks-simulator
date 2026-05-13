@@ -9,9 +9,8 @@ Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation
 ```mermaid
 graph TB
     broadcast["broadcast<br/><small>(placeholder)</small>"]
-    stocks["stocks<br/><small>catalog · projection · REST · orchestration</small>"]
-    simulation["simulation<br/><small>PriceEnginePort<br/>COBOL adapter · dev stub</small>"]
-    trading["trading<br/><small>trade validation</small>"]
+    stock["stock<br/><small>catalog · price engine · REST · orchestration</small>"]
+    trade["trade<br/><small>trade validation</small>"]
     chaos["chaos<br/><small>(placeholder)</small>"]
     portfolio["portfolio<br/><small>(placeholder)</small>"]
 
@@ -22,19 +21,16 @@ graph TB
         util["util<br/><small>ValuedEnum · metadata</small>"]
     end
 
-    broadcast ---> stocks
-    broadcast ---> simulation
-    broadcast ---> trading
+    broadcast ---> stock
+    broadcast ---> trade
     broadcast ---> chaos
     broadcast ---> portfolio
 
-    stocks -.->|"::price-engine-port"| simulation
-    trading ---> stocks
-    chaos ---> stocks
-    portfolio ---> stocks
+    trade ---> stock
+    chaos ---> stock
+    portfolio ---> stock
 
-    style simulation stroke-width:2px
-    style stocks stroke-width:2px
+    style stock stroke-width:2px
     style broadcast stroke-dasharray: 5 5
     style cobol fill:#e6f3ff,stroke:#4a9eff
     style config fill:#e6f3ff,stroke:#4a9eff
@@ -53,14 +49,14 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant Client as HTTP Client
-    box "trading: Adapter In"
-    participant TC as TradesController
+    box "trade: Adapter In"
+    participant TC as TradeController
     end
-    box "trading: Application"
-    participant TS as TradeServiceImpl
+    box "trade: Application"
+    participant TS as TradeService
     end
-    box "trading: Adapter Out"
-    participant CTA as CobolTradeValidatorAdapter
+    box "trade: Adapter Out"
+    participant CTA as TradeValidatorCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
@@ -88,14 +84,14 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as HTTP Client
-    box "trading: Adapter In"
-    participant TC as TradesController
+    box "trade: Adapter In"
+    participant TC as TradeController
     end
-    box "trading: Application"
-    participant TS as TradeServiceImpl
+    box "trade: Application"
+    participant TS as TradeService
     end
-    box "trading: Adapter Out"
-    participant TVS as TradeValidatorStub
+    box "trade: Adapter Out"
+    participant TVS as TradeValidatorCobolAdapterStub
     end
 
     Client->>TC: POST /api/trades/validate
@@ -118,37 +114,37 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as HTTP Client
-    box "stocks: Adapter In"
-    participant SC as StocksController
+    box "stock: Adapter In"
+    participant SC as StockController
     end
-    box "stocks: Application"
-    participant SPP as StockPriceProjector
+    box "stock: Application"
+    participant SS as StockService
     end
-    box "stocks: Adapter Out"
-    participant CCA as CobolCatalogAdapter
+    box "stock: Adapter Out"
+    participant CCA as CatalogCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
     end
     participant COBOL as catalog (COBOL)
 
-    Note over SPP: @PostConstruct init()
-    SPP->>CCA: getStocks()
+    Note over SS: @PostConstruct init()
+    SS->>CCA: getStocks()
     CCA->>CPE: execute("catalog", null, CobolCatalogStock[].class)
     CPE->>COBOL: spawn process
     COBOL-->>CPE: stdout JSON array
     CPE-->>CCA: CobolCatalogStock[]
     CCA->>CCA: map(CobolCatalogStock → Stock)
-    CCA-->>SPP: stock list
-    Note over SPP: populate projection map
+    CCA-->>SS: stock list
+    Note over SS: populate price map
 
     Note over Client,SC: Later request
     Client->>SC: GET /api/market/stocks
-    SC->>SPP: getStocks()
-    Note over SPP: read projection snapshot
-    SPP-->>SC: stock prices
+    SC->>SS: getStocks()
+    Note over SS: read price snapshot
+    SS-->>SC: stock prices
     SC->>SC: map(StockPrice → StockPrice)
-    SC-->>Client: 200 MarketStocksResponse
+    SC-->>Client: 200 StocksResponse
 ```
 
 #### Dev Stub Scenario (no COBOL)
@@ -156,49 +152,48 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant Client as HTTP Client
-    box "stocks: Adapter In"
-    participant SC as StocksController
+    box "stock: Adapter In"
+    participant SC as StockController
     end
-    box "stocks: Application"
-    participant SPP as StockPriceProjector
+    box "stock: Application"
+    participant SS as StockService
     end
-    box "stocks: Adapter Out"
-    participant CPS as CatalogPortStub
+    box "stock: Adapter Out"
+    participant CPS as CatalogCobolAdapterStub
     end
 
-    Note over SPP: @PostConstruct init()
-    SPP->>CPS: getStocks()
-    CPS-->>SPP: stock list (10 hardcoded meme stocks)
-    Note over SPP: populate projection map
+    Note over SS: @PostConstruct init()
+    SS->>CPS: getStocks()
+    CPS-->>SS: stock list (10 hardcoded meme stocks)
+    Note over SS: populate price map
 
     Note over Client,SC: Later request
     Client->>SC: GET /api/market/stocks
-    SC->>SPP: getStocks()
-    Note over SPP: read projection snapshot
-    SPP-->>SC: stock prices
+    SC->>SS: getStocks()
+    Note over SS: read price snapshot
+    SS-->>SC: stock prices
     SC->>SC: map(StockPrice → StockPrice)
-    SC-->>Client: 200 MarketStocksResponse
+    SC-->>Client: 200 StocksResponse
 ```
 
 ---
 
 ### 3. Price Simulation (Scheduled, Event-Driven)
 
-The `StockPriceTickService` (in `stocks`) orchestrates each tick: it reads current prices and the stock catalog, delegates to `PriceEnginePort` (implemented by `simulation`), and publishes `StockPriceUpdatedEvent`. The `StockPriceProjector` (also in `stocks`) listens for those events and updates its projection.
+The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog, delegates to `PriceEnginePortOut` (implemented by `PriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. Price tracking is handled in-memory within `StockService`.
 
 #### Real Scenario (COBOL)
 
 ```mermaid
 sequenceDiagram
-    box "stocks: Adapter In"
+    box "stock: Adapter In"
     participant Sched as StockPriceTickScheduler
     end
-    box "stocks: Application"
-    participant SC as StockPriceTickService
-    participant SPP as StockPriceProjector
+    box "stock: Application"
+    participant SS as StockService
     end
-    box "simulation: Adapter Out"
-    participant CPEA as CobolPriceEngineAdapter
+    box "stock: Adapter Out"
+    participant PEA as PriceEngineCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
@@ -206,18 +201,16 @@ sequenceDiagram
     participant COBOL as price-engine (COBOL)
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
-    Sched->>SC: simulate()
-    SC->>SPP: getStocks() (current prices)
-    SPP-->>SC: current prices
+    Sched->>SS: simulate()
+    Note over SS: read stock catalog from<br/>CatalogCobolAdapter, then<br/>for each stock...
     loop For each stock
-        SC->>CPEA: calculate(currentPrice, volatility, trend)
-        CPEA->>CPE: execute("price-engine", request, CobolPriceEngineResult.class)
+        SS->>PEA: calculate(currentPrice, volatility, trend)
+        PEA->>CPE: execute("price-engine", request, CobolPriceEngineResult.class)
         CPE->>COBOL: spawn process, write JSON to stdin
         COBOL-->>CPE: stdout JSON {newPrice}
-        CPE-->>CPEA: CobolPriceEngineResult
-        CPEA-->>SC: newPrice (BigDecimal)
-        SC-->>SPP: publishEvent(StockPriceUpdatedEvent)
-        Note over SPP: @ApplicationModuleListener<br/>updates projection map
+        CPE-->>PEA: CobolPriceEngineResult
+        PEA-->>SS: newPrice (BigDecimal)
+        SS->>SS: publishEvent(StockPriceUpdatedEvent)
     end
 ```
 
@@ -225,26 +218,23 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    box "stocks: Adapter In"
+    box "stock: Adapter In"
     participant Sched as StockPriceTickScheduler
     end
-    box "stocks: Application"
-    participant SC as StockPriceTickService
-    participant SPP as StockPriceProjector
+    box "stock: Application"
+    participant SS as StockService
     end
-    box "simulation: Adapter Out"
-    participant PES as PriceEngineStub
+    box "stock: Adapter Out"
+    participant PES as PriceEngineCobolAdapterStub
     end
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
-    Sched->>SC: simulate()
-    SC->>SPP: getStocks() (current prices)
-    SPP-->>SC: current prices
+    Sched->>SS: simulate()
+    Note over SS: read stock catalog from<br/>CatalogCobolAdapterStub, then<br/>for each stock...
     loop For each stock
-        SC->>PES: calculate(currentPrice, volatility, trend)
+        SS->>PES: calculate(currentPrice, volatility, trend)
         Note over PES: Random walk with trend bias,<br/>circuit breaker, price bounds
-        PES-->>SC: newPrice (BigDecimal)
-        SC-->>SPP: publishEvent(StockPriceUpdatedEvent)
-        Note over SPP: @ApplicationModuleListener<br/>updates projection map
+        PES-->>SS: newPrice (BigDecimal)
+        SS->>SS: publishEvent(StockPriceUpdatedEvent)
     end
 ```

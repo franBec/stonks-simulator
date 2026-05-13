@@ -1,8 +1,0 @@
-package dev.pollito.stonks_java.trading.application.port.in;
-
-import dev.pollito.stonks_java.trading.domain.Trade;
-import dev.pollito.stonks_java.trading.domain.TradeValidation;
-
-public interface ValidateTradeUseCase {
-  TradeValidation validateTrade(Trade trade);
-}
