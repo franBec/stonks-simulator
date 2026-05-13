@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE hibernate-reverse-engineering PUBLIC
+    "-//Hibernate/Hibernate Reverse Engineering DTD 3.0//EN"
+    "http://hibernate.org/dtd/hibernate-reverse-engineering-3.0.dtd">
+<hibernate-reverse-engineering>
+    <type-mapping>
+        <sql-type jdbc-type="TINYINT" hibernate-type="java.lang.Integer"/>
+        <sql-type jdbc-type="SMALLINT" hibernate-type="java.lang.Integer"/>
+        <sql-type jdbc-type="BIT" hibernate-type="java.lang.Boolean"/>
+        <sql-type jdbc-type="INTEGER" hibernate-type="java.lang.Long"/>
+        <sql-type jdbc-type="DECIMAL" hibernate-type="java.math.BigDecimal"/>
+        <sql-type jdbc-type="TIMESTAMP" hibernate-type="java.time.LocalDateTime"/>
+        <sql-type jdbc-type="DATE" hibernate-type="java.time.LocalDate"/>
+    </type-mapping>
+    <table-filter match-schema="PUBLIC" match-name=".*"/>
+</hibernate-reverse-engineering>

@@ -1,0 +1,27 @@
+CREATE TABLE portfolio (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    cash_balance DECIMAL(12,2) NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE position (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    portfolio_id BIGINT NOT NULL,
+    symbol VARCHAR(4) NOT NULL,
+    quantity INT NOT NULL DEFAULT 0,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
+);
+
+CREATE TABLE trade_history (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    portfolio_id BIGINT NOT NULL,
+    action VARCHAR(4) NOT NULL,
+    symbol VARCHAR(4) NOT NULL,
+    quantity INT NOT NULL,
+    price DECIMAL(10,2) NOT NULL,
+    total_cost DECIMAL(12,2) NOT NULL,
+    cash_balance_after DECIMAL(12,2) NOT NULL,
+    executed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
+);

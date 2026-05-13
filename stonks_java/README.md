@@ -10,9 +10,10 @@ Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation
 graph TB
     broadcast["broadcast<br/><small>(placeholder)</small>"]
     stock["stock<br/><small>catalog · price engine · REST · orchestration</small>"]
-    trade["trade<br/><small>trade validation</small>"]
+    trade["trade<br/><small>validation · execution · history</small>"]
     chaos["chaos<br/><small>(placeholder)</small>"]
-    portfolio["portfolio<br/><small>(placeholder)</small>"]
+    portfolio["portfolio<br/><small>cash · positions · P&L</small>"]
+    db[("H2<br/><small>portfolio · position<br/>trade_history</small>")]
 
     subgraph OPEN ["Shared OPEN Modules"]
         cobol["cobol<br/><small>CobolPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
@@ -27,8 +28,12 @@ graph TB
     broadcast ---> portfolio
 
     trade ---> stock
+    trade ---> portfolio
     chaos ---> stock
     portfolio ---> stock
+
+    portfolio -.->|reads/writes| db
+    trade -.->|reads/writes| db
 
     style stock stroke-width:2px
     style broadcast stroke-dasharray: 5 5
@@ -237,4 +242,207 @@ sequenceDiagram
         PES-->>SS: newPrice (BigDecimal)
         SS->>SS: publishEvent(StockPriceUpdatedEvent)
     end
+```
+
+---
+
+### 4. Trade Execution
+
+`POST /api/trades` validates the trade (reuses the validation flow), loads the current portfolio from the DB, delegates portfolio mutation to `PORTFOLIO-MGR` (COBOL), then persists the updated state inside a DB transaction.
+
+#### Real Scenario (COBOL)
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "trade: Adapter In"
+    participant TC as TradeController
+    end
+    box "trade: Application"
+    participant TS as TradeService
+    end
+    box "trade: Adapter Out"
+    participant TVA as TradeValidatorCobolAdapter
+    participant PMA as PortfolioMgrCobolAdapter
+    end
+    box "portfolio: Adapter Out"
+    participant PJA as PortfolioJpaAdapter
+    end
+    box "cobol: Adapter Out"
+    participant CPE as CobolProgramExecutor
+    end
+    participant TV as trade-validator (COBOL)
+    participant PM as portfolio-mgr (COBOL)
+    participant DB as H2
+
+    Client->>TC: POST /api/trades
+    TC->>TC: map(request → Trade)
+    TC->>TS: executeTrade(trade)
+
+    Note over TS: Step 1: Validate
+    TS->>TVA: validate(trade)
+    TVA->>CPE: execute("trade-validator", req, CobolTradeValidationResult.class)
+    CPE->>TV: spawn, write to stdin
+    TV-->>CPE: stdout JSON
+    CPE-->>TVA: CobolTradeValidationResult
+    TVA-->>TS: TradeValidation
+    alt REJECTED
+        TS-->>TC: execution failed
+        TC-->>Client: 200 TradeExecutionResult (REJECTED)
+    end
+
+    Note over TS: Step 2: Load portfolio
+    TS->>PJA: getPortfolio()
+    PJA->>DB: SELECT portfolio + positions
+    DB-->>PJA: rows
+    PJA-->>TS: PortfolioSummary
+
+    Note over TS: Step 3: Execute via COBOL
+    TS->>PMA: execute(trade, currentHolding)
+    PMA->>PMA: map(Trade + holding → CobolPortfolioMgrRequest)
+    PMA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
+    CPE->>PM: spawn, write to stdin
+    PM-->>CPE: stdout JSON
+    CPE-->>PMA: CobolPortfolioMgrResult
+    PMA-->>TS: TradeExecutionResult
+
+    Note over TS: Step 4: Persist & return
+    TS->>PJA: updateCash(cashBalance)
+    TS->>PJA: upsertPosition(symbol, newQty)
+    TS->>PJA: insertTradeHistory(...)
+    PJA->>DB: UPDATE / INSERT / INSERT
+    DB-->>PJA: success
+
+    TS-->>TC: TradeExecutionResult
+    TC->>TC: map → TradeExecutionResult
+    TC-->>Client: 200 TradeExecutionResponse
+```
+
+#### Dev Stub Scenario (no COBOL)
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "trade: Adapter In"
+    participant TC as TradeController
+    end
+    box "trade: Application"
+    participant TS as TradeService
+    end
+    box "trade: Adapter Out"
+    participant TVS as TradeValidatorCobolAdapterStub
+    participant PMS as PortfolioMgrCobolAdapterStub
+    end
+    box "portfolio: Adapter Out"
+    participant PJA as PortfolioJpaAdapter
+    end
+    participant DB as H2
+
+    Client->>TC: POST /api/trades
+    TC->>TC: map(request → Trade)
+    TC->>TS: executeTrade(trade)
+
+    Note over TS: Step 1: Validate (Java stub)
+    TS->>TVS: validate(trade)
+    Note over TVS: In-memory symbol lookup,<br/>funds check
+    TVS-->>TS: TradeValidation
+    alt REJECTED
+        TS-->>TC: execution failed
+        TC-->>Client: 200 TradeExecutionResult (REJECTED)
+    end
+
+    Note over TS: Step 2: Load portfolio
+    TS->>PJA: getPortfolio()
+    PJA->>DB: SELECT
+    DB-->>PJA: rows
+    PJA-->>TS: PortfolioSummary
+
+    Note over TS: Step 3: Execute (Java stub)
+    TS->>PMS: execute(trade, currentHolding)
+    Note over PMS: Pure Java: cash check,<br/>share check, new state
+    PMS-->>TS: TradeExecutionResult
+
+    Note over TS: Step 4: Persist & return
+    TS->>PJA: updateCash / upsertPosition / insertHistory
+    PJA->>DB: UPDATE / INSERT
+    DB-->>PJA: success
+
+    TS-->>TC: TradeExecutionResult
+    TC-->>Client: 200 TradeExecutionResponse
+```
+
+---
+
+### 5. Get Portfolio
+
+`GET /api/portfolio` reads the portfolio + positions from the DB, fetches current stock prices from the `stock` module, and computes unrealized P&L per position and total.
+
+#### Real & Dev Stub (no COBOL involved — pure DB + stock module)
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "portfolio: Adapter In"
+    participant PC as PortfolioController
+    end
+    box "portfolio: Application"
+    participant PS as PortfolioService
+    end
+    box "portfolio: Adapter Out"
+    participant PJA as PortfolioJpaAdapter
+    end
+    box "stock: Application"
+    participant SS as StockService
+    end
+    participant DB as H2
+
+    Client->>PC: GET /api/portfolio
+    PC->>PS: getPortfolio()
+    PS->>PJA: getPortfolio()
+    PJA->>DB: SELECT portfolio
+    DB-->>PJA: cashBalance
+    PJA->>DB: SELECT positions
+    DB-->>PJA: positions list
+    PJA-->>PS: PortfolioSummary(cash, positions)
+
+    Note over PS: For each position,<br/>look up current market price
+    PS->>SS: getStocks()
+    SS-->>PS: stock prices map
+
+    Note over PS: Compute per-position:<br/>marketValue = qty * currentPrice<br/>unrealizedPnl = marketValue - costBasis
+
+    PS-->>PC: PortfolioSummary with P&L
+    PC->>PC: map → PortfolioResponse
+    PC-->>Client: 200 PortfolioResponse
+```
+
+---
+
+### 6. Get Trade History
+
+`GET /api/trades/history` returns paginated trade history from the DB.
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "trade: Adapter In"
+    participant TC as TradeController
+    end
+    box "trade: Application"
+    participant TS as TradeService
+    end
+    box "trade: Adapter Out"
+    participant THR as TradeHistoryJpaRepository
+    end
+    participant DB as H2
+
+    Client->>TC: GET /api/trades/history?page=0&size=20
+    TC->>TS: getTradeHistory(page, size)
+    TS->>THR: findAll(Pageable)
+    THR->>DB: SELECT ... LIMIT/OFFSET
+    DB-->>THR: Page<TradeHistoryEntity>
+    THR-->>TS: Page<TradeHistoryItem>
+    TS-->>TC: Page<TradeHistoryItem>
+    TC->>TC: map → Page schema
+    TC-->>Client: 200 TradeHistoryResponse
 ```
