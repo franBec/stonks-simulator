@@ -16,6 +16,8 @@ tags:
     description: Endpoints related to trade validation and execution
   - name: Stocks
     description: Endpoints related to stock market data and live prices
+  - name: Portfolio
+    description: Endpoints related to player portfolio and holdings
 paths:
   /trades/validate:
     post:
@@ -62,6 +64,29 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StocksResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio:
+    get:
+      tags:
+        - Portfolio
+      operationId: getPortfolio
+      summary: Returns current portfolio state
+      description: |
+        Returns the player's current cash balance, stock positions, and unrealized P&L.
+        Position valuations are computed using the latest market prices.
+      responses:
+        '200':
+          description: Current portfolio state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PortfolioResponse'
         default:
           description: Error
           content:
@@ -234,6 +259,91 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/StockPrice'
+          required:
+            - data
+    Position:
+      type: object
+      description: A single stock position in the portfolio
+      properties:
+        symbol:
+          type: string
+          description: Stock ticker symbol
+          example: GMEE
+          maxLength: 4
+        quantity:
+          type: integer
+          description: Number of shares held
+          example: 10
+        currentPrice:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Latest market price per share
+          example: 47.85
+          minimum: 0
+        marketValue:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Total market value (quantity * currentPrice)
+          example: 478.50
+          minimum: 0
+        costBasis:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Weighted average cost per share
+          example: 45.00
+          minimum: 0
+        unrealizedPnl:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Unrealized profit or loss for this position
+          example: 28.50
+      required:
+        - symbol
+        - quantity
+        - currentPrice
+        - marketValue
+        - costBasis
+        - unrealizedPnl
+    Portfolio:
+      type: object
+      description: Player's current portfolio state
+      properties:
+        cashBalance:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Available cash balance
+          example: 9550.00
+          minimum: 0
+        positions:
+          type: array
+          description: Current stock holdings
+          items:
+            $ref: '#/components/schemas/Position'
+        unrealizedPnl:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Total unrealized profit or loss across all positions
+          example: 28.50
+      required:
+        - cashBalance
+        - positions
+        - unrealizedPnl
+    PortfolioResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
+      description: Standard response where the data property is the portfolio state
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/Portfolio'
           required:
             - data
     Page:
