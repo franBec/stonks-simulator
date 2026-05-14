@@ -10,6 +10,7 @@ import static org.springframework.http.ResponseEntity.status;
 import dev.pollito.stonks_java.generated.model.Error;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
+import java.util.NoSuchElementException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NonNull;
@@ -55,6 +56,11 @@ public class ControllerAdvice {
 
   @ExceptionHandler(NoResourceFoundException.class)
   public ResponseEntity<Error> handle(NoResourceFoundException e) {
+    return buildProblemDetail(e, NOT_FOUND);
+  }
+
+  @ExceptionHandler(NoSuchElementException.class)
+  public ResponseEntity<Error> handle(NoSuchElementException e) {
     return buildProblemDetail(e, NOT_FOUND);
   }
 

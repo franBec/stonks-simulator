@@ -20,10 +20,7 @@ public class PortfolioJpaAdapter implements PortfolioPortOut {
 
   @Override
   public PortfolioSummary getPortfolio() {
-    var portfolio =
-        portfolioRepo
-            .findById(PORTFOLIO_ID)
-            .orElseThrow(() -> new RuntimeException("Portfolio not found"));
+    var portfolio = portfolioRepo.findById(PORTFOLIO_ID).orElseThrow();
     List<PositionSummary> positions =
         positionRepo.findByPortfolioId(PORTFOLIO_ID).stream()
             .map(
