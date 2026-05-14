@@ -3,7 +3,18 @@ COBC_FLAGS = -x -I src/copybooks
 SRC = src
 BIN = bin
 
-all: $(BIN)/trade-validator $(BIN)/price-engine $(BIN)/catalog
+TRADE_TESTS = test-valid-buy test-insufficient-funds test-invalid-symbol \
+              test-invalid-quantity test-invalid-action
+
+PRICE_TESTS = test-price-bull test-price-crash test-price-moon
+
+PORTFOLIO_TESTS = test-portfolio-valid-buy test-portfolio-valid-sell \
+                  test-portfolio-insufficient-funds \
+                  test-portfolio-insufficient-shares \
+                  test-portfolio-invalid-action test-portfolio-invalid-symbol \
+                  test-portfolio-zero-qty test-portfolio-zero-price
+
+all: $(BIN)/trade-validator $(BIN)/price-engine $(BIN)/catalog $(BIN)/portfolio-mgr
 
 $(BIN):
 	mkdir -p $(BIN)
@@ -16,6 +27,17 @@ $(BIN)/price-engine: $(SRC)/price-engine.cob $(SRC)/copybooks/pricetyp.cpy | $(B
 
 $(BIN)/catalog: $(SRC)/catalog.cob $(SRC)/copybooks/stkinit.cpy $(SRC)/copybooks/stkdata.cpy | $(BIN)
 	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/catalog.cob
+
+$(BIN)/portfolio-mgr: $(SRC)/portfolio-mgr.cob $(SRC)/copybooks/stkinit.cpy $(SRC)/copybooks/stkdata.cpy $(SRC)/copybooks/trdtype.cpy $(SRC)/copybooks/prttype.cpy | $(BIN)
+	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/portfolio-mgr.cob
+
+test-trade: $(TRADE_TESTS)
+
+test-price: $(PRICE_TESTS)
+
+test-portfolio: $(PORTFOLIO_TESTS)
+
+test: test-trade test-price test-catalog test-portfolio
 
 test-valid-buy: $(BIN)/trade-validator
 	@echo "--- Test: Valid BUY ---"
@@ -37,8 +59,6 @@ test-invalid-action: $(BIN)/trade-validator
 	@echo "--- Test: Invalid Action ---"
 	@echo '{"action":"HOLD","symbol":"GMEE","quantity":10,"price":45.00,"cashBalance":10000.00}' | $(BIN)/trade-validator
 
-test: test-valid-buy test-insufficient-funds test-invalid-symbol test-invalid-quantity test-invalid-action test-price-bull test-price-crash test-price-moon test-catalog
-
 test-price-bull: $(BIN)/price-engine
 	@echo "--- Test: Price Engine BULL ---"
 	@cat test/price-bull.json | $(BIN)/price-engine
@@ -55,10 +75,43 @@ test-catalog: $(BIN)/catalog
 	@echo "--- Test: CATALOG ---"
 	@$(BIN)/catalog
 
+test-portfolio-valid-buy: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Valid BUY ---"
+	@cat test/portfolio-valid-buy.json | $(BIN)/portfolio-mgr
+
+test-portfolio-valid-sell: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Valid SELL ---"
+	@cat test/portfolio-valid-sell.json | $(BIN)/portfolio-mgr
+
+test-portfolio-insufficient-funds: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Insufficient Funds ---"
+	@cat test/portfolio-insufficient-funds.json | $(BIN)/portfolio-mgr
+
+test-portfolio-insufficient-shares: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Insufficient Shares ---"
+	@cat test/portfolio-insufficient-shares.json | $(BIN)/portfolio-mgr
+
+test-portfolio-invalid-action: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Invalid Action ---"
+	@cat test/portfolio-invalid-action.json | $(BIN)/portfolio-mgr
+
+test-portfolio-invalid-symbol: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Invalid Symbol ---"
+	@cat test/portfolio-invalid-symbol.json | $(BIN)/portfolio-mgr
+
+test-portfolio-zero-qty: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Zero Quantity ---"
+	@cat test/portfolio-zero-qty.json | $(BIN)/portfolio-mgr
+
+test-portfolio-zero-price: $(BIN)/portfolio-mgr
+	@echo "--- Test: Portfolio-Mgr Zero Price ---"
+	@cat test/portfolio-zero-price.json | $(BIN)/portfolio-mgr
+
 clean:
 	rm -rf $(BIN)
 
 lint:
 	@./scripts/cobol-lint.sh
 
-.PHONY: all test test-valid-buy test-insufficient-funds test-invalid-symbol test-invalid-quantity test-invalid-action test-price-bull test-price-crash test-price-moon test-catalog lint clean
+.PHONY: all test test-trade test-price test-catalog test-portfolio lint clean \
+        $(TRADE_TESTS) $(PRICE_TESTS) $(PORTFOLIO_TESTS)

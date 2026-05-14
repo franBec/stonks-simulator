@@ -46,6 +46,9 @@ stonks:
       catalog:
         path: "../stonks_cobol/bin/catalog"
         timeout-seconds: 5
+      portfolio-mgr:
+        path: "../stonks_cobol/bin/portfolio-mgr"
+        timeout-seconds: 5
   market:
     simulation:
       interval-ms: 2000
