@@ -12,7 +12,6 @@ import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -26,10 +25,16 @@ public class PortfolioService implements PortfolioPortIn {
   @Override
   public PortfolioSummary getPortfolio() {
     var portfolio = portfolioPortOut.getPortfolio();
-    
+
     List<PositionSummary> enrichedPositions =
-        portfolio.positions().stream().map(pos -> enrichPosition(pos, stockPortIn.getStocks().stream()
-            .collect(toMap(StockPrice::symbol, StockPrice::price)))).toList();
+        portfolio.positions().stream()
+            .map(
+                pos ->
+                    enrichPosition(
+                        pos,
+                        stockPortIn.getStocks().stream()
+                            .collect(toMap(StockPrice::symbol, StockPrice::price))))
+            .toList();
 
     BigDecimal totalPnl =
         enrichedPositions.stream()
