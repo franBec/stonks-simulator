@@ -2,6 +2,28 @@
 
 Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation loop, and bridges requests to COBOL programs via **stdin/stdout JSON over OS process execution**.
 
+## Environments
+
+Three runtime profiles control which dependencies are active:
+
+| Profile | DB | COBOL | OTel | Use case |
+|---------|----|-------|------|----------|
+| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Disabled | Default for local dev & `./gradlew test` |
+| `cobol` | H2 (embedded) | Real COBOL process execution | Disabled | Manual testing with COBOL setup |
+| `production` | PostgreSQL | Real COBOL process execution | Enabled | Production/staging (*PG driver not yet in build.gradle*) |
+
+- **`./gradlew bootRun`** — starts with H2 + stubs, no external dependencies needed.
+- **`./gradlew bootRun --spring.profiles.active=cobol`** — starts with H2 + real COBOL binaries.
+- **`./gradlew test`** — runs against H2 + stubs. CI-ready, zero config.
+- **VS Code** — three launch configs in `.vscode/launch.json`: `[local]`, `[cobol]`, `[production]`.
+
+### How it works
+
+- `application.yaml` (always loaded) provides H2 datasource + disables OTel by default.
+- COBOL stub adapters are annotated with `@Profile("!cobol & !production")` — active in any profile except `cobol` or `production`.
+- Real COBOL adapters are annotated with `@Profile({"cobol", "production"})` — only active when one of those profiles is set.
+- `application-production.yaml` overrides the datasource to PostgreSQL and enables OTel.
+
 ---
 
 ## Module Architecture

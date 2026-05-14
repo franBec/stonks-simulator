@@ -14,8 +14,6 @@ import dev.pollito.stonks_java.generated.model.TradeAction;
 import dev.pollito.stonks_java.generated.model.TradeValidationRequest;
 import dev.pollito.stonks_java.generated.model.TradeValidationResponse;
 import dev.pollito.stonks_java.generated.model.TradeValidationResult.StatusEnum;
-import dev.pollito.stonks_java.trade.adapter.out.cobol.TradeValidatorCobolAdapterStub;
-import dev.pollito.stonks_java.trade.application.port.out.TradePortOut;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -23,30 +21,12 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
 import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
 @AutoConfigureRestTestClient
 class TradeFlowE2eTest {
-
-  @TestConfiguration
-  static class TestConfig {
-    /*
-      Without the "dev" profile active, the real COBOL-backed adapter
-      would be loaded instead of the stub — making tests slow and
-      environment-dependent. This @Primary bean overrides it with a
-      lightweight, deterministic implementation.
-    */
-    @Bean
-    @Primary
-    public TradePortOut tradePortOut() {
-      return new TradeValidatorCobolAdapterStub();
-    }
-  }
 
   @Autowired private RestTestClient restTestClient;
 

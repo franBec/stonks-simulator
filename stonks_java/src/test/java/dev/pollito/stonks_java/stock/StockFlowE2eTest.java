@@ -7,9 +7,7 @@ import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapM
 
 import dev.pollito.stonks_java.generated.model.StockPrice;
 import dev.pollito.stonks_java.generated.model.StocksResponse;
-import dev.pollito.stonks_java.stock.adapter.out.cobol.CatalogCobolAdapterStub;
 import dev.pollito.stonks_java.stock.application.port.out.PriceEnginePortOut;
-import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -25,18 +23,6 @@ class StockFlowE2eTest {
 
   @TestConfiguration
   static class TestConfig {
-    /*
-      Without the "dev" profile active, the real COBOL-backed adapters
-      would be loaded instead of the stubs — making tests slow and
-      environment-dependent. These @Primary beans override them with
-      lightweight, deterministic implementations.
-    */
-    @Bean
-    @Primary
-    public StockPortOut catalogPort() {
-      return new CatalogCobolAdapterStub();
-    }
-
     @Bean
     @Primary
     public PriceEnginePortOut priceEnginePortOut() {

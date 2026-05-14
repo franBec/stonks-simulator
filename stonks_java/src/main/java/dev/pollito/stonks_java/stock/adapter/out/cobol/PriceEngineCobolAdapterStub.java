@@ -7,13 +7,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("dev")
-@Primary
+@Profile("!cobol & !production")
 @Slf4j
 public class PriceEngineCobolAdapterStub implements PriceEnginePortOut {
 

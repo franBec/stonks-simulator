@@ -7,9 +7,11 @@ import dev.pollito.stonks_java.trade.application.port.out.TradePortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile({"cobol", "production"})
 @RequiredArgsConstructor
 public class TradeValidatorCobolAdapter implements TradePortOut {
   private static final String PROGRAM_NAME = "trade-validator";

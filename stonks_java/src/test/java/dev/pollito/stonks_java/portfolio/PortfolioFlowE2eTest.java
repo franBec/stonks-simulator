@@ -10,12 +10,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.modulith.test.ApplicationModuleTest;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
 @AutoConfigureRestTestClient
-@ActiveProfiles("dev")
 class PortfolioFlowE2eTest {
 
   @Autowired private RestTestClient restTestClient;

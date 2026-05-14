@@ -1,11 +1,11 @@
-CREATE TABLE portfolio (
+CREATE TABLE IF NOT EXISTS portfolio (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     cash_balance DECIMAL(12,2) NOT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE position (
+CREATE TABLE IF NOT EXISTS position (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     portfolio_id BIGINT NOT NULL,
     symbol VARCHAR(4) NOT NULL,
@@ -13,7 +13,7 @@ CREATE TABLE position (
     FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
 );
 
-CREATE TABLE trade_history (
+CREATE TABLE IF NOT EXISTS trade_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     portfolio_id BIGINT NOT NULL,
     action VARCHAR(4) NOT NULL,

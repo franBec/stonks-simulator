@@ -9,9 +9,11 @@ import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile({"cobol", "production"})
 @RequiredArgsConstructor
 public class CatalogCobolAdapter implements StockPortOut {
   private static final String PROGRAM_NAME = "catalog";

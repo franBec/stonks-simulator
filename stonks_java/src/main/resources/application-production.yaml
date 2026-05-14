@@ -1,0 +1,29 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/stonks
+    driver-class-name: org.postgresql.Driver
+    username: ${POSTGRES_USER:stonks}
+    password: ${POSTGRES_PASSWORD:}
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:stonks-schema.sql
+      data-locations: classpath:stonks-data.sql
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+  h2:
+    console:
+      enabled: false
+
+management:
+  otlp:
+    metrics:
+      export:
+        enabled: true
+
+# NOTE: The PostgreSQL driver is not yet declared in build.gradle.
+# This profile is intentionally non-functional until the dependency is added.
+# See build.gradle to track — search for "postgresql".
