@@ -4,6 +4,6 @@ import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
-public interface TradePortOutJpa {
+public interface TradeHistoryPortOutJpa {
   Page<TradeHistoryItem> getTradeHistory(Pageable pageable);
 }

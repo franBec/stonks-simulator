@@ -1,9 +1,8 @@
 package dev.pollito.stonks_java.trade.adapter.out.cobol;
 
-import dev.pollito.stonks_java.trade.application.port.out.TradePortOutCobol;
+import dev.pollito.stonks_java.trade.application.port.out.TradeValidatorPortOutCobol;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
-import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import dev.pollito.stonks_java.trade.domain.ValidationStatus;
 import java.util.Set;
@@ -14,14 +13,14 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class TradeValidatorCobolAdapterStub implements TradePortOutCobol {
+public class TradeValidatorCobolAdapterStub implements TradeValidatorPortOutCobol {
 
   private static final Set<String> VALID_SYMBOLS =
       Set.of("COBL", "GMEE", "DOGE", "TEND", "FOMO", "PAPR", "YOLO", "MEME", "BUGS", "JAVA");
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
-    log.warn("Using dev stub for TradePortOutCobol — no real COBOL engine is running");
+    log.warn("Using dev stub for TradeValidatorPortOutCobol — no real COBOL engine is running");
 
     if (trade.action() == null) {
       return rejected("S225", "JOB ABEND S225 - INVALID ACTION");
@@ -54,11 +53,6 @@ public class TradeValidatorCobolAdapterStub implements TradePortOutCobol {
         "TRADE VALIDATED - PROCEED TO EXECUTION",
         totalCost,
         remainingCash);
-  }
-
-  @Override
-  public TradeExecutionResult executeTrade(Trade trade) {
-    throw new UnsupportedOperationException();
   }
 
   private TradeValidation rejected(String errorCode, String message) {
