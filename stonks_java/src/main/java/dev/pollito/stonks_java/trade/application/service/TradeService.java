@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.trade.application.service;
 
+import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
@@ -19,6 +20,7 @@ public class TradeService implements TradePortIn {
   private final TradeValidatorPortOutCobol tradeValidatorPortOutCobol;
   private final TradeExecutorPortOutCobol tradeExecutorPortOutCobol;
   private final TradeHistoryPortOutJpa tradeHistoryPortOutJpa;
+  private final StockPortIn stockPortIn;
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
@@ -27,7 +29,16 @@ public class TradeService implements TradePortIn {
 
   @Override
   public TradeExecutionResult executeTrade(Trade trade) {
-    return tradeExecutorPortOutCobol.executeTrade(trade);
+    double currentPrice =
+        stockPortIn.getStocks().stream()
+            .filter(s -> s.symbol().equals(trade.symbol()))
+            .findFirst()
+            .map(s -> s.price().doubleValue())
+            .orElse(0.0);
+    Trade enriched =
+        new Trade(
+            trade.action(), trade.symbol(), trade.quantity(), currentPrice, trade.cashBalance());
+    return tradeExecutorPortOutCobol.executeTrade(enriched);
   }
 
   @Override

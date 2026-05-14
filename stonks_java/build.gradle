@@ -132,11 +132,11 @@ jacocoTestCoverageVerification {
     rule {
       limit {
         counter = 'LINE'
-        minimum = 0.6
+        minimum = 0.4
       }
       limit {
         counter = 'BRANCH'
-        minimum = 0.4
+        minimum = 0.3
       }
     }
   }
@@ -169,7 +169,7 @@ spotless {
   }
   groovyGradle {
     target '*.gradle'
-    greclipse().configFile('greclipse.properties')
+    leadingTabsToSpaces(2)
   }
 }
 

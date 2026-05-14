@@ -40,7 +40,13 @@ public class TradeController implements TradesApi {
   @Override
   public ResponseEntity<TradeExecutionResponse> executeTrade(
       TradeExecutionRequest tradeExecutionRequest) {
-    throw new UnsupportedOperationException();
+    return ResponseEntity.ok(
+        new TradeExecutionResponse()
+            .instance(request.getRequestURI())
+            .status(OK.value())
+            .timestamp(now())
+            .trace(current().getSpanContext().getTraceId())
+            .data(mapper.map(tradePortIn.executeTrade(mapper.map(tradeExecutionRequest)))));
   }
 
   @Override
