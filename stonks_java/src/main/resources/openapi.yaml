@@ -48,6 +48,59 @@ paths:
               schema:
                 $ref: '#/components/schemas/Error'
 
+  /trades:
+    post:
+      tags:
+        - Trades
+      operationId: executeTrade
+      summary: Executes a buy/sell trade
+      description: |
+        Validates and executes a trade via COBOL PORTFOLIO-MGR,
+        persists the updated portfolio state, and returns the result.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TradeExecutionRequest'
+      responses:
+        '200':
+          description: Trade execution result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeExecutionResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /trades/history:
+    get:
+      tags:
+        - Trades
+      x-spring-paginated: true
+      operationId: getTradeHistory
+      summary: Returns paginated trade history
+      description: |
+        Returns a paginated list of past trades for the current portfolio,
+        ordered by execution time descending.
+      responses:
+        '200':
+          description: Paginated trade history
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TradeHistoryResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /market/stocks:
     get:
       tags:
@@ -201,6 +254,173 @@ components:
           properties:
             data:
               $ref: '#/components/schemas/TradeValidationResult'
+          required:
+            - data
+    TradeExecutionRequest:
+      type: object
+      description: Trade to be executed
+      properties:
+        action:
+          $ref: '#/components/schemas/TradeAction'
+        symbol:
+          type: string
+          description: Stock ticker symbol
+          example: GMEE
+          maxLength: 4
+        quantity:
+          type: integer
+          description: Number of shares
+          example: 10
+          minimum: 0
+      required:
+        - action
+        - symbol
+        - quantity
+    TradeExecutionResult:
+      type: object
+      description: Result returned after executing a trade
+      properties:
+        status:
+          type: string
+          enum: [ACCEPTED, REJECTED]
+          description: Execution status
+          example: ACCEPTED
+        errorCode:
+          type: string
+          description: COBOL-style error code when rejected; null when accepted
+          example: S222
+          nullable: true
+        message:
+          type: string
+          description: Human-readable execution message
+          example: "TRADE EXECUTED - BUY GMEE"
+          nullable: true
+        newCashBalance:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Cash balance after the trade
+          example: 9550.00
+          minimum: 0
+        newQuantity:
+          type: integer
+          description: Updated position quantity after the trade
+          example: 10
+          minimum: 0
+        totalCost:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Total cost of the trade (quantity * price)
+          example: 450.00
+          minimum: 0
+      required:
+        - status
+        - newCashBalance
+        - newQuantity
+        - totalCost
+    TradeExecutionResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
+      description: Standard response where the data property is the trade execution result
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/TradeExecutionResult'
+          required:
+            - data
+    TradeHistoryItem:
+      type: object
+      description: A single trade history record
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Record identifier
+          example: 1
+        action:
+          type: string
+          description: Trade direction
+          example: BUY
+        symbol:
+          type: string
+          description: Stock ticker symbol
+          example: GMEE
+          maxLength: 4
+        quantity:
+          type: integer
+          description: Number of shares
+          example: 10
+        price:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Price per share at execution
+          example: 45.00
+          minimum: 0
+        totalCost:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Total cost (quantity * price)
+          example: 450.00
+          minimum: 0
+        cashBalanceAfter:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Cash balance after the trade
+          example: 9550.00
+          minimum: 0
+        executedAt:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp of when the trade was executed
+          example: '2026-01-03T17:11:50.826722328Z'
+      required:
+        - id
+        - action
+        - symbol
+        - quantity
+        - price
+        - totalCost
+        - cashBalanceAfter
+        - executedAt
+    TradeHistoryResponseData:
+      type: object
+      description: Paginated trade history data
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/TradeHistoryItem'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalElements:
+          type: integer
+          description: Total number of records matching the query
+          example: 1
+        totalPages:
+          type: integer
+          description: Total number of pages
+          example: 1
+      required:
+        - content
+        - pageable
+        - totalElements
+        - totalPages
+    TradeHistoryResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
+      description: Standard response where the data property is the paginated trade history
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/TradeHistoryResponseData'
           required:
             - data
     StockPrice:

@@ -270,7 +270,12 @@ sequenceDiagram
 
 ### 4. Trade Execution
 
-`POST /api/trades` validates the trade (reuses the validation flow), loads the current portfolio from the DB, delegates portfolio mutation to `PORTFOLIO-MGR` (COBOL), then persists the updated state inside a DB transaction.
+`POST /api/trades` executes a BUY/SELL trade atomically:
+1. Service enriches the request with the current market price via `StockPortIn`
+2. Adapter reads portfolio cash balance and position holding qty from the DB
+3. Adapter calls COBOL `PORTFOLIO-MGR` (which validates and computes new state)
+4. If `ACCEPTED`, adapter persists updated cash balance, position, and trade history
+5. Returns `TradeExecutionResult` with the new portfolio state
 
 #### Real Scenario (COBOL)
 
@@ -283,58 +288,64 @@ sequenceDiagram
     box "trade: Application"
     participant TS as TradeService
     end
+    box "stock: Application"
+    participant SS as StockService
+    end
     box "trade: Adapter Out"
-    participant TVA as TradeValidatorCobolAdapter
     participant PMA as PortfolioMgrCobolAdapter
     end
-    box "portfolio: Adapter Out"
-    participant PJA as PortfolioJpaAdapter
+    box "trade: Adapter Out (JPA)"
+    participant TEPR as TradeExecutionPortfolioJpaRepository
+    participant TEPR2 as TradeExecutionPositionJpaRepository
+    participant THR as TradeHistoryJpaRepository
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
     end
-    participant TV as trade-validator (COBOL)
-    participant PM as portfolio-mgr (COBOL)
+    participant COBOL as portfolio-mgr (COBOL)
     participant DB as H2
 
-    Client->>TC: POST /api/trades
-    TC->>TC: map(request → Trade)
+    Client->>TC: POST /api/trades (action, symbol, qty)
+    TC->>TC: map(TradeExecutionRequest → Trade)
     TC->>TS: executeTrade(trade)
 
-    Note over TS: Step 1: Validate
-    TS->>TVA: validate(trade)
-    TVA->>CPE: execute("trade-validator", req, CobolTradeValidationResult.class)
-    CPE->>TV: spawn, write to stdin
-    TV-->>CPE: stdout JSON
-    CPE-->>TVA: CobolTradeValidationResult
-    TVA-->>TS: TradeValidation
-    alt REJECTED
-        TS-->>TC: execution failed
-        TC-->>Client: 200 TradeExecutionResult (REJECTED)
+    Note over TS: Enrich with market price
+    TS->>SS: getStocks()
+    SS-->>TS: stock prices
+    TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
+
+    Note over TS: Single delegate call
+    TS->>PMA: executeTrade(trade)
+
+    Note over PMA: Read state from DB
+    PMA->>TEPR: findById(1L)
+    TEPR->>DB: SELECT cash_balance
+    DB-->>TEPR: portfolio row
+    TEPR-->>PMA: cashBalance
+
+    PMA->>TEPR2: findByPortfolioIdAndSymbol(1L, symbol)
+    TEPR2->>DB: SELECT quantity
+    DB-->>TEPR2: position (or empty)
+    TEPR2-->>PMA: holdingQty (0 if none)
+
+    Note over PMA: Call PORTFOLIO-MGR
+    PMA->>PMA: CobolPortfolioMgrRequest(action, symbol, qty, price, cashBalance, holdingQty)
+    PMA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
+    CPE->>COBOL: spawn, write JSON to stdin
+    COBOL-->>CPE: stdout JSON
+    CPE-->>PMA: CobolPortfolioMgrResult
+    PMA->>PMA: map → TradeExecutionResult
+
+    alt ACCEPTED
+        PMA->>TEPR: save(cashBalance = newCashBalance)
+        TEPR->>DB: UPDATE portfolio
+        PMA->>TEPR2: save(quantity = newQuantity)
+        TEPR2->>DB: MERGE position
+        PMA->>THR: save(trade_history record)
+        THR->>DB: INSERT
     end
 
-    Note over TS: Step 2: Load portfolio
-    TS->>PJA: getPortfolio()
-    PJA->>DB: SELECT portfolio + positions
-    DB-->>PJA: rows
-    PJA-->>TS: PortfolioSummary
-
-    Note over TS: Step 3: Execute via COBOL
-    TS->>PMA: execute(trade, currentHolding)
-    PMA->>PMA: map(Trade + holding → CobolPortfolioMgrRequest)
-    PMA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
-    CPE->>PM: spawn, write to stdin
-    PM-->>CPE: stdout JSON
-    CPE-->>PMA: CobolPortfolioMgrResult
     PMA-->>TS: TradeExecutionResult
-
-    Note over TS: Step 4: Persist & return
-    TS->>PJA: updateCash(cashBalance)
-    TS->>PJA: upsertPosition(symbol, newQty)
-    TS->>PJA: insertTradeHistory(...)
-    PJA->>DB: UPDATE / INSERT / INSERT
-    DB-->>PJA: success
-
     TS-->>TC: TradeExecutionResult
     TC->>TC: map → TradeExecutionResult
     TC-->>Client: 200 TradeExecutionResponse
@@ -351,45 +362,58 @@ sequenceDiagram
     box "trade: Application"
     participant TS as TradeService
     end
+    box "stock: Application"
+    participant SS as StockService
+    end
     box "trade: Adapter Out"
-    participant TVS as TradeValidatorCobolAdapterStub
     participant PMS as PortfolioMgrCobolAdapterStub
     end
-    box "portfolio: Adapter Out"
-    participant PJA as PortfolioJpaAdapter
+    box "trade: Adapter Out (JPA)"
+    participant TEPR as TradeExecutionPortfolioJpaRepository
+    participant TEPR2 as TradeExecutionPositionJpaRepository
+    participant THR as TradeHistoryJpaRepository
     end
     participant DB as H2
 
-    Client->>TC: POST /api/trades
-    TC->>TC: map(request → Trade)
+    Client->>TC: POST /api/trades (action, symbol, qty)
+    TC->>TC: map(TradeExecutionRequest → Trade)
     TC->>TS: executeTrade(trade)
 
-    Note over TS: Step 1: Validate (Java stub)
-    TS->>TVS: validate(trade)
-    Note over TVS: In-memory symbol lookup,<br/>funds check
-    TVS-->>TS: TradeValidation
-    alt REJECTED
-        TS-->>TC: execution failed
-        TC-->>Client: 200 TradeExecutionResult (REJECTED)
+    Note over TS: Enrich with market price
+    TS->>SS: getStocks()
+    SS-->>TS: stock prices
+    TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
+
+    Note over TS: Single delegate call
+    TS->>PMS: executeTrade(trade)
+
+    Note over PMS: Read state from DB
+    PMS->>TEPR: findById(1L)
+    TEPR->>DB: SELECT cash_balance
+    DB-->>TEPR: portfolio row
+    TEPR-->>PMS: cashBalance
+
+    PMS->>TEPR2: findByPortfolioIdAndSymbol(1L, symbol)
+    TEPR2->>DB: SELECT quantity
+    DB-->>TEPR2: position (or empty)
+    TEPR2-->>PMS: holdingQty (0 if none)
+
+    Note over PMS: Pure Java validation + computation
+    Note over PMS: Validates S001, S222-S226
+    Note over PMS: Computes newCashBalance,<br/>newQuantity, totalCost
+
+    alt ACCEPTED
+        PMS->>TEPR: save(cashBalance = newCashBalance)
+        TEPR->>DB: UPDATE portfolio
+        PMS->>TEPR2: save(quantity = newQuantity)
+        TEPR2->>DB: MERGE position
+        PMS->>THR: save(trade_history record)
+        THR->>DB: INSERT
     end
 
-    Note over TS: Step 2: Load portfolio
-    TS->>PJA: getPortfolio()
-    PJA->>DB: SELECT
-    DB-->>PJA: rows
-    PJA-->>TS: PortfolioSummary
-
-    Note over TS: Step 3: Execute (Java stub)
-    TS->>PMS: execute(trade, currentHolding)
-    Note over PMS: Pure Java: cash check,<br/>share check, new state
     PMS-->>TS: TradeExecutionResult
-
-    Note over TS: Step 4: Persist & return
-    TS->>PJA: updateCash / upsertPosition / insertHistory
-    PJA->>DB: UPDATE / INSERT
-    DB-->>PJA: success
-
     TS-->>TC: TradeExecutionResult
+    TC->>TC: map → TradeExecutionResult
     TC-->>Client: 200 TradeExecutionResponse
 ```
 
@@ -442,7 +466,7 @@ sequenceDiagram
 
 ### 6. Get Trade History
 
-`GET /api/trades/history` returns paginated trade history from the DB.
+`GET /api/trades/history` returns paginated trade history from the DB via the outbound adapter.
 
 ```mermaid
 sequenceDiagram
@@ -454,17 +478,23 @@ sequenceDiagram
     participant TS as TradeService
     end
     box "trade: Adapter Out"
+    participant PA as PortfolioMgrCobolAdapter
+    end
+    box "trade: Adapter Out (JPA)"
     participant THR as TradeHistoryJpaRepository
     end
     participant DB as H2
 
     Client->>TC: GET /api/trades/history?page=0&size=20
     TC->>TS: getTradeHistory(page, size)
-    TS->>THR: findAll(Pageable)
-    THR->>DB: SELECT ... LIMIT/OFFSET
-    DB-->>THR: Page<TradeHistoryEntity>
-    THR-->>TS: Page<TradeHistoryItem>
-    TS-->>TC: Page<TradeHistoryItem>
-    TC->>TC: map → Page schema
+    TS->>PA: getTradeHistory(page, size)
+    PA->>THR: findByPortfolioIdOrderByExecutedAtDesc(1L, Pageable)
+    THR->>DB: SELECT ... ORDER BY executed_at DESC
+    DB-->>THR: page of trade history
+    THR-->>PA: Page of trade history
+    PA->>PA: map(Page → TradeHistoryPage)
+    PA-->>TS: TradeHistoryPage
+    TS-->>TC: TradeHistoryPage
+    TC->>TC: map(TradeHistoryPage → TradeHistoryResponse)
     TC-->>Client: 200 TradeHistoryResponse
 ```
