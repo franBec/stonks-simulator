@@ -91,9 +91,11 @@ This is a **modulith** — a single deployable with strict module boundaries. No
 
 A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relax both selectively wherever purity would add ceremony without clarity:
 
-- **Framework annotations in the core** — `@Transactional`, Spring scheduling annotations, and similar go on the service layer when they express a *business concern* (e.g. "this operation must be atomic") rather than a technical implementation detail. The rule: if the annotation describes *what* the system does, it belongs in the core; if it describes *how* (e.g. specific connection pool settings), it belongs in an adapter.
+- **Framework annotations in the core** — `@Transactional`, `@PostConstruct`, Spring scheduling annotations, and similar go on the service layer when they express a *business concern* (e.g. "this operation must be atomic", "the catalog must be loaded at startup") rather than a technical implementation detail. The rule: if the annotation describes *what* the system does, it belongs in the core; if it describes *how* (e.g. specific connection pool settings), it belongs in an adapter.
 
-- **Framework types in port interfaces** — Stable framework types (`Page`, `Pageable`) appear in port interfaces when a hand-rolled equivalent would add zero semantic value. The test is: would a custom wrapper tell a future reader something they wouldn't get from the original type? If no, we keep the framework type and document the dependency boundary.
+- **Framework types in the core** — Stable framework types (`Page`, `Pageable`) appear in service classes, port interfaces, or anywhere in the application layer when a hand-rolled equivalent would add zero semantic value. The test is: would a custom wrapper tell a future reader something they wouldn't get from the original type? If no, we keep the framework type and document the dependency boundary.
+
+- **Direct injection of stable Spring framework classes** — Well-defined, stable Spring interfaces like `ApplicationEventPublisher` may be injected directly into services without a port wrapper. The test is the same as for framework types: would a custom port interface add semantic clarity, or just add indirection? If the framework interface already expresses the business intent clearly, we inject directly and document the dependency boundary.
 
 - **Consolidated ports over fine-grained ones** — Ports group related read + write operations that always change together within the same transaction boundary. This avoids the indirection of "one method per operation" ports while keeping the core decoupled from any specific persistence technology.
 
@@ -106,9 +108,15 @@ Every module follows the same split: the **application core** (`application/`) h
 
 The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by Spring's profile mechanism: stubs are active by default (`!cobol & !production`), real implementations activate only when their environment is configured.
 
----
+Additional considerations for the adapter layer:
 
-## Naming Convention
+- **Stub adapters may contain business logic** — Stubs approximate the real COBOL programs for local dev and CI. They necessarily encode domain rules (validation, pricing, execution math) so the system works end-to-end without external dependencies. These rules are *approximations* and may drift from the COBOL canonical logic. Treat stubs as dev-time stand-ins, not as source of truth for business rules.
+
+- **Inline mapping vs. dedicated mappers** — Adapters may map directly between infrastructure types and domain records inline when the conversion is trivial (a handful of field assignments). A dedicated MapStruct mapper is preferred when the mapping is non-trivial, shared across multiple methods, or would clutter the adapter's readability. Consistency within a module matters more than consistency across modules.
+
+- **Placeholders for values enriched later** — Adapters should avoid making domain decisions, but returning placeholder values (e.g. `BigDecimal.ZERO`) for fields the adapter cannot populate — because the data source doesn't carry them yet — is a valid workaround. The service layer enriches these values before they reach the caller. The rule: an adapter may return an incomplete record when it *genuinely doesn't have the data*, not when it's *choosing a domain default*.
+
+### Naming Convention
 
 All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 
@@ -119,8 +127,8 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 | `Layer` | Hexagonal/architectural role | `PortIn`, `PortOut`, `Controller`, `Service`, `Adapter`, `Mapper`, `Repository` |
 | `[Technology]` | Implementation detail (optional) | `Cobol`, `Jpa`, `Rest` |
 
-**Ports** — interfaces defining module boundaries:
-`StockPortIn`, `StockPriceEnginePortOut`, `TradeValidatorPortOutCobol`, `PortfolioPortOut`
+**Ports** — interfaces defining module boundaries. The `[Technology]` suffix is **never** used on ports — ports are technology-agnostic contracts and should not expose which adapter implements them:
+`StockPortIn`, `StockPriceEnginePortOut`, `TradeValidationPortOut`, `TradeExecutionPortOut`, `TradeHistoryPortOut`, `PortfolioPortOut`
 
 **Adapters** — technology-specific implementations of ports:
 `StockCatalogCobolAdapter`, `StockPriceEngineCobolAdapterStub`, `TradeHistoryJpaAdapter`, `PortfolioJpaAdapter`
@@ -136,6 +144,8 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 ## End to End Flows
 
 ### 1. Trade Validation
+
+`POST /api/trades/validate` validates a trade request (symbol, action, quantity) against business rules — checking symbol existence, action validity, and fund sufficiency. In production, the `TradeService` delegates to `TradeValidationPortOut` which calls the COBOL `trade-validator` program. In dev, the stub adapter performs the same checks in-memory.
 
 #### Real Scenario (COBOL)
 
@@ -201,6 +211,8 @@ sequenceDiagram
 ---
 
 ### 2. Get Market Stocks
+
+`GET /api/market/stocks` returns current stock prices. At startup, `StockService` loads the full stock catalog from the `StockPortOut` adapter (COBOL `catalog` program or hardcoded stub) and populates an in-memory price map. Subsequent requests read from this map — no COBOL call per request.
 
 #### Real Scenario (COBOL catalog load at startup, then projection-based reads)
 
@@ -339,8 +351,8 @@ sequenceDiagram
 `POST /api/trades` executes a BUY/SELL trade atomically:
 1. Service enriches the request with the current market price via `StockPortIn`
 2. Service reads portfolio state (cash balance + position) from DB via `TradePortfolioStatePortOut`
-3. Service builds a `TradeExecutionInput` and delegates to `TradeExecutorPortOutCobol` (COBOL or stub)
-4. If the result is `ACCEPTED`, service persists updated portfolio via `TradePortfolioStatePortOut.applyExecution()` and records history via `TradeHistoryPortOutJpa.recordExecution()`
+3. Service builds a `TradeExecutionInput` and delegates to `TradeExecutionPortOut` (COBOL or stub)
+4. If the result is `ACCEPTED`, service persists updated portfolio via `TradePortfolioStatePortOut.applyExecution()` and records history via `TradeHistoryPortOut.recordExecution()`
 5. Returns `TradeExecutionResult` with the new portfolio state
 
 #### Real Scenario (COBOL)

@@ -4,10 +4,10 @@ import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
-import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
-import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
+import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
+import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
-import dev.pollito.stonks_java.trade.application.port.out.TradeValidatorPortOutCobol;
+import dev.pollito.stonks_java.trade.application.port.out.TradeValidationPortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
@@ -27,15 +27,15 @@ public class TradeService implements TradePortIn {
 
   private static final long PORTFOLIO_ID = 1L;
 
-  private final TradeValidatorPortOutCobol tradeValidatorPortOutCobol;
-  private final TradeExecutorPortOutCobol tradeExecutorPortOutCobol;
-  private final TradeHistoryPortOutJpa tradeHistoryPortOutJpa;
+  private final TradeValidationPortOut tradeValidationPortOut;
+  private final TradeExecutionPortOut tradeExecutionPortOut;
+  private final TradeHistoryPortOut tradeHistoryPortOut;
   private final TradePortfolioStatePortOut tradePortfolioStatePortOut;
   private final StockPortIn stockPortIn;
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
-    return tradeValidatorPortOutCobol.validateTrade(trade);
+    return tradeValidationPortOut.validateTrade(trade);
   }
 
   @Override
@@ -60,7 +60,7 @@ public class TradeService implements TradePortIn {
             state.cashBalance(),
             state.holdingQty());
 
-    TradeExecutionResult result = tradeExecutorPortOutCobol.executeTrade(input);
+    TradeExecutionResult result = tradeExecutionPortOut.executeTrade(input);
 
     if (result.status() == ACCEPTED) {
       tradePortfolioStatePortOut.applyExecution(
@@ -68,7 +68,7 @@ public class TradeService implements TradePortIn {
           trade.symbol(),
           BigDecimal.valueOf(result.newCashBalance()),
           result.newQuantity());
-      tradeHistoryPortOutJpa.recordExecution(trade, result, PORTFOLIO_ID);
+      tradeHistoryPortOut.recordExecution(trade, result, PORTFOLIO_ID);
     }
 
     return result;
@@ -76,6 +76,6 @@ public class TradeService implements TradePortIn {
 
   @Override
   public Page<TradeHistoryItem> getTradeHistory(Pageable pageable) {
-    return tradeHistoryPortOutJpa.getTradeHistory(pageable);
+    return tradeHistoryPortOut.getTradeHistory(pageable);
   }
 }

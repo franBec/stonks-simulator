@@ -3,7 +3,7 @@ package dev.pollito.stonks_java.trade.adapter.out.cobol;
 import dev.pollito.stonks_java.cobol.application.port.out.CobolAppPortOut;
 import dev.pollito.stonks_java.trade.adapter.out.cobol.dto.CobolPortfolioMgrResult;
 import dev.pollito.stonks_java.trade.adapter.out.cobol.mapper.TradePortfolioMgrCobolMapper;
-import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
+import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile({"cobol", "production"})
 @RequiredArgsConstructor
-public class TradePortfolioMgrCobolAdapter implements TradeExecutorPortOutCobol {
+public class TradePortfolioMgrCobolAdapter implements TradeExecutionPortOut {
 
   private static final String PROGRAM_NAME = "portfolio-mgr";
 

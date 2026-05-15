@@ -2,7 +2,7 @@ package dev.pollito.stonks_java.trade.adapter.out.jpa;
 
 import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionEntityMapper;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeHistoryJpaMapper;
-import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
+import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class TradeHistoryJpaAdapter implements TradeHistoryPortOutJpa {
+public class TradeHistoryJpaAdapter implements TradeHistoryPortOut {
 
   private static final long PORTFOLIO_ID = 1L;
 

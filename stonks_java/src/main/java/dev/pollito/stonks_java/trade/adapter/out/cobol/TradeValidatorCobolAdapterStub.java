@@ -1,6 +1,6 @@
 package dev.pollito.stonks_java.trade.adapter.out.cobol;
 
-import dev.pollito.stonks_java.trade.application.port.out.TradeValidatorPortOutCobol;
+import dev.pollito.stonks_java.trade.application.port.out.TradeValidationPortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
@@ -13,14 +13,14 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class TradeValidatorCobolAdapterStub implements TradeValidatorPortOutCobol {
+public class TradeValidatorCobolAdapterStub implements TradeValidationPortOut {
 
   private static final Set<String> VALID_SYMBOLS =
       Set.of("COBL", "GMEE", "DOGE", "TEND", "FOMO", "PAPR", "YOLO", "MEME", "BUGS", "JAVA");
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
-    log.warn("Using dev stub for TradeValidatorPortOutCobol — no real COBOL engine is running");
+    log.warn("Using dev stub for TradeValidationPortOut — no real COBOL engine is running");
 
     if (trade.action() == null) {
       return rejected("S225", "JOB ABEND S225 - INVALID ACTION");

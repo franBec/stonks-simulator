@@ -4,7 +4,7 @@ import static dev.pollito.stonks_java.trade.domain.TradeAction.BUY;
 import static dev.pollito.stonks_java.trade.domain.TradeAction.SELL;
 import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 
-import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
+import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.ValidationStatus;
@@ -16,14 +16,14 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class TradePortfolioMgrCobolAdapterStub implements TradeExecutorPortOutCobol {
+public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut {
 
   private static final Set<String> VALID_SYMBOLS =
       Set.of("COBL", "GMEE", "DOGE", "TEND", "FOMO", "PAPR", "YOLO", "MEME", "BUGS", "JAVA");
 
   @Override
   public TradeExecutionResult executeTrade(TradeExecutionInput input) {
-    log.warn("Using dev stub for TradeExecutorPortOutCobol — no real COBOL engine is running");
+    log.warn("Using dev stub for TradeExecutionPortOut — no real COBOL engine is running");
 
     if (input.action() == null) {
       return rejected("S225", "JOB ABEND S225 - INVALID ACTION");
