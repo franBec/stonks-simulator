@@ -523,3 +523,78 @@ sequenceDiagram
     TC->>TC: map(TradeHistoryPage → TradeHistoryResponse)
     TC-->>Client: 200 TradeHistoryResponse
 ```
+
+---
+
+## Hexagonal Architecture: Pragmatic Modulith Approach
+
+### Core rule
+
+The application core (`application/`) imports only:
+- **Domain records** (`domain/`) — plain Java, zero framework coupling
+- **Port interfaces** (`application/port/in/`, `application/port/out/`) — contracts, not implementations
+
+Everything else (JPA entities, repositories, REST serialization, COBOL process bridges, MapStruct mappers) lives in the **adapter layer** (`adapter/in/`, `adapter/out/`). The core never sees infrastructure types.
+
+### Why this shape
+
+This is a **modulith** — a single deployable with strict module boundaries. Not microservices. The architecture optimizes for:
+
+| Concern | Choice | Why |
+|---------|--------|-----|
+| Transaction boundary | `@Transactional` on the **service** (not the adapter) | The unit of work is a business operation (update portfolio + position + history atomically), not an infrastructure detail. Adapters participate via propagation. |
+| Port granularity | Consolidate related CRUD behind one port | Avoid "one port per table" syndrome. `TradePortfolioStatePortOut` covers read + write of portfolio + position because they always change together. |
+| Entity relationships | Adapters own entity lifecycle internally | The `TradeHistory` → `Portfolio` FK is resolved inside the adapter, not the core. Hibernate's first-level cache prevents redundant queries within the same transaction. |
+| Profile segregation | Stub adapters active by default (`!cobol & !production`) | Local dev and CI need zero external dependencies. Real adapters activate only when the environment provides them. |
+
+### Where we relaxed purity
+
+A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relaxed both in measured ways:
+
+1. **`@Transactional` on the service** — purists would push this into an adapter or use a decorator. We keep it on the service because it marks a *business transaction boundary*, not a technical one. Every adapter call inside that method joins the same transaction via Spring's `TransactionManager` propagation.
+
+2. **`Page`/`Pageable` in ports** — Spring Data's pagination types leak into the core. A purist would define a custom pagination domain object. We accepted the leak because:
+   - Replacing `Page<TradeHistoryItem>` with a custom `Page<TradeHistoryItem>` adds zero semantic value
+   - Every REST adapter would immediately map back to `Page` anyway
+   - The dependency is on the **interface** (`org.springframework.data.domain.Page`), not on a specific implementation or data access technology
+
+3. **Consolidated ports instead of fine-grained ones** — `TradePortfolioStatePortOut` combines read (`getState`) and write (`applyExecution`) for two entities (portfolio + position). A purist might split into four ports (read portfolio, write portfolio, read position, write position). We consolidated because:
+   - These four operations always happen together in this module
+   - The transaction boundary is the same
+   - Fewer ports = less indirection = easier to reason about the modulith
+
+### What ended up in the adapter layer
+
+```
+┌──────────────────────────────────────────────────────────┐
+│         APPLICATION CORE (zero infra imports)            │
+│                                                          │
+│  TradeService                                           │
+│    • TradePortIn                       (self)           │
+│    • TradeValidatorPortOutCobol        (port)           │
+│    • TradeExecutorPortOutCobol         (port)           │
+│    • TradePortfolioStatePortOut        (port)           │
+│    • TradeHistoryPortOutJpa            (port)           │
+│    • StockPortIn                       (port)           │
+│    • domain records only                                │
+└──────────────────────┬───────────────────────────────────┘
+                       │ depends on interfaces, never on classes
+                       ▼
+┌──────────────────────────────────────────────────────────┐
+│  ADAPTERS (out) — own all infrastructure dependencies   │
+│                                                          │
+│  TradePortfolioStateJpaAdapter                           │
+│    • TradePortfolioJpaRepository   (.generated.entity)   │
+│    • TradePositionJpaRepository    (.generated.entity)   │
+│                                                          │
+│  TradeHistoryJpaAdapter                                  │
+│    • TradeHistoryJpaRepository     (.generated.entity)   │
+│    • TradeExecutionEntityMapper    (MapStruct)           │
+│    • TradeHistoryJpaMapper          (MapStruct)          │
+│                                                          │
+│  TradeValidatorCobolAdapter / Stub                       │
+│  TradePortfolioMgrCobolAdapter / Stub                    │
+│    • CobolPortOut                  (.cobol module)       │
+│    • Cobol DTOs + Cobol mappers                          │
+└──────────────────────────────────────────────────────────┘
+```

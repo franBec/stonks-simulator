@@ -1,7 +1,10 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa;
 
+import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionEntityMapper;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeHistoryJpaMapper;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
+import dev.pollito.stonks_java.trade.domain.Trade;
+import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -16,11 +19,19 @@ public class TradeHistoryJpaAdapter implements TradeHistoryPortOutJpa {
 
   private final TradeHistoryJpaRepository tradeHistoryJpaRepository;
   private final TradeHistoryJpaMapper tradeHistoryJpaMapper;
+  private final TradeExecutionEntityMapper historyEntityMapper;
+  private final TradePortfolioJpaRepository portfolioRepo;
 
   @Override
   public Page<TradeHistoryItem> getTradeHistory(Pageable pageable) {
     return tradeHistoryJpaRepository
         .findByPortfolioIdOrderByExecutedAtDesc(PORTFOLIO_ID, pageable)
         .map(tradeHistoryJpaMapper::map);
+  }
+
+  @Override
+  public void recordExecution(Trade trade, TradeExecutionResult result, long portfolioId) {
+    var portfolio = portfolioRepo.findById(portfolioId).orElseThrow();
+    tradeHistoryJpaRepository.save(historyEntityMapper.map(trade, result, portfolio));
   }
 }

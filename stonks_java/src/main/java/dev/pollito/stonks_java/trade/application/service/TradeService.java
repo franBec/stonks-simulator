@@ -2,24 +2,19 @@ package dev.pollito.stonks_java.trade.application.service;
 
 import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 
-import dev.pollito.stonks_java.generated.entity.Portfolio;
-import dev.pollito.stonks_java.generated.entity.Position;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePortfolioJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePositionJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionEntityMapper;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
+import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradeValidatorPortOutCobol;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
+import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import java.math.BigDecimal;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -35,11 +30,8 @@ public class TradeService implements TradePortIn {
   private final TradeValidatorPortOutCobol tradeValidatorPortOutCobol;
   private final TradeExecutorPortOutCobol tradeExecutorPortOutCobol;
   private final TradeHistoryPortOutJpa tradeHistoryPortOutJpa;
+  private final TradePortfolioStatePortOut tradePortfolioStatePortOut;
   private final StockPortIn stockPortIn;
-  private final TradePortfolioJpaRepository portfolioRepo;
-  private final TradePositionJpaRepository positionRepo;
-  private final TradeHistoryJpaRepository tradeHistoryRepo;
-  private final TradeExecutionEntityMapper historyEntityMapper;
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
@@ -56,12 +48,8 @@ public class TradeService implements TradePortIn {
             .map(s -> s.price().doubleValue())
             .orElse(0.0);
 
-    Portfolio portfolio = portfolioRepo.findById(PORTFOLIO_ID).orElseThrow();
-    double cashBalance = portfolio.getCashBalance().doubleValue();
-
-    Optional<Position> optPos =
-        positionRepo.findByPortfolioIdAndSymbol(PORTFOLIO_ID, trade.symbol());
-    int holdingQty = optPos.map(p -> p.getQuantity().intValue()).orElse(0);
+    TradePortfolioState state =
+        tradePortfolioStatePortOut.getState(PORTFOLIO_ID, trade.symbol());
 
     TradeExecutionInput input =
         new TradeExecutionInput(
@@ -69,22 +57,18 @@ public class TradeService implements TradePortIn {
             trade.symbol(),
             trade.quantity(),
             currentPrice,
-            cashBalance,
-            holdingQty);
+            state.cashBalance(),
+            state.holdingQty());
 
     TradeExecutionResult result = tradeExecutorPortOutCobol.executeTrade(input);
 
     if (result.status() == ACCEPTED) {
-      portfolio.setCashBalance(BigDecimal.valueOf(result.newCashBalance()));
-      portfolioRepo.save(portfolio);
-
-      Position position = optPos.orElseGet(Position::new);
-      position.setPortfolio(portfolio);
-      position.setSymbol(trade.symbol());
-      position.setQuantity((long) result.newQuantity());
-      positionRepo.save(position);
-
-      tradeHistoryRepo.save(historyEntityMapper.map(trade, result, portfolio));
+      tradePortfolioStatePortOut.applyExecution(
+          PORTFOLIO_ID,
+          trade.symbol(),
+          BigDecimal.valueOf(result.newCashBalance()),
+          result.newQuantity());
+      tradeHistoryPortOutJpa.recordExecution(trade, result, PORTFOLIO_ID);
     }
 
     return result;
