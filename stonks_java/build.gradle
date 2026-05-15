@@ -169,7 +169,7 @@ spotless {
   }
   groovyGradle {
     target '*.gradle'
-    leadingTabsToSpaces(2)
+    greclipse().configFile('greclipse.properties')
   }
 }
 
