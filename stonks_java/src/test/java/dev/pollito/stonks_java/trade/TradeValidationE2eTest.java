@@ -26,7 +26,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
 @AutoConfigureRestTestClient
-class TradeFlowE2eTest {
+class TradeValidationE2eTest {
 
   @Autowired private RestTestClient restTestClient;
 

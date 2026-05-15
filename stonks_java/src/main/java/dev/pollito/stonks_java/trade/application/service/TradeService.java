@@ -9,7 +9,6 @@ import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPortfolioJpaR
 import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPositionJpaRepository;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryJpaRepository;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionHistoryEntityMapper;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionPositionEntityMapper;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
@@ -40,7 +39,6 @@ public class TradeService implements TradePortIn {
   private final TradeExecutionPortfolioJpaRepository portfolioRepo;
   private final TradeExecutionPositionJpaRepository positionRepo;
   private final TradeHistoryJpaRepository tradeHistoryRepo;
-  private final TradeExecutionPositionEntityMapper positionEntityMapper;
   private final TradeExecutionHistoryEntityMapper historyEntityMapper;
 
   @Override
@@ -80,9 +78,10 @@ public class TradeService implements TradePortIn {
       portfolio.setCashBalance(BigDecimal.valueOf(result.newCashBalance()));
       portfolioRepo.save(portfolio);
 
-      Position position =
-          positionEntityMapper.map(portfolio, trade.symbol(), (long) result.newQuantity());
-      optPos.ifPresent(p -> position.setId(p.getId()));
+      Position position = optPos.orElseGet(Position::new);
+      position.setPortfolio(portfolio);
+      position.setSymbol(trade.symbol());
+      position.setQuantity((long) result.newQuantity());
       positionRepo.save(position);
 
       tradeHistoryRepo.save(historyEntityMapper.map(trade, result, portfolio));
