@@ -26,7 +26,9 @@ Three runtime profiles control which dependencies are active:
 
 ---
 
-## Module Architecture
+## Hexagonal Architecture: Pragmatic Modulith Approach
+
+### Module Architecture Graph
 
 ```mermaid
 graph TB
@@ -38,8 +40,8 @@ graph TB
     db[("H2<br/><small>portfolio · position<br/>trade_history</small>")]
 
     subgraph OPEN ["Shared OPEN Modules"]
-        cobol["cobol<br/><small>CobolPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
-        config["config<br/><small>web filters · jackson · scheduling</small>"]
+        cobol["cobol<br/><small>CobolAppPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
+        config["config<br/><small>web filters · jackson · scheduling ·<br/>error handling · OTel tracing ·<br/>AOP logging · log masking</small>"]
         generated["generated<br/><small>OpenAPI DTOs</small>"]
         util["util<br/><small>ValuedEnum · metadata</small>"]
     end
@@ -59,11 +61,50 @@ graph TB
 
     style stock stroke-width:2px
     style broadcast stroke-dasharray: 5 5
+    style chaos stroke-dasharray: 5 5
     style cobol fill:#e6f3ff,stroke:#4a9eff
     style config fill:#e6f3ff,stroke:#4a9eff
     style generated fill:#e6f3ff,stroke:#4a9eff
     style util fill:#e6f3ff,stroke:#4a9eff
 ```
+
+### Core rule
+
+The application core (`application/`) imports only:
+- **Domain records** (`domain/`) — plain Java, zero framework coupling
+- **Port interfaces** (`application/port/in/`, `application/port/out/`) — contracts, not implementations
+
+Everything else (JPA entities, repositories, REST serialization, COBOL process bridges, MapStruct mappers) lives in the **adapter layer** (`adapter/in/`, `adapter/out/`). The core never sees infrastructure types.
+
+### Why this shape
+
+This is a **modulith** — a single deployable with strict module boundaries. Not microservices. The architecture optimizes for:
+
+| Concern | Choice | Why |
+|---------|--------|-----|
+| Transaction boundary | `@Transactional` on the **service** (not the adapter) | The unit of work is a business operation (update portfolio + position + history atomically), not an infrastructure detail. Adapters participate via propagation. |
+| Port granularity | Consolidate related CRUD behind one port | Avoid "one port per table" syndrome. `TradePortfolioStatePortOut` covers read + write of portfolio + position because they always change together. |
+| Entity relationships | Adapters own entity lifecycle internally | The `TradeHistory` → `Portfolio` FK is resolved inside the adapter, not the core. Hibernate's first-level cache prevents redundant queries within the same transaction. |
+| Profile segregation | Stub adapters active by default (`!cobol & !production`) | Local dev and CI need zero external dependencies. Real adapters activate only when the environment provides them. |
+
+### Where we relax purity
+
+A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relax both selectively wherever purity would add ceremony without clarity:
+
+- **Framework annotations in the core** — `@Transactional`, Spring scheduling annotations, and similar go on the service layer when they express a *business concern* (e.g. "this operation must be atomic") rather than a technical implementation detail. The rule: if the annotation describes *what* the system does, it belongs in the core; if it describes *how* (e.g. specific connection pool settings), it belongs in an adapter.
+
+- **Framework types in port interfaces** — Stable framework types (`Page`, `Pageable`) appear in port interfaces when a hand-rolled equivalent would add zero semantic value. The test is: would a custom wrapper tell a future reader something they wouldn't get from the original type? If no, we keep the framework type and document the dependency boundary.
+
+- **Consolidated ports over fine-grained ones** — Ports group related read + write operations that always change together within the same transaction boundary. This avoids the indirection of "one method per operation" ports while keeping the core decoupled from any specific persistence technology.
+
+### What goes in the adapter layer
+
+Every module follows the same split: the **application core** (`application/`) holds only business logic expressed as service classes that depend exclusively on domain records and port interfaces. The **adapter layer** (`adapter/in/`, `adapter/out/`) owns everything that touches infrastructure:
+
+- **`adapter/in/`** — REST controllers, scheduled task runners, SSE publishers. These translate external protocol (HTTP requests, scheduling ticks) into core service calls and map responses back to transport DTOs.
+- **`adapter/out/`** — JPA repository adapters (entity mapping, query execution), COBOL process adapters (serialization, process spawning, deserialization), and their stub counterparts used in development profiles. Each adapter implements a port interface from the core and translates between domain records and infrastructure-specific types (entities, COBOL JSON DTOs, etc.).
+
+The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by Spring's profile mechanism: stubs are active by default (`!cobol & !production`), real implementations activate only when their environment is configured.
 
 ---
 
@@ -92,7 +133,7 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 
 ---
 
-## Happy Paths
+## End to End Flows
 
 ### 1. Trade Validation
 
@@ -149,7 +190,7 @@ sequenceDiagram
     Client->>TC: POST /api/trades/validate
     TC->>TC: map(request → Trade)
     TC->>TS: validateTrade(trade)
-    TS->>TVS: validate(trade)
+    TS->>TVS: validateTrade(trade)
     Note over TVS: In-memory symbol lookup,<br/>funds check, validation logic
     TVS-->>TS: TradeValidation
     TS-->>TC: TradeValidation
@@ -173,7 +214,7 @@ sequenceDiagram
     participant SS as StockService
     end
     box "stock: Adapter Out"
-    participant CCA as CatalogCobolAdapter
+    participant CCA as StockCatalogCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
@@ -211,7 +252,7 @@ sequenceDiagram
     participant SS as StockService
     end
     box "stock: Adapter Out"
-    participant CPS as CatalogCobolAdapterStub
+    participant CPS as StockCatalogCobolAdapterStub
     end
 
     Note over SS: @PostConstruct init()
@@ -232,7 +273,7 @@ sequenceDiagram
 
 ### 3. Price Simulation (Scheduled, Event-Driven)
 
-The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog, delegates to `PriceEnginePortOut` (implemented by `PriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. Price tracking is handled in-memory within `StockService`.
+The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. Price tracking is handled in-memory within `StockService`.
 
 #### Real Scenario (COBOL)
 
@@ -245,7 +286,7 @@ sequenceDiagram
     participant SS as StockService
     end
     box "stock: Adapter Out"
-    participant PEA as PriceEngineCobolAdapter
+    participant PEA as StockPriceEngineCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
@@ -254,7 +295,7 @@ sequenceDiagram
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
     Sched->>SS: simulate()
-    Note over SS: read stock catalog from<br/>CatalogCobolAdapter, then<br/>for each stock...
+    Note over SS: read stock catalog from<br/>StockCatalogCobolAdapter, then<br/>for each stock...
     loop For each stock
         SS->>PEA: calculate(currentPrice, volatility, trend)
         PEA->>CPE: execute("price-engine", request, CobolPriceEngineResult.class)
@@ -277,12 +318,12 @@ sequenceDiagram
     participant SS as StockService
     end
     box "stock: Adapter Out"
-    participant PES as PriceEngineCobolAdapterStub
+    participant PES as StockPriceEngineCobolAdapterStub
     end
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
     Sched->>SS: simulate()
-    Note over SS: read stock catalog from<br/>CatalogCobolAdapterStub, then<br/>for each stock...
+    Note over SS: read stock catalog from<br/>StockCatalogCobolAdapterStub, then<br/>for each stock...
     loop For each stock
         SS->>PES: calculate(currentPrice, volatility, trend)
         Note over PES: Random walk with trend bias,<br/>circuit breaker, price bounds
@@ -297,9 +338,9 @@ sequenceDiagram
 
 `POST /api/trades` executes a BUY/SELL trade atomically:
 1. Service enriches the request with the current market price via `StockPortIn`
-2. Adapter reads portfolio cash balance and position holding qty from the DB
-3. Adapter calls COBOL `PORTFOLIO-MGR` (which validates and computes new state)
-4. If `ACCEPTED`, adapter persists updated cash balance, position, and trade history
+2. Service reads portfolio state (cash balance + position) from DB via `TradePortfolioStatePortOut`
+3. Service builds a `TradeExecutionInput` and delegates to `TradeExecutorPortOutCobol` (COBOL or stub)
+4. If the result is `ACCEPTED`, service persists updated portfolio via `TradePortfolioStatePortOut.applyExecution()` and records history via `TradeHistoryPortOutJpa.recordExecution()`
 5. Returns `TradeExecutionResult` with the new portfolio state
 
 #### Real Scenario (COBOL)
@@ -316,13 +357,12 @@ sequenceDiagram
     box "stock: Application"
     participant SS as StockService
     end
-    box "trade: Adapter Out"
-    participant PMA as PortfolioMgrCobolAdapter
-    end
     box "trade: Adapter Out (JPA)"
-    participant TEPR as TradeExecutionPortfolioJpaRepository
-    participant TEPR2 as TradeExecutionPositionJpaRepository
-    participant THR as TradeHistoryJpaRepository
+    participant TPSJA as TradePortfolioStateJpaAdapter
+    participant THJA as TradeHistoryJpaAdapter
+    end
+    box "trade: Adapter Out"
+    participant TPMCA as TradePortfolioMgrCobolAdapter
     end
     box "cobol: Adapter Out"
     participant CPE as CobolProgramExecutor
@@ -339,40 +379,37 @@ sequenceDiagram
     SS-->>TS: stock prices
     TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
 
-    Note over TS: Single delegate call
-    TS->>PMA: executeTrade(trade)
+    Note over TS: Read portfolio state from DB
+    TS->>TPSJA: getState(portfolioId, symbol)
+    TPSJA->>DB: SELECT cash_balance, position quantity
+    DB-->>TPSJA: portfolio row + position
+    TPSJA-->>TS: TradePortfolioState(cashBalance, holdingQty)
 
-    Note over PMA: Read state from DB
-    PMA->>TEPR: findById(1L)
-    TEPR->>DB: SELECT cash_balance
-    DB-->>TEPR: portfolio row
-    TEPR-->>PMA: cashBalance
-
-    PMA->>TEPR2: findByPortfolioIdAndSymbol(1L, symbol)
-    TEPR2->>DB: SELECT quantity
-    DB-->>TEPR2: position (or empty)
-    TEPR2-->>PMA: holdingQty (0 if none)
-
-    Note over PMA: Call PORTFOLIO-MGR
-    PMA->>PMA: CobolPortfolioMgrRequest(action, symbol, qty, price, cashBalance, holdingQty)
-    PMA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
-    CPE->>COBOL: spawn, write JSON to stdin
+    Note over TS: Build enriched input, delegate to COBOL
+    TS->>TS: TradeExecutionInput(action, symbol, qty, price, cashBalance, holdingQty)
+    TS->>TPMCA: executeTrade(input)
+    TPMCA->>TPMCA: map(TradeExecutionInput → CobolPortfolioMgrRequest)
+    TPMCA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
+    CPE->>COBOL: spawn process, write JSON to stdin
     COBOL-->>CPE: stdout JSON
-    CPE-->>PMA: CobolPortfolioMgrResult
-    PMA->>PMA: map → TradeExecutionResult
+    CPE-->>TPMCA: CobolPortfolioMgrResult
+    TPMCA->>TPMCA: map(CobolPortfolioMgrResult → TradeExecutionResult)
+    TPMCA-->>TS: TradeExecutionResult
 
     alt ACCEPTED
-        PMA->>TEPR: save(cashBalance = newCashBalance)
-        TEPR->>DB: UPDATE portfolio
-        PMA->>TEPR2: save(quantity = newQuantity)
-        TEPR2->>DB: MERGE position
-        PMA->>THR: save(trade_history record)
-        THR->>DB: INSERT
+        TS->>TPSJA: applyExecution(portfolioId, symbol, newCashBalance, newQuantity)
+        TPSJA->>DB: UPDATE cash_balance, MERGE position
+        DB-->>TPSJA: updated
+        TPSJA-->>TS: void
+        TS->>THJA: recordExecution(trade, result, portfolioId)
+        THJA->>THJA: map(trade, result → TradeHistory entity)
+        THJA->>DB: INSERT trade_history
+        DB-->>THJA: inserted
+        THJA-->>TS: void
     end
 
-    PMA-->>TS: TradeExecutionResult
     TS-->>TC: TradeExecutionResult
-    TC->>TC: map → TradeExecutionResult
+    TC->>TC: map(TradeExecutionResult → TradeExecutionResponse)
     TC-->>Client: 200 TradeExecutionResponse
 ```
 
@@ -390,13 +427,12 @@ sequenceDiagram
     box "stock: Application"
     participant SS as StockService
     end
-    box "trade: Adapter Out"
-    participant PMS as PortfolioMgrCobolAdapterStub
-    end
     box "trade: Adapter Out (JPA)"
-    participant TEPR as TradeExecutionPortfolioJpaRepository
-    participant TEPR2 as TradeExecutionPositionJpaRepository
-    participant THR as TradeHistoryJpaRepository
+    participant TPSJA as TradePortfolioStateJpaAdapter
+    participant THJA as TradeHistoryJpaAdapter
+    end
+    box "trade: Adapter Out"
+    participant TPMCAS as TradePortfolioMgrCobolAdapterStub
     end
     participant DB as H2
 
@@ -409,36 +445,31 @@ sequenceDiagram
     SS-->>TS: stock prices
     TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
 
-    Note over TS: Single delegate call
-    TS->>PMS: executeTrade(trade)
+    Note over TS: Read portfolio state from DB
+    TS->>TPSJA: getState(portfolioId, symbol)
+    TPSJA->>DB: SELECT cash_balance, position quantity
+    DB-->>TPSJA: portfolio row + position
+    TPSJA-->>TS: TradePortfolioState(cashBalance, holdingQty)
 
-    Note over PMS: Read state from DB
-    PMS->>TEPR: findById(1L)
-    TEPR->>DB: SELECT cash_balance
-    DB-->>TEPR: portfolio row
-    TEPR-->>PMS: cashBalance
-
-    PMS->>TEPR2: findByPortfolioIdAndSymbol(1L, symbol)
-    TEPR2->>DB: SELECT quantity
-    DB-->>TEPR2: position (or empty)
-    TEPR2-->>PMS: holdingQty (0 if none)
-
-    Note over PMS: Pure Java validation + computation
-    Note over PMS: Validates S001, S222-S226
-    Note over PMS: Computes newCashBalance,<br/>newQuantity, totalCost
+    Note over TS: Build enriched input, delegate to stub
+    TS->>TS: TradeExecutionInput(action, symbol, qty, price, cashBalance, holdingQty)
+    TS->>TPMCAS: executeTrade(input)
+    Note over TPMCAS: Pure Java validation + computation<br/>Validates S001, S222-S226<br/>Computes newCashBalance,<br/>newQuantity, totalCost
+    TPMCAS-->>TS: TradeExecutionResult
 
     alt ACCEPTED
-        PMS->>TEPR: save(cashBalance = newCashBalance)
-        TEPR->>DB: UPDATE portfolio
-        PMS->>TEPR2: save(quantity = newQuantity)
-        TEPR2->>DB: MERGE position
-        PMS->>THR: save(trade_history record)
-        THR->>DB: INSERT
+        TS->>TPSJA: applyExecution(portfolioId, symbol, newCashBalance, newQuantity)
+        TPSJA->>DB: UPDATE cash_balance, MERGE position
+        DB-->>TPSJA: updated
+        TPSJA-->>TS: void
+        TS->>THJA: recordExecution(trade, result, portfolioId)
+        THJA->>DB: INSERT trade_history
+        DB-->>THJA: inserted
+        THJA-->>TS: void
     end
 
-    PMS-->>TS: TradeExecutionResult
     TS-->>TC: TradeExecutionResult
-    TC->>TC: map → TradeExecutionResult
+    TC->>TC: map(TradeExecutionResult → TradeExecutionResponse)
     TC-->>Client: 200 TradeExecutionResponse
 ```
 
@@ -491,7 +522,7 @@ sequenceDiagram
 
 ### 6. Get Trade History
 
-`GET /api/trades/history` returns paginated trade history from the DB via the outbound adapter.
+`GET /api/trades/history` returns paginated trade history from the DB via `TradeHistoryJpaAdapter`.
 
 ```mermaid
 sequenceDiagram
@@ -502,99 +533,25 @@ sequenceDiagram
     box "trade: Application"
     participant TS as TradeService
     end
-    box "trade: Adapter Out"
-    participant PA as PortfolioMgrCobolAdapter
-    end
     box "trade: Adapter Out (JPA)"
+    participant THJA as TradeHistoryJpaAdapter
     participant THR as TradeHistoryJpaRepository
     end
     participant DB as H2
 
     Client->>TC: GET /api/trades/history?page=0&size=20
     TC->>TS: getTradeHistory(page, size)
-    TS->>PA: getTradeHistory(page, size)
-    PA->>THR: findByPortfolioIdOrderByExecutedAtDesc(1L, Pageable)
+    TS->>THJA: getTradeHistory(pageable)
+    THJA->>THR: findByPortfolioIdOrderByExecutedAtDesc(1L, Pageable)
     THR->>DB: SELECT ... ORDER BY executed_at DESC
-    DB-->>THR: page of trade history
-    THR-->>PA: Page of trade history
-    PA->>PA: map(Page → TradeHistoryPage)
-    PA-->>TS: TradeHistoryPage
-    TS-->>TC: TradeHistoryPage
-    TC->>TC: map(TradeHistoryPage → TradeHistoryResponse)
+    DB-->>THR: trade history entities
+    THR-->>THJA: entities
+    THJA->>THJA: map entities → domain records
+    THJA-->>TS: trade history page
+    TS-->>TC: trade history page
+    TC->>TC: map domain → response
     TC-->>Client: 200 TradeHistoryResponse
 ```
 
 ---
 
-## Hexagonal Architecture: Pragmatic Modulith Approach
-
-### Core rule
-
-The application core (`application/`) imports only:
-- **Domain records** (`domain/`) — plain Java, zero framework coupling
-- **Port interfaces** (`application/port/in/`, `application/port/out/`) — contracts, not implementations
-
-Everything else (JPA entities, repositories, REST serialization, COBOL process bridges, MapStruct mappers) lives in the **adapter layer** (`adapter/in/`, `adapter/out/`). The core never sees infrastructure types.
-
-### Why this shape
-
-This is a **modulith** — a single deployable with strict module boundaries. Not microservices. The architecture optimizes for:
-
-| Concern | Choice | Why |
-|---------|--------|-----|
-| Transaction boundary | `@Transactional` on the **service** (not the adapter) | The unit of work is a business operation (update portfolio + position + history atomically), not an infrastructure detail. Adapters participate via propagation. |
-| Port granularity | Consolidate related CRUD behind one port | Avoid "one port per table" syndrome. `TradePortfolioStatePortOut` covers read + write of portfolio + position because they always change together. |
-| Entity relationships | Adapters own entity lifecycle internally | The `TradeHistory` → `Portfolio` FK is resolved inside the adapter, not the core. Hibernate's first-level cache prevents redundant queries within the same transaction. |
-| Profile segregation | Stub adapters active by default (`!cobol & !production`) | Local dev and CI need zero external dependencies. Real adapters activate only when the environment provides them. |
-
-### Where we relaxed purity
-
-A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relaxed both in measured ways:
-
-1. **`@Transactional` on the service** — purists would push this into an adapter or use a decorator. We keep it on the service because it marks a *business transaction boundary*, not a technical one. Every adapter call inside that method joins the same transaction via Spring's `TransactionManager` propagation.
-
-2. **`Page`/`Pageable` in ports** — Spring Data's pagination types leak into the core. A purist would define a custom pagination domain object. We accepted the leak because:
-   - Replacing `Page<TradeHistoryItem>` with a custom `Page<TradeHistoryItem>` adds zero semantic value
-   - Every REST adapter would immediately map back to `Page` anyway
-   - The dependency is on the **interface** (`org.springframework.data.domain.Page`), not on a specific implementation or data access technology
-
-3. **Consolidated ports instead of fine-grained ones** — `TradePortfolioStatePortOut` combines read (`getState`) and write (`applyExecution`) for two entities (portfolio + position). A purist might split into four ports (read portfolio, write portfolio, read position, write position). We consolidated because:
-   - These four operations always happen together in this module
-   - The transaction boundary is the same
-   - Fewer ports = less indirection = easier to reason about the modulith
-
-### What ended up in the adapter layer
-
-```
-┌──────────────────────────────────────────────────────────┐
-│         APPLICATION CORE (zero infra imports)            │
-│                                                          │
-│  TradeService                                           │
-│    • TradePortIn                       (self)           │
-│    • TradeValidatorPortOutCobol        (port)           │
-│    • TradeExecutorPortOutCobol         (port)           │
-│    • TradePortfolioStatePortOut        (port)           │
-│    • TradeHistoryPortOutJpa            (port)           │
-│    • StockPortIn                       (port)           │
-│    • domain records only                                │
-└──────────────────────┬───────────────────────────────────┘
-                       │ depends on interfaces, never on classes
-                       ▼
-┌──────────────────────────────────────────────────────────┐
-│  ADAPTERS (out) — own all infrastructure dependencies   │
-│                                                          │
-│  TradePortfolioStateJpaAdapter                           │
-│    • TradePortfolioJpaRepository   (.generated.entity)   │
-│    • TradePositionJpaRepository    (.generated.entity)   │
-│                                                          │
-│  TradeHistoryJpaAdapter                                  │
-│    • TradeHistoryJpaRepository     (.generated.entity)   │
-│    • TradeExecutionEntityMapper    (MapStruct)           │
-│    • TradeHistoryJpaMapper          (MapStruct)          │
-│                                                          │
-│  TradeValidatorCobolAdapter / Stub                       │
-│  TradePortfolioMgrCobolAdapter / Stub                    │
-│    • CobolPortOut                  (.cobol module)       │
-│    • Cobol DTOs + Cobol mappers                          │
-└──────────────────────────────────────────────────────────┘
-```
