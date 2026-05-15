@@ -3,6 +3,8 @@ package dev.pollito.stonks_java.trade.adapter.in.rest.mapper;
 import dev.pollito.stonks_java.generated.model.TradeAction;
 import dev.pollito.stonks_java.generated.model.TradeExecutionRequest;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResult;
+import dev.pollito.stonks_java.generated.model.TradeHistoryItem;
+import dev.pollito.stonks_java.generated.model.TradeHistoryResponseData;
 import dev.pollito.stonks_java.generated.model.TradeValidationRequest;
 import dev.pollito.stonks_java.generated.model.TradeValidationResult;
 import dev.pollito.stonks_java.trade.domain.Trade;
@@ -40,4 +42,10 @@ public interface TradeRestMapper {
   default TradeExecutionResult.StatusEnum mapExecStatus(ValidationStatus status) {
     return status == null ? null : TradeExecutionResult.StatusEnum.fromValue(status.getValue());
   }
+
+  TradeHistoryItem map(dev.pollito.stonks_java.trade.domain.TradeHistoryItem item);
+
+  TradeHistoryResponseData map(
+      org.springframework.data.domain.Page<dev.pollito.stonks_java.trade.domain.TradeHistoryItem>
+          page);
 }

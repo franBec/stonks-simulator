@@ -51,6 +51,12 @@ public class TradeController implements TradesApi {
 
   @Override
   public ResponseEntity<TradeHistoryResponse> getTradeHistory(Pageable pageable) {
-    throw new UnsupportedOperationException();
+    return ResponseEntity.ok(
+        new TradeHistoryResponse()
+            .instance(request.getRequestURI())
+            .status(OK.value())
+            .timestamp(now())
+            .trace(current().getSpanContext().getTraceId())
+            .data(mapper.map(tradePortIn.getTradeHistory(pageable))));
   }
 }
