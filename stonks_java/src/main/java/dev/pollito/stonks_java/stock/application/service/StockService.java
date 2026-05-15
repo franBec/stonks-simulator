@@ -5,8 +5,8 @@ import static java.math.RoundingMode.HALF_UP;
 import static java.time.OffsetDateTime.now;
 
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
-import dev.pollito.stonks_java.stock.application.port.out.PriceEnginePortOut;
 import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
@@ -24,7 +24,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class StockService implements StockPortIn {
 
-  private final PriceEnginePortOut priceEnginePortOut;
+  private final StockPriceEnginePortOut priceEnginePortOut;
   private final StockPortOut stockPortOut;
   private final ApplicationEventPublisher events;
 

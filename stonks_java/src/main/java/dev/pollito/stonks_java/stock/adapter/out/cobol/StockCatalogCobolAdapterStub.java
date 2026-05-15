@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class CatalogCobolAdapterStub implements StockPortOut {
+public class StockCatalogCobolAdapterStub implements StockPortOut {
 
   @Override
   public List<Stock> getStocks() {

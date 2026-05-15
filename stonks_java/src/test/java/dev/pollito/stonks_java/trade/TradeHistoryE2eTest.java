@@ -7,8 +7,8 @@ import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapM
 
 import dev.pollito.stonks_java.generated.entity.TradeHistory;
 import dev.pollito.stonks_java.generated.model.TradeHistoryResponse;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPortfolioJpaRepository;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryJpaRepository;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePortfolioJpaRepository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
@@ -29,7 +29,7 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class TradeHistoryE2eTest {
 
   @Autowired private RestTestClient restTestClient;
-  @Autowired private TradeExecutionPortfolioJpaRepository portfolioRepo;
+  @Autowired private TradePortfolioJpaRepository portfolioRepo;
   @Autowired private TradeHistoryJpaRepository tradeHistoryRepo;
 
   @Test

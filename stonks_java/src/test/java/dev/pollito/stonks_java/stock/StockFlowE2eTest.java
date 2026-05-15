@@ -7,7 +7,7 @@ import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapM
 
 import dev.pollito.stonks_java.generated.model.StockPrice;
 import dev.pollito.stonks_java.generated.model.StocksResponse;
-import dev.pollito.stonks_java.stock.application.port.out.PriceEnginePortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
@@ -25,7 +25,7 @@ class StockFlowE2eTest {
   static class TestConfig {
     @Bean
     @Primary
-    public PriceEnginePortOut priceEnginePortOut() {
+    public StockPriceEnginePortOut priceEnginePortOut() {
       return (currentPrice, volatility, trend) -> currentPrice;
     }
   }

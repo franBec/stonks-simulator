@@ -2,7 +2,7 @@ package dev.pollito.stonks_java.stock.adapter.out.cobol;
 
 import static java.math.BigDecimal.ONE;
 
-import dev.pollito.stonks_java.stock.application.port.out.PriceEnginePortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
@@ -13,7 +13,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class PriceEngineCobolAdapterStub implements PriceEnginePortOut {
+public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut {
 
   private static final BigDecimal MAX_PRICE = new BigDecimal("500.00");
   private static final BigDecimal MIN_PRICE = new BigDecimal("0.10");
@@ -22,7 +22,7 @@ public class PriceEngineCobolAdapterStub implements PriceEnginePortOut {
 
   @Override
   public BigDecimal calculate(BigDecimal currentPrice, BigDecimal volatility, String trend) {
-    log.warn("Using dev stub for PriceEnginePortOut — no real COBOL engine is running");
+    log.warn("Using dev stub for StockPriceEnginePortOut — no real COBOL engine is running");
 
     BigDecimal trendBias =
         switch (trend) {

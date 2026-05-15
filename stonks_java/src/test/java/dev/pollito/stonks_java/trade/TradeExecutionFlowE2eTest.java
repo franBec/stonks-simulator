@@ -16,8 +16,8 @@ import dev.pollito.stonks_java.generated.model.TradeAction;
 import dev.pollito.stonks_java.generated.model.TradeExecutionRequest;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResponse;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResult.StatusEnum;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPortfolioJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPositionJpaRepository;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePortfolioJpaRepository;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePositionJpaRepository;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,8 +39,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 class TradeExecutionFlowE2eTest {
 
   @Autowired private RestTestClient restTestClient;
-  @Autowired private TradeExecutionPortfolioJpaRepository portfolioRepo;
-  @Autowired private TradeExecutionPositionJpaRepository positionRepo;
+  @Autowired private TradePortfolioJpaRepository portfolioRepo;
+  @Autowired private TradePositionJpaRepository positionRepo;
 
   private static TradeExecutionRequest domainRequest(TradeAction action, String symbol, int qty) {
     return new TradeExecutionRequest().action(action).symbol(symbol).quantity(qty);

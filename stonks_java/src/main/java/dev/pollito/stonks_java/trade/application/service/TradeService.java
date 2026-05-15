@@ -5,10 +5,10 @@ import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 import dev.pollito.stonks_java.generated.entity.Portfolio;
 import dev.pollito.stonks_java.generated.entity.Position;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPortfolioJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeExecutionPositionJpaRepository;
 import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionHistoryEntityMapper;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePortfolioJpaRepository;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePositionJpaRepository;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.mapper.TradeExecutionEntityMapper;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutorPortOutCobol;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOutJpa;
@@ -36,10 +36,10 @@ public class TradeService implements TradePortIn {
   private final TradeExecutorPortOutCobol tradeExecutorPortOutCobol;
   private final TradeHistoryPortOutJpa tradeHistoryPortOutJpa;
   private final StockPortIn stockPortIn;
-  private final TradeExecutionPortfolioJpaRepository portfolioRepo;
-  private final TradeExecutionPositionJpaRepository positionRepo;
+  private final TradePortfolioJpaRepository portfolioRepo;
+  private final TradePositionJpaRepository positionRepo;
   private final TradeHistoryJpaRepository tradeHistoryRepo;
-  private final TradeExecutionHistoryEntityMapper historyEntityMapper;
+  private final TradeExecutionEntityMapper historyEntityMapper;
 
   @Override
   public TradeValidation validateTrade(Trade trade) {

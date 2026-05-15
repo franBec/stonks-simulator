@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile({"cobol", "production"})
 @RequiredArgsConstructor
-public class CatalogCobolAdapter implements StockPortOut {
+public class StockCatalogCobolAdapter implements StockPortOut {
   private static final String PROGRAM_NAME = "catalog";
 
   private final CobolAppPortOut cobolPortOut;

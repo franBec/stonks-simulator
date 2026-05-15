@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!cobol & !production")
 @Slf4j
-public class PortfolioMgrCobolAdapterStub implements TradeExecutorPortOutCobol {
+public class TradePortfolioMgrCobolAdapterStub implements TradeExecutorPortOutCobol {
 
   private static final Set<String> VALID_SYMBOLS =
       Set.of("COBL", "GMEE", "DOGE", "TEND", "FOMO", "PAPR", "YOLO", "MEME", "BUGS", "JAVA");

@@ -67,6 +67,31 @@ graph TB
 
 ---
 
+## Naming Convention
+
+All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
+
+| Part | Meaning | Examples |
+|------|---------|----------|
+| `Module` | Spring Modulith module the class belongs to | `Stock`, `Trade`, `Portfolio` |
+| `Concept` | What the class does (omit when unambiguous) | `Catalog`, `PriceEngine`, `Validator`, `History` |
+| `Layer` | Hexagonal/architectural role | `PortIn`, `PortOut`, `Controller`, `Service`, `Adapter`, `Mapper`, `Repository` |
+| `[Technology]` | Implementation detail (optional) | `Cobol`, `Jpa`, `Rest` |
+
+**Ports** — interfaces defining module boundaries:
+`StockPortIn`, `StockPriceEnginePortOut`, `TradeValidatorPortOutCobol`, `PortfolioPortOut`
+
+**Adapters** — technology-specific implementations of ports:
+`StockCatalogCobolAdapter`, `StockPriceEngineCobolAdapterStub`, `TradeHistoryJpaAdapter`, `PortfolioJpaAdapter`
+
+**Repositories & Mappers** — persistence and mapping layer:
+`PortfolioPositionJpaRepository`, `TradePortfolioJpaRepository`, `TradeValidatorCobolMapper`
+
+**Controllers & Services** — REST endpoints and application logic:
+`StockController`, `TradeService`, `PortfolioService`
+
+---
+
 ## Happy Paths
 
 ### 1. Trade Validation

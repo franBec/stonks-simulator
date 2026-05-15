@@ -9,8 +9,8 @@ import static org.mockito.Mockito.when;
 import dev.pollito.stonks_java.cobol.application.port.out.CobolAppPortOut;
 import dev.pollito.stonks_java.trade.adapter.out.cobol.dto.CobolTradeValidationRequest;
 import dev.pollito.stonks_java.trade.adapter.out.cobol.dto.CobolTradeValidationResult;
-import dev.pollito.stonks_java.trade.adapter.out.cobol.mapper.TradeCobolMapper;
-import dev.pollito.stonks_java.trade.adapter.out.cobol.mapper.TradeCobolMapperImpl;
+import dev.pollito.stonks_java.trade.adapter.out.cobol.mapper.TradeValidatorCobolMapper;
+import dev.pollito.stonks_java.trade.adapter.out.cobol.mapper.TradeValidatorCobolMapperImpl;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import org.junit.jupiter.api.Test;
@@ -24,7 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class TradeCobolAdapterTest {
 
   @Mock private CobolAppPortOut cobolApp;
-  @Spy private TradeCobolMapper mapper = new TradeCobolMapperImpl();
+  @Spy private TradeValidatorCobolMapper mapper = new TradeValidatorCobolMapperImpl();
   @InjectMocks private TradeValidatorCobolAdapter adapter;
 
   @Test

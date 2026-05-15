@@ -16,7 +16,7 @@ public class PortfolioJpaAdapter implements PortfolioPortOut {
   private static final long PORTFOLIO_ID = 1L;
 
   private final PortfolioJpaRepository portfolioRepo;
-  private final PositionJpaRepository positionRepo;
+  private final PortfolioPositionJpaRepository positionRepo;
 
   @Override
   public PortfolioSummary getPortfolio() {
