@@ -2,6 +2,8 @@
 
 Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation loop, and bridges requests to COBOL programs via **stdin/stdout JSON over OS process execution**.
 
+---
+
 ## Environments
 
 Three runtime profiles control which dependencies are active:
@@ -15,7 +17,6 @@ Three runtime profiles control which dependencies are active:
 - **`./gradlew bootRun`** — starts with H2 + stubs, no external dependencies needed.
 - **`./gradlew bootRun --spring.profiles.active=cobol`** — starts with H2 + real COBOL binaries.
 - **`./gradlew test`** — runs against H2 + stubs. CI-ready, zero config.
-- **VS Code** — three launch configs in `.vscode/launch.json`: `[local]`, `[cobol]`, `[production]`.
 
 ### How it works
 
@@ -26,7 +27,7 @@ Three runtime profiles control which dependencies are active:
 
 ---
 
-## Hexagonal Architecture: Pragmatic Modulith Approach
+## Architecture: Hexagonal Architecture with Modulith approach
 
 ### Module Architecture Graph
 
@@ -37,7 +38,7 @@ graph TB
     trade["trade<br/><small>validation · execution · history</small>"]
     chaos["chaos<br/><small>(placeholder)</small>"]
     portfolio["portfolio<br/><small>cash · positions · P&L</small>"]
-    db[("H2<br/><small>portfolio · position<br/>trade_history</small>")]
+    db[("DB<br/><small>portfolio · position<br/>trade_history</small>")]
 
     subgraph OPEN ["Shared OPEN Modules"]
         cobol["cobol<br/><small>CobolAppPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
@@ -76,26 +77,15 @@ The application core (`application/`) imports only:
 
 Everything else (JPA entities, repositories, REST serialization, COBOL process bridges, MapStruct mappers) lives in the **adapter layer** (`adapter/in/`, `adapter/out/`). The core never sees infrastructure types.
 
-### Why this shape
-
-This is a **modulith** — a single deployable with strict module boundaries. Not microservices. The architecture optimizes for:
-
-| Concern | Choice | Why |
-|---------|--------|-----|
-| Transaction boundary | `@Transactional` on the **service** (not the adapter) | The unit of work is a business operation (update portfolio + position + history atomically), not an infrastructure detail. Adapters participate via propagation. |
-| Port granularity | Consolidate related CRUD behind one port | Avoid "one port per table" syndrome. `TradePortfolioStatePortOut` covers read + write of portfolio + position because they always change together. |
-| Entity relationships | Adapters own entity lifecycle internally | The `TradeHistory` → `Portfolio` FK is resolved inside the adapter, not the core. Hibernate's first-level cache prevents redundant queries within the same transaction. |
-| Profile segregation | Stub adapters active by default (`!cobol & !production`) | Local dev and CI need zero external dependencies. Real adapters activate only when the environment provides them. |
-
-### Where is ok to relax purity
+### Where is OK to relax purity
 
 A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relax both selectively wherever purity would add ceremony without clarity:
 
-- **Framework annotations in the core** — `@Transactional`, `@PostConstruct`, Spring scheduling annotations, and similar go on the service layer when they express a *business concern* (e.g. "this operation must be atomic", "the catalog must be loaded at startup") rather than a technical implementation detail. The rule: if the annotation describes *what* the system does, it belongs in the core; if it describes *how* (e.g. specific connection pool settings), it belongs in an adapter.
+- **Framework annotations in the core** — `@Transactional`, `@PostConstruct`, Spring scheduling annotations, and similar go on the service layer when they express a *business concern* (e.g. "this operation must be atomic", "the catalog must be loaded at startup") rather than a technical implementation detail. If the annotation describes *what* the system does, it belongs in the core; if it describes *how* (e.g. specific connection pool settings), it belongs in an adapter.
 
-- **Framework types in the core** — Stable framework types (`Page`, `Pageable`) appear in service classes, port interfaces, or anywhere in the application layer when a hand-rolled equivalent would add zero semantic value. The test is: would a custom wrapper tell a future reader something they wouldn't get from the original type? If no, we keep the framework type and document the dependency boundary.
+- **Framework types in the core** — Stable framework types (`Page`, `Pageable`) appear in service classes, port interfaces, or anywhere in the application layer when a hand-rolled equivalent would add zero semantic value.
 
-- **Direct injection of stable Spring framework classes** — Well-defined, stable Spring interfaces like `ApplicationEventPublisher` may be injected directly into services without a port wrapper. The test is the same as for framework types: would a custom port interface add semantic clarity, or just add indirection? If the framework interface already expresses the business intent clearly, we inject directly and document the dependency boundary.
+- **Direct injection of stable Spring framework classes** — Well-defined, stable Spring interfaces like `ApplicationEventPublisher` may be injected directly into services without a port wrapper. If the framework interface already expresses the business intent clearly, we inject directly.
 
 - **Consolidated ports over fine-grained ones** — Ports group related read + write operations that always change together within the same transaction boundary. This avoids the indirection of "one method per operation" ports while keeping the core decoupled from any specific persistence technology.
 
@@ -112,9 +102,9 @@ Additional considerations for the adapter layer:
 
 - **Stub adapters may contain business logic** — Stubs approximate the real COBOL programs for local dev and CI. They necessarily encode domain rules (validation, pricing, execution math) so the system works end-to-end without external dependencies. These rules are *approximations* and may drift from the COBOL canonical logic. Treat stubs as dev-time stand-ins, not as source of truth for business rules.
 
-- **Inline mapping vs. dedicated mappers** — Adapters may map directly between infrastructure types and domain records inline when the conversion is trivial (a handful of field assignments). A dedicated MapStruct mapper is preferred when the mapping is non-trivial, shared across multiple methods, or would clutter the adapter's readability. Consistency within a module matters more than consistency across modules.
+- **Inline mapping vs. dedicated mappers** — Adapters may map directly between infrastructure types and domain records inline when the conversion is trivial (a handful of field assignments). A dedicated MapStruct mapper is preferred when the mapping is non-trivial, shared across multiple methods, or would clutter the adapter's readability.
 
-- **Placeholders for values enriched later** — Adapters should avoid making domain decisions, but returning placeholder values (e.g. `BigDecimal.ZERO`) for fields the adapter cannot populate — because the data source doesn't carry them yet — is a valid workaround. The service layer enriches these values before they reach the caller. The rule: an adapter may return an incomplete record when it *genuinely doesn't have the data*, not when it's *choosing a domain default*.
+- **Placeholders for values enriched later** — Adapters should avoid making domain decisions, but returning placeholder values (e.g. `BigDecimal.ZERO`) for fields the adapter cannot populate — because the data source doesn't carry them yet — is a valid workaround.
 
 ### Naming Convention
 
@@ -141,9 +131,132 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 
 ---
 
+## Cross-Cutting Concerns
+
+### Error Handling
+
+- Global error handling is centralized in `config.web.ControllerAdvice`, a `@RestControllerAdvice` that returns RFC 9457 problem details via the OpenAPI-generated `Error` model
+- Every response includes `timestamp`, `instance` (request URI), `status`, `title`, `detail`, and the OpenTelemetry `trace` ID.
+- Logging level matches the HTTP status series: `ERROR` for 5xx, `WARN` for 4xx, `INFO` otherwise.
+
+Example:
+
+```
+curl -s http://localhost:8080 | jq; curl -sw "→ HTTP %{http_code}\n" -o /dev/null http://localhost:8080
+{
+  "detail": "No static resource  for request '/'.",
+  "instance": "/",
+  "status": 404,
+  "title": "Not Found",
+  "timestamp": "2026-01-11T20:16:13.240960834Z",
+  "trace": "d9178227-18d6-4442-8598-9a9f17f65f9c"
+}
+→ HTTP 404
+```
+
+```mermaid
+sequenceDiagram
+  participant Client
+  participant DS as DispatcherServlet
+  participant CA as ControllerAdvice
+
+  Client->>DS: GET /
+  DS->>DS: No resource found for "/"
+  DS->>CA: throws NoResourceFoundException
+  CA->>CA: @ExceptionHandler(NoResourceFoundException.class)
+  CA->>CA: buildProblemDetail(e, NOT_FOUND)
+  CA->>CA: log.warn("NoResourceFoundException being handled")
+  CA-->>DS: ProblemDetail {status: 404, detail, timestamp, trace}
+  DS-->>Client: HTTP 404 NOT FOUND + JSON body
+```
+
+### Logging
+
+- **Logback configuration** (`logback.xml`) — single `CONSOLE` appender with a custom `MaskingPatternLayout` that redacts sensitive headers and values (`authorization`, `cookie`, `x-api-key`, `password`, `token`, `secret`, etc.) via regex before writing. The pattern includes `trace_id`, `span_id`, and `trace_flags` from MDC.
+- **`LogFilter`** — a `OncePerRequestFilter` at highest precedence that logs every incoming request (method, URI, query string, headers) and outgoing response status code.
+- **`LogAspect`** — an `@Aspect` targeting all `@RestController` public methods, logging method arguments before invocation and the return value after completion.
+- **`OTelApiTraceSpanFilter`** — a `OncePerRequestFilter` at `LOWEST_PRECEDENCE - 1` that injects the current OpenTelemetry trace ID, span ID, and trace flags into SLF4J MDC so the logback pattern can include them.
+
+Example:
+
+```sh
+curl -s --request GET \
+  --url http://localhost:8080/api/trades/42 \
+  --header 'Accept: application/json' \
+  --header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.SflKxwRJSMeKKF2QT4fwpMeJf36POk6yJV_adQssw5c' \
+  --header 'Cookie: JSESSIONID=A1B2C3D4E5F6G7H8I9J0; auth_token=secret123token456' \
+  --header 'Proxy-Authorization: Basic dXNlcm5hbWU6cGFzc3dvcmQ=' \
+  --header 'User-Agent: Mozilla/5.0 (Test Client)' \
+  --header 'X-API-Key: super-secret-api-key' \
+  --header 'X-Auth-Token: super-secret-auth-token-12345' \
+  --header 'X-CSRF-Token: csrf_abc123def456ghi789' | jq
+```
+
+```log
+2026-02-18 15:28:11.600 trace_id=b8e1447340832e9b466fde0a1f172b55 span_id=a4fa1234784f7c02 trace_flags=01 INFO  http-nio-8080-exec-1 --- d.p.stonks_java.config.log.LogFilter >>>> Method: GET; URI: /api/trades/42; QueryString: null; Headers: {Host: localhost:8080, Accept: application/json, Authorization: ****, Cookie: ****, Proxy-Authorization: ****, User-Agent: Mozilla/5.0 (Test Client), X-API-Key: ****, X-Auth-Token: ****, X-CSRF-Token: ****
+2026-02-18 15:28:11.619 trace_id=b8e1447340832e9b466fde0a1f172b55 span_id=a4fa1234784f7c02 trace_flags=01 INFO  http-nio-8080-exec-1 --- d.p.stonks_java.config.log.LogAspect [TradeController.getTrade(..)] Args: [42]
+2026-02-18 15:28:11.620 trace_id=b8e1447340832e9b466fde0a1f172b55 span_id=a4fa1234784f7c02 trace_flags=01 INFO  http-nio-8080-exec-1 --- d.p.stonks_java.config.log.LogAspect [TradeController.getTrade(..)] Response: TradeResponse(id=42, symbol=GMEE, action=BUY, quantity=10, price=420.69, status=ACCEPTED)
+2026-02-18 15:28:11.664 trace_id=b8e1447340832e9b466fde0a1f172b55 span_id=a4fa1234784f7c02 trace_flags=01 INFO  http-nio-8080-exec-1 --- d.p.stonks_java.config.log.LogFilter <<<< Response Status: 200
+```
+
+```mermaid
+sequenceDiagram
+participant Client
+participant OTelApiTraceSpanFilter
+participant LogFilter
+participant LogAspect
+participant TradeController
+
+Client->>OTelApiTraceSpanFilter: HTTP Request
+activate OTelApiTraceSpanFilter
+
+OTelApiTraceSpanFilter->>OTelApiTraceSpanFilter: Set trace_id in MDC
+
+OTelApiTraceSpanFilter->>LogFilter: doFilter(request, response)
+activate LogFilter
+
+Note over LogFilter: Log Request Details<br/>(Method, URI, QueryString, Headers)
+
+LogFilter->>LogAspect: @Before advice
+activate LogAspect
+Note over LogAspect: Log method args
+
+LogAspect->>TradeController: getTrade(42)
+activate TradeController
+TradeController-->>LogAspect: TradeResponse
+deactivate TradeController
+
+LogAspect-->>LogAspect: @AfterReturning advice
+Note over LogAspect: Log method response
+
+LogAspect-->>LogFilter: Return response
+deactivate LogAspect
+
+Note over LogFilter: Log Response Details<br/>(Status Code)
+
+LogFilter-->>OTelApiTraceSpanFilter: Return response
+deactivate LogFilter
+
+OTelApiTraceSpanFilter->>OTelApiTraceSpanFilter: Clear MDC
+
+OTelApiTraceSpanFilter-->>Client: HTTP Response
+deactivate OTelApiTraceSpanFilter
+```
+
+### Mapping
+
+Object mapping uses **MapStruct** with the Spring component model (`componentModel = SPRING`), making mappers injectable Spring beans. Mappers are organized by adapter layer and direction:
+
+- **REST mappers** (`adapter/in/rest/mapper/`) — convert between OpenAPI-generated DTOs and domain records. Each module (trade, stock, portfolio) has its own `*RestMapper`. Custom `default` methods handle enum conversion via `EnumUtils.fromValue()` and the `ValuedEnum<V>` interface.
+- **COBOL mappers** (`adapter/out/cobol/mapper/`) — convert between domain records and COBOL JSON DTOs. The `*CobolMapper` interfaces follow the same MapStruct pattern for both request serialization and response deserialization.
+- **JPA mappers** (`adapter/out/jpa/mapper/`) — convert between JPA entities and domain records. `TradeExecutionEntityMapper` builds `TradeHistory` entities from domain objects; `TradeHistoryJpaMapper` maps entities back to domain `TradeHistoryItem` records.
+- **Inline mapping** is used instead of a dedicated mapper when the conversion is trivial — directly in the controller or adapter method body.
+
+---
+
 ## End to End Flows
 
-### 1. Trade Validation
+### Trade Validation
 
 `POST /api/trades/validate` validates a trade request (symbol, action, quantity) against business rules — checking symbol existence, action validity, and fund sufficiency. In production, the `TradeService` delegates to `TradeValidationPortOut` which calls the COBOL `trade-validator` program. In dev, the stub adapter performs the same checks in-memory.
 
@@ -208,9 +321,7 @@ sequenceDiagram
     TC-->>Client: 200 TradeValidationResponse
 ```
 
----
-
-### 2. Get Market Stocks
+### Get Market Stocks
 
 `GET /api/market/stocks` returns current stock prices. At startup, `StockService` loads the full stock catalog from the `StockPortOut` adapter (COBOL `catalog` program or hardcoded stub) and populates an in-memory price map. Subsequent requests read from this map — no COBOL call per request.
 
@@ -281,9 +392,7 @@ sequenceDiagram
     SC-->>Client: 200 StocksResponse
 ```
 
----
-
-### 3. Price Simulation (Scheduled, Event-Driven)
+### Price Simulation (Scheduled, Event-Driven)
 
 The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. Price tracking is handled in-memory within `StockService`.
 
@@ -344,9 +453,7 @@ sequenceDiagram
     end
 ```
 
----
-
-### 4. Trade Execution
+### Trade Execution
 
 `POST /api/trades` executes a BUY/SELL trade atomically:
 1. Service enriches the request with the current market price via `StockPortIn`
@@ -485,9 +592,7 @@ sequenceDiagram
     TC-->>Client: 200 TradeExecutionResponse
 ```
 
----
-
-### 5. Get Portfolio
+### Get Portfolio
 
 `GET /api/portfolio` reads the portfolio + positions from the DB, fetches current stock prices from the `stock` module, and computes unrealized P&L per position and total.
 
@@ -530,9 +635,7 @@ sequenceDiagram
     PC-->>Client: 200 PortfolioResponse
 ```
 
----
-
-### 6. Get Trade History
+### Get Trade History
 
 `GET /api/trades/history` returns paginated trade history from the DB via `TradeHistoryJpaAdapter`.
 
@@ -598,10 +701,10 @@ Each test declares its data needs via `@Sql` referencing reusable SQL fixtures i
 
 ```
 sql/
-├── portfolio.sql                    # baseline portfolio ($10k cash)
-├── portfolio-with-position.sql      # portfolio + GMEE position (qty 10)
-├── portfolio-with-limited-position.sql  # portfolio + GMEE position (qty 3)
-└── portfolio-with-history.sql       # portfolio + 2 trade history entries
+├── portfolio.sql                       # baseline portfolio ($10k cash)
+├── portfolio-with-position.sql         # portfolio + GMEE position (qty 10)
+├── portfolio-with-limited-position.sql # portfolio + GMEE position (qty 3)
+└── portfolio-with-history.sql          # portfolio + 2 trade history entries
 ```
 
 Tests that need an empty DB use inline cleanup statements:
@@ -623,3 +726,44 @@ Tests that need an empty DB use inline cleanup statements:
 ./gradlew test --tests TradeHistoryE2eTest  # single class
 ./gradlew jacocoTestCoverageVerification    # coverage check
 ```
+
+---
+
+## Integrations
+
+### Data Storage
+
+| Database | Purpose | Status | Connection |
+|----------|---------|--------|------------|
+| H2 (in-memory) | Development & Testing | Implemented | Auto-configured via `application.yaml` |
+| PostgreSQL | Production | Pending | `application-production.yaml` (driver not yet in `build.gradle`) |
+
+**Migration Tool:** Flyway — Pending, not implemented yet
+
+**JDBC Drivers:**
+- H2: `com.h2database:h2` (active)
+- PostgreSQL: `org.postgresql:postgresql` (pending)
+
+### Monitoring & Observability
+
+| Component | Technology | Status |
+|-----------|------------|--------|
+| Logging | Logback via Spring Boot + custom `MaskingPatternLayout` | Implemented |
+| Tracing | OpenTelemetry with Grafana Tempo | Pending |
+| Metrics | Micrometer with Prometheus registry | Pending |
+| Visualization | Grafana Dashboards | Pending |
+
+### External Services & APIs
+
+| Integration | Purpose | Status |
+|-------------|---------|--------|
+| COBOL Programs | Trade validation, price engine, portfolio management, catalog | Implemented via `CobolProgramExecutor` (stdin/stdout JSON) |
+
+### CI/CD & Deployment
+
+**Status:** Pending
+
+**Planned:**
+- Docker image build via Gradle
+- Docker Compose deployment alongside other services in this repo
+- CI pipeline for automated testing and coverage verification
