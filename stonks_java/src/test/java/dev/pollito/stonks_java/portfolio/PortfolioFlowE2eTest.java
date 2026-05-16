@@ -18,6 +18,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @Sql("/sql/portfolio.sql")
 class PortfolioFlowE2eTest {
 
+  private static final String PORTFOLIO_URI = "/api/portfolio";
+
   @Autowired private RestTestClient restTestClient;
 
   @Test
@@ -25,13 +27,13 @@ class PortfolioFlowE2eTest {
     var result =
         restTestClient
             .get()
-            .uri("/api/portfolio")
+            .uri(PORTFOLIO_URI)
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(PortfolioResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/portfolio", 200);
+    assertResponseMetadata(result.getResponseBody(), PORTFOLIO_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getCashBalance()).isEqualTo(10000.0);

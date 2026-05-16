@@ -28,6 +28,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 class TradeValidationE2eTest {
 
+  private static final String VALIDATE_URI = "/api/trades/validate";
+
   @Autowired private RestTestClient restTestClient;
 
   private static TradeValidationRequest request(
@@ -60,14 +62,14 @@ class TradeValidationE2eTest {
     var result =
         restTestClient
             .post()
-            .uri("/api/trades/validate")
+            .uri(VALIDATE_URI)
             .body(request)
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeValidationResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades/validate", 200);
+    assertResponseMetadata(result.getResponseBody(), VALIDATE_URI, 200);
     assertThat(result.getResponseBody().getData()).isNotNull();
     assertThat(result.getResponseBody().getData().getStatus()).isEqualTo(expectedStatus);
     assertThat(result.getResponseBody().getData().getTotalCost()).isEqualTo(expectedCost);
@@ -87,14 +89,14 @@ class TradeValidationE2eTest {
     var result =
         restTestClient
             .post()
-            .uri("/api/trades/validate")
+            .uri(VALIDATE_URI)
             .body(request)
             .exchange()
             .expectStatus()
             .isBadRequest()
             .returnResult(Error.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades/validate", 400);
+    assertResponseMetadata(result.getResponseBody(), VALIDATE_URI, 400);
     assertThat(result.getResponseBody().getTitle()).isEqualTo("Bad Request");
   }
 

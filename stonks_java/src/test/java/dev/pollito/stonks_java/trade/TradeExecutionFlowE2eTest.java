@@ -29,6 +29,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 class TradeExecutionFlowE2eTest {
 
+  private static final String TRADES_URI = "/api/trades";
+
   @Autowired private RestTestClient restTestClient;
 
   private static TradeExecutionRequest domainRequest(TradeAction action, String symbol, int qty) {
@@ -56,14 +58,14 @@ class TradeExecutionFlowE2eTest {
     var result =
         restTestClient
             .post()
-            .uri("/api/trades")
+            .uri(TRADES_URI)
             .body(request)
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeExecutionResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades", 200);
+    assertResponseMetadata(result.getResponseBody(), TRADES_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getStatus()).isEqualTo(expectedStatus);
@@ -84,14 +86,14 @@ class TradeExecutionFlowE2eTest {
     var result =
         restTestClient
             .post()
-            .uri("/api/trades")
+            .uri(TRADES_URI)
             .body(domainRequest(SELL, "GMEE", 5))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeExecutionResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades", 200);
+    assertResponseMetadata(result.getResponseBody(), TRADES_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getStatus()).isEqualTo(ACCEPTED);
@@ -106,14 +108,14 @@ class TradeExecutionFlowE2eTest {
     var result =
         restTestClient
             .post()
-            .uri("/api/trades")
+            .uri(TRADES_URI)
             .body(domainRequest(SELL, "GMEE", 10))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeExecutionResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades", 200);
+    assertResponseMetadata(result.getResponseBody(), TRADES_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getStatus()).isEqualTo(REJECTED);

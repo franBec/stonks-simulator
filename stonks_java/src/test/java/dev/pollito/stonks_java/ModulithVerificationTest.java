@@ -10,13 +10,9 @@ class ModulithVerificationTest {
   private static final Logger log = LoggerFactory.getLogger(ModulithVerificationTest.class);
 
   @Test
-  void verifyModuleStructure() {
-    ApplicationModules.of(StonksJavaApplication.class).verify();
-  }
-
-  @Test
-  void printModuleTree() {
+  void verifyAndPrintModuleStructure() {
     var modules = ApplicationModules.of(StonksJavaApplication.class);
+    modules.verify();
     log.info("\n{}", modules);
   }
 }

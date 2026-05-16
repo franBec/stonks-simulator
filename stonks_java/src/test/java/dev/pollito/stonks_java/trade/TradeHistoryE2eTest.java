@@ -17,6 +17,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 class TradeHistoryE2eTest {
 
+  private static final String HISTORY_URI = "/api/trades/history";
+
   @Autowired private RestTestClient restTestClient;
 
   @Test
@@ -25,13 +27,13 @@ class TradeHistoryE2eTest {
     var result =
         restTestClient
             .get()
-            .uri("/api/trades/history?page=0&size=1")
+            .uri(HISTORY_URI + "?page=0&size=1")
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeHistoryResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades/history", 200);
+    assertResponseMetadata(result.getResponseBody(), HISTORY_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getTotalElements()).isEqualTo(2);
@@ -52,13 +54,13 @@ class TradeHistoryE2eTest {
     var result =
         restTestClient
             .get()
-            .uri("/api/trades/history")
+            .uri(HISTORY_URI)
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(TradeHistoryResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/trades/history", 200);
+    assertResponseMetadata(result.getResponseBody(), HISTORY_URI, 200);
     var data = result.getResponseBody().getData();
     assertThat(data).isNotNull();
     assertThat(data.getContent()).isEmpty();

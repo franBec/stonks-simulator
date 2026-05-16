@@ -21,6 +21,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 class StockFlowE2eTest {
 
+  private static final String STOCKS_URI = "/api/market/stocks";
+
   @TestConfiguration
   static class TestConfig {
     @Bean
@@ -37,13 +39,13 @@ class StockFlowE2eTest {
     var result =
         restTestClient
             .get()
-            .uri("/api/market/stocks")
+            .uri(STOCKS_URI)
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(StocksResponse.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/market/stocks", 200);
+    assertResponseMetadata(result.getResponseBody(), STOCKS_URI, 200);
     assertThat(result.getResponseBody().getData().stream().map(StockPrice::getSymbol).toList())
         .containsExactlyInAnyOrder(
             "COBL", "GMEE", "DOGE", "TEND", "FOMO", "PAPR", "YOLO", "MEME", "BUGS", "JAVA");

@@ -3,6 +3,7 @@ package dev.pollito.stonks_java.portfolio;
 import static dev.pollito.stonks_java.test.util.RestTestClientAssertions.assertResponseMetadata;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import static org.springframework.http.HttpStatus.NOT_FOUND;
 import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode.DIRECT_DEPENDENCIES;
 
 import dev.pollito.stonks_java.generated.model.Error;
@@ -17,6 +18,8 @@ import org.springframework.test.web.servlet.client.RestTestClient;
 @AutoConfigureRestTestClient
 class PortfolioNotFoundE2eTest {
 
+  private static final String PORTFOLIO_URI = "/api/portfolio";
+
   @Autowired private RestTestClient restTestClient;
 
   @Test
@@ -25,13 +28,13 @@ class PortfolioNotFoundE2eTest {
     var result =
         restTestClient
             .get()
-            .uri("/api/portfolio")
+            .uri(PORTFOLIO_URI)
             .exchange()
             .expectStatus()
             .isNotFound()
             .returnResult(Error.class);
 
-    assertResponseMetadata(result.getResponseBody(), "/api/portfolio", 404);
+    assertResponseMetadata(result.getResponseBody(), PORTFOLIO_URI, NOT_FOUND.value());
     assertEquals("Not Found", result.getResponseBody().getTitle());
   }
 }
