@@ -10,7 +10,6 @@ import dev.pollito.stonks_java.stock.adapter.out.cobol.dto.CobolCatalogStock;
 import dev.pollito.stonks_java.stock.adapter.out.cobol.mapper.StockCobolMapper;
 import dev.pollito.stonks_java.stock.adapter.out.cobol.mapper.StockCobolMapperImpl;
 import dev.pollito.stonks_java.stock.domain.Stock;
-
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,8 +28,7 @@ class StockCatalogCobolAdapterTest {
   @Test
   void getStocks() {
     CobolCatalogStock cobolStock =
-        new CobolCatalogStock(
-            "GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), "neutral");
+        new CobolCatalogStock("GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), "neutral");
 
     when(cobolPortOut.execute("catalog", null, CobolCatalogStock[].class))
         .thenReturn(new CobolCatalogStock[] {cobolStock});
@@ -38,9 +36,7 @@ class StockCatalogCobolAdapterTest {
     List<Stock> result = adapter.getStocks();
 
     assertEquals(
-        List.of(new Stock(
-            "GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), "neutral")),
-        result);
+        List.of(new Stock("GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), "neutral")), result);
     verify(cobolPortOut).execute("catalog", null, CobolCatalogStock[].class);
     verify(mapper).map(cobolStock);
   }

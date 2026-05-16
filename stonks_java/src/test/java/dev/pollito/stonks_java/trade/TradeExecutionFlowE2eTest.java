@@ -1,10 +1,10 @@
 package dev.pollito.stonks_java.trade;
 
+import static dev.pollito.stonks_java.RestTestClientAssertions.assertResponseMetadata;
 import static dev.pollito.stonks_java.generated.model.TradeAction.BUY;
 import static dev.pollito.stonks_java.generated.model.TradeAction.SELL;
 import static dev.pollito.stonks_java.generated.model.TradeExecutionResult.StatusEnum.ACCEPTED;
 import static dev.pollito.stonks_java.generated.model.TradeExecutionResult.StatusEnum.REJECTED;
-import static dev.pollito.stonks_java.test.util.RestTestClientAssertions.assertResponseMetadata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.within;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;

@@ -1,4 +1,4 @@
-package dev.pollito.stonks_java.test.util;
+package dev.pollito.stonks_java;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

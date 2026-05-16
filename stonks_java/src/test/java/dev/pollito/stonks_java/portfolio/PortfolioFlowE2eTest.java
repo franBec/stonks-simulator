@@ -1,6 +1,6 @@
 package dev.pollito.stonks_java.portfolio;
 
-import static dev.pollito.stonks_java.test.util.RestTestClientAssertions.assertResponseMetadata;
+import static dev.pollito.stonks_java.RestTestClientAssertions.assertResponseMetadata;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode.DIRECT_DEPENDENCIES;
