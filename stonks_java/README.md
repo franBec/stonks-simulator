@@ -584,7 +584,7 @@ Tests run against H2 with COBOL stubs active by default — zero external depend
 
 **E2E tests are the default.** They run against H2 with COBOL stubs active, exercising the full request-to-response path through module boundaries. If a scenario can be tested end-to-end, it should be.
 
-**Unit tests fill gaps.** Some classes (typically real COBOL adapters) are never initialized when stubs are active, so E2E cannot reach them. Unit tests with mocked ports cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP.
+**Unit tests fill gaps.** Some classes (typically real COBOL adapters) are never initialized when stubs are active, so E2E cannot reach them. Unit tests with mocked ports cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP. MapStruct mappers in COBOL adapter tests use `@Spy` with the generated `Impl` class rather than `@Mock`, so the real mapping logic is exercised — only the `CobolAppPortOut` call is mocked.
 
 **Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying that process spawning, stdin/stdout JSON, and timeout handling work. No additional integration tests are planned; the COBOL bridge is a stable concern.
 

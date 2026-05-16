@@ -21,8 +21,9 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class TradeCobolAdapterTest {
+class TradeValidatorCobolAdapterTest {
 
+  private static final String PROGRAM = "trade-validator";
   @Mock private CobolAppPortOut cobolApp;
   @Spy private TradeValidatorCobolMapper mapper = new TradeValidatorCobolMapperImpl();
   @InjectMocks private TradeValidatorCobolAdapter adapter;
@@ -34,7 +35,7 @@ class TradeCobolAdapterTest {
         new CobolTradeValidationResult("ACCEPTED", null, "Valid", 450.0, 9550.0);
 
     when(cobolApp.execute(
-            "trade-validator",
+            PROGRAM,
             new CobolTradeValidationRequest("BUY", "GMEE", 10, 45.0, 10000.0),
             CobolTradeValidationResult.class))
         .thenReturn(result);
@@ -45,7 +46,7 @@ class TradeCobolAdapterTest {
     verify(mapper).map(result);
     verify(cobolApp)
         .execute(
-            "trade-validator",
+            PROGRAM,
             new CobolTradeValidationRequest("BUY", "GMEE", 10, 45.0, 10000.0),
             CobolTradeValidationResult.class);
   }
