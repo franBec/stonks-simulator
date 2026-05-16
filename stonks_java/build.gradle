@@ -149,13 +149,15 @@ tasks.named('check') {
 tasks.named('test') {
   useJUnitPlatform()
   jvmArgs '-XX:+EnableDynamicAgentLoading'
-  jvmArgumentProviders.add({
+  doFirst {
     def mockitoAgent = configurations.testRuntimeClasspath.resolvedConfiguration
         .resolvedArtifacts
         .find { it.name == 'mockito-core' }
         ?.file
-    mockitoAgent ? ["-javaagent:${mockitoAgent}"] : []
-  } as CommandLineArgumentProvider)
+    if (mockitoAgent) {
+      jvmArgs "-javaagent:${mockitoAgent}"
+    }
+  }
   finalizedBy jacocoTestReport
 }
 
@@ -277,7 +279,9 @@ eclipse {
   classpath {
     file {
       whenMerged { cp ->
-        cp.entries.add(new org.gradle.plugins.ide.eclipse.model.SourceFolder(
+        def sfClass = Class.forName('org.gradle.plugins.ide.eclipse.model.SourceFolder')
+        cp.entries.add(
+            sfClass.getDeclaredConstructor(String, String).newInstance(
             "build/generated/sources/annotationProcessor/java/main", "bin/main"
             ))
       }
