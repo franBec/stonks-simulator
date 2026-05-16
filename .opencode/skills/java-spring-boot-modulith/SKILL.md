@@ -137,6 +137,8 @@ Tests needing empty DB use inline cleanup:
 - `@ActiveProfiles`
 - Repository autowiring for setup
 
+**`@ApplicationModuleTest` context loading:** `@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES)` loads **only** the module being tested and its **direct** dependencies — not transitive ones. For example, if `broadcast → trade → stock`, testing `broadcast` loads only `broadcast` and `trade`; `stock` is not loaded, causing `NoSuchBeanDefinitionException` for beans that `trade` needs from `stock`. **Use `@SpringBootTest` for modules at the top of the dependency graph.** The `ModulithVerificationTest` still validates module boundaries separately.
+
 **Running tests:**
 ```bash
 ./gradlew test                          # all tests

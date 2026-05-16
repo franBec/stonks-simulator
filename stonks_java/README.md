@@ -33,7 +33,7 @@ Three runtime profiles control which dependencies are active:
 
 ```mermaid
 graph TB
-    broadcast["broadcast<br/><small>(placeholder)</small>"]
+    broadcast["broadcast<br/><small>SSE streaming · paper tape · event hub</small>"]
     stock["stock<br/><small>catalog · price engine · REST · orchestration</small>"]
     trade["trade<br/><small>validation · execution · history</small>"]
     chaos["chaos<br/><small>(placeholder)</small>"]
@@ -61,7 +61,6 @@ graph TB
     trade -.->|reads/writes| db
 
     style stock stroke-width:2px
-    style broadcast stroke-dasharray: 5 5
     style chaos stroke-dasharray: 5 5
     style cobol fill:#e6f3ff,stroke:#4a9eff
     style config fill:#e6f3ff,stroke:#4a9eff
@@ -135,6 +134,13 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 
 ### Error Handling
 
+- When an exception is intentionally swallowed (empty body or comment-only catch block), name the variable `ignored` to signal intent:
+
+    ```java
+    } catch (IOException ignored) {
+        // Will be cleaned up on next broadcast or timeout
+    }
+    ```
 - Global error handling is centralized in `config.web.ControllerAdvice`, a `@RestControllerAdvice` that returns RFC 9457 problem details via the OpenAPI-generated `Error` model
 - Every response includes `timestamp`, `instance` (request URI), `status`, `title`, `detail`, and the OpenTelemetry `trace` ID.
 - Logging level matches the HTTP status series: `ERROR` for 5xx, `WARN` for 4xx, `INFO` otherwise.
@@ -668,6 +674,91 @@ sequenceDiagram
     TC-->>Client: 200 TradeHistoryResponse
 ```
 
+### SSE Streaming (Real-Time Broadcast)
+
+`GET /stream` opens a Server-Sent Events connection that pushes real-time market events to clients. The `BroadcastSseService` maintains a thread-safe list of connected emitters and listens to Spring application events from the `stock` and `trade` modules.
+
+#### Event Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as SSE Client
+    box "broadcast: Adapter In"
+    participant BC as BroadcastController
+    end
+    box "broadcast: Application"
+    participant BS as BroadcastSseService
+    end
+    box "stock: Application"
+    participant SS as StockService
+    end
+    box "trade: Application"
+    participant TS as TradeService
+    end
+
+    Client->>BC: GET /stream
+    BC->>BS: createEmitter()
+    BS->>BS: new SseEmitter (300s timeout)
+    BS-->>BC: SseEmitter
+    BC-->>Client: event: connected
+
+    Note over BS: @Scheduled heartbeat every 15s
+
+    Note over SS: Price tick simulation
+    SS->>SS: publishEvent(StockPriceUpdatedEvent)
+    BS->>BS: @EventListener StockPriceUpdatedEvent
+    BS->>BS: build PriceTickBroadcastEvent
+    BS->>Client: event: PRICE_TICK<br/>data: {symbol, price, change, changePercent}
+
+    Note over TS: Trade execution
+    TS->>TS: publishEvent(TradeExecutedEvent)
+    BS->>BS: @EventListener TradeExecutedEvent
+    BS->>BS: build TradeExecutedBroadcastEvent
+    BS->>Client: event: TRADE_EXECUTED<br/>data: {result, symbol, quantity, paperTape}
+
+    Note over BS: Dead emitter cleanup<br/>onCompletion / onTimeout / onError
+```
+
+#### SSE Event Types
+
+| Event | Source | Data Payload |
+|-------|--------|--------------|
+| `PRICE_TICK` | Stock module (every simulation tick) | `{symbol, name, price, change, changePercent, timestamp}` |
+| `TRADE_EXECUTED` | Trade module (on accepted trade) | `{result, symbol, quantity, paperTape}` |
+| `CHAOS_EVENT` | Chaos module (future) | `{headline, symbol, impact, explanation}` |
+
+### Paper Tape
+
+`GET /api/trades/paper-tape` returns trade history in a retro 3270-terminal-style formatted view. The `BroadcastSseService` fetches trade history from `TradePortIn`, formats each entry as a paper tape line, and returns paginated results.
+
+#### Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "broadcast: Adapter In"
+    participant BC as BroadcastController
+    end
+    box "broadcast: Application"
+    participant BS as BroadcastSseService
+    end
+    box "trade: Application"
+    participant TI as TradePortIn
+    end
+
+    Client->>BC: GET /api/trades/paper-tape?page=0&size=20
+    BC->>BS: getPaperTape(pageable)
+    BS->>TI: getTradeHistory(pageable)
+    TI-->>BS: TradeHistoryItem page
+    loop For each trade
+        BS->>BS: format: "TRADE #0042 &#124; BUY 10 GMEE @ $47.85 &#124; TOTAL: $478.50"
+        BS->>BS: build PaperTapeEntry(seq, formattedLine, executedAt)
+    end
+    BS-->>BC: Page<PaperTapeEntry>
+    BC->>BC: map(PaperTapeEntry → PaperTapeResponseData)
+    BC-->>Client: 200 PaperTapeResponse
+```
+
 ---
 
 ## Testing Approach
@@ -718,6 +809,18 @@ Tests that need an empty DB use inline cleanup statements:
 - **`@TestPropertySource`** — `src/test/resources/application.yaml` overrides `spring.sql.init.mode=never` globally for tests
 - **`@ActiveProfiles`** — default profile (stubs + H2) is what tests need
 - **Repository autowiring for setup** — data is declarative, not constructed in test methods
+
+### `@ApplicationModuleTest` Context Loading
+
+`@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES)` loads **only** the module being tested and its **direct** dependencies — not transitive ones. This means:
+
+```
+broadcast → trade → stock
+```
+
+When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a transitive dependency) is **not** loaded, causing `NoSuchBeanDefinitionException` for any beans from `stock` that `trade` requires.
+
+**Rule of thumb:** Use `@SpringBootTest` instead of `@ApplicationModuleTest` for modules at the top of the dependency graph that transitively depend on multiple other modules. The `ModulithVerificationTest` still validates module boundaries separately.
 
 ### Running Tests
 

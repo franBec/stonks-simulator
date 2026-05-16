@@ -18,6 +18,8 @@ tags:
     description: Endpoints related to stock market data and live prices
   - name: Portfolio
     description: Endpoints related to player portfolio and holdings
+  - name: Broadcast
+    description: Real-time SSE streaming endpoints
 paths:
   /trades/validate:
     post:
@@ -140,6 +142,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortfolioResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /trades/paper-tape:
+    get:
+      tags:
+        - Broadcast
+      x-spring-paginated: true
+      operationId: getPaperTape
+      summary: Returns trade history in retro paper tape format
+      description: |
+        Returns a paginated list of past trades formatted as
+        retro paper tape entries for the 3270 terminal aesthetic.
+      responses:
+        '200':
+          description: Paginated paper tape entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaperTapeResponse'
         default:
           description: Error
           content:
@@ -636,3 +662,55 @@ components:
         - timestamp
         - trace
         - status
+    PaperTapeEntry:
+      type: object
+      description: A single trade formatted as a retro paper tape entry
+      properties:
+        sequenceNumber:
+          type: integer
+          format: int64
+          example: 42
+        formattedLine:
+          type: string
+          description: The trade formatted in retro paper tape style
+          example: "TRADE #0042 | BUY 10 GMEE @ $47.85 | TOTAL: $478.50"
+        executedAt:
+          type: string
+          format: date-time
+      required:
+        - sequenceNumber
+        - formattedLine
+        - executedAt
+    PaperTapeResponseData:
+      type: object
+      description: Paginated paper tape data
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaperTapeEntry'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalElements:
+          type: integer
+          example: 1
+        totalPages:
+          type: integer
+          example: 1
+      required:
+        - content
+        - pageable
+        - totalElements
+        - totalPages
+    PaperTapeResponse:
+      x-implements:
+        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
+      description: Standard response where the data property is paginated paper tape entries
+      allOf:
+        - $ref: '#/components/schemas/ResponseMetadata'
+        - type: object
+          properties:
+            data:
+              $ref: '#/components/schemas/PaperTapeResponseData'
+          required:
+            - data

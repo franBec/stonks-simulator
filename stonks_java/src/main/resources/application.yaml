@@ -52,3 +52,8 @@ stonks:
   market:
     simulation:
       interval-ms: 2000
+  broadcast:
+    sse-timeout-ms: 300000
+    heartbeat-rate-ms: 15000
+    trade-paper-tape-format: "TRADE | %s %d %s @ $%.2f | TOTAL: $%.2f"
+    paper-tape-entry-format: "TRADE #%04d | %s %d %s @ $%.2f | TOTAL: $%.2f"

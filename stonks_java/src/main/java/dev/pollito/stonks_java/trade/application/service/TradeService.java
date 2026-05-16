@@ -9,6 +9,7 @@ import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradeValidationPortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
+import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
@@ -16,6 +17,7 @@ import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
 import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -32,6 +34,7 @@ public class TradeService implements TradePortIn {
   private final TradeHistoryPortOut tradeHistoryPortOut;
   private final TradePortfolioStatePortOut tradePortfolioStatePortOut;
   private final StockPortIn stockPortIn;
+  private final ApplicationEventPublisher events;
 
   @Override
   public TradeValidation validateTrade(Trade trade) {
@@ -68,6 +71,8 @@ public class TradeService implements TradePortIn {
           BigDecimal.valueOf(result.newCashBalance()),
           result.newQuantity());
       tradeHistoryPortOut.recordExecution(trade, result, PORTFOLIO_ID);
+      events.publishEvent(
+          new TradeExecutedEvent(trade.action(), result, trade.symbol(), trade.quantity()));
     }
 
     return result;
