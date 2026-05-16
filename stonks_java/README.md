@@ -87,7 +87,7 @@ This is a **modulith** — a single deployable with strict module boundaries. No
 | Entity relationships | Adapters own entity lifecycle internally | The `TradeHistory` → `Portfolio` FK is resolved inside the adapter, not the core. Hibernate's first-level cache prevents redundant queries within the same transaction. |
 | Profile segregation | Stub adapters active by default (`!cobol & !production`) | Local dev and CI need zero external dependencies. Real adapters activate only when the environment provides them. |
 
-### Where we relax purity
+### Where is ok to relax purity
 
 A purist hexagonal architecture demands **one port per driven concern** and forbids any framework annotation in the core. We relax both selectively wherever purity would add ceremony without clarity:
 
@@ -567,3 +567,59 @@ sequenceDiagram
 
 ---
 
+## Testing Approach
+
+Tests run against H2 with COBOL stubs active by default — zero external dependencies.
+
+### Strategy
+
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| E2E | `@ApplicationModuleTest` + `RestTestClient` | Full HTTP flow through module boundaries |
+| Unit | `@ExtendWith(MockitoExtension.class)` | Stubbed adapter logic, edge cases not reachable via E2E |
+| Integration | Plain JUnit | COBOL executor, process spawning |
+| Architecture | `ApplicationModules.verify()` | Modulith boundary enforcement |
+
+### Test Hierarchy
+
+**E2E tests are the default.** They run against H2 with COBOL stubs active, exercising the full request-to-response path through module boundaries. If a scenario can be tested end-to-end, it should be.
+
+**Unit tests fill gaps.** Some classes (typically real COBOL adapters) are never initialized when stubs are active, so E2E cannot reach them. Unit tests with mocked ports cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP.
+
+**Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying that process spawning, stdin/stdout JSON, and timeout handling work. No additional integration tests are planned; the COBOL bridge is a stable concern.
+
+### Coverage
+
+Coverage thresholds are a suggestion, not a hard rule. Adjust them up or down as the codebase evolves. The goal is to catch regressions, not to chase a number.
+
+### E2E Test Data
+
+Each test declares its data needs via `@Sql` referencing reusable SQL fixtures in `src/test/resources/sql/`:
+
+```
+sql/
+├── portfolio.sql                    # baseline portfolio ($10k cash)
+├── portfolio-with-position.sql      # portfolio + GMEE position (qty 10)
+├── portfolio-with-limited-position.sql  # portfolio + GMEE position (qty 3)
+└── portfolio-with-history.sql       # portfolio + 2 trade history entries
+```
+
+Tests that need an empty DB use inline cleanup statements:
+```java
+@Sql(statements = {"DELETE FROM trade_history", "DELETE FROM position", "DELETE FROM portfolio"})
+```
+
+### What to Avoid
+
+- **`@DirtiesContext`** — SQL fixtures + per-test isolation make context rebuilds unnecessary
+- **`@TestPropertySource`** — `src/test/resources/application.yaml` overrides `spring.sql.init.mode=never` globally for tests
+- **`@ActiveProfiles`** — default profile (stubs + H2) is what tests need
+- **Repository autowiring for setup** — data is declarative, not constructed in test methods
+
+### Running Tests
+
+```bash
+./gradlew test                          # all tests
+./gradlew test --tests TradeHistoryE2eTest  # single class
+./gradlew jacocoTestCoverageVerification    # coverage check
+```
