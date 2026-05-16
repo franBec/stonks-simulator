@@ -48,8 +48,7 @@ public class TradeService implements TradePortIn {
             .map(s -> s.price().doubleValue())
             .orElse(0.0);
 
-    TradePortfolioState state =
-        tradePortfolioStatePortOut.getState(PORTFOLIO_ID, trade.symbol());
+    TradePortfolioState state = tradePortfolioStatePortOut.getState(PORTFOLIO_ID, trade.symbol());
 
     TradeExecutionInput input =
         new TradeExecutionInput(

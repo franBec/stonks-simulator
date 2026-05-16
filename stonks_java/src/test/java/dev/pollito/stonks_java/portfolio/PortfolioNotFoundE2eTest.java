@@ -10,21 +10,17 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.modulith.test.ApplicationModuleTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
 @AutoConfigureRestTestClient
-@ActiveProfiles("dev")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_CLASS)
 class PortfolioNotFoundE2eTest {
 
   @Autowired private RestTestClient restTestClient;
 
   @Test
-  @Sql(statements = "DELETE FROM portfolio")
+  @Sql(statements = {"DELETE FROM trade_history", "DELETE FROM position", "DELETE FROM portfolio"})
   void portfolioNotFound_returns404() {
     var result =
         restTestClient

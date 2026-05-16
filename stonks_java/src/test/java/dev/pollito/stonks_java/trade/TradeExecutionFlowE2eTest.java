@@ -10,14 +10,10 @@ import static org.assertj.core.api.Assertions.within;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.modulith.test.ApplicationModuleTest.BootstrapMode.DIRECT_DEPENDENCIES;
 
-import dev.pollito.stonks_java.generated.entity.Portfolio;
-import dev.pollito.stonks_java.generated.entity.Position;
 import dev.pollito.stonks_java.generated.model.TradeAction;
 import dev.pollito.stonks_java.generated.model.TradeExecutionRequest;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResponse;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResult.StatusEnum;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePortfolioJpaRepository;
-import dev.pollito.stonks_java.trade.adapter.out.jpa.TradePositionJpaRepository;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -26,21 +22,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.modulith.test.ApplicationModuleTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
-@TestPropertySource(properties = {"spring.datasource.url=jdbc:h2:mem:stonks-test;DB_CLOSE_DELAY=0"})
 @AutoConfigureRestTestClient
-@ActiveProfiles("dev")
-@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class TradeExecutionFlowE2eTest {
 
   @Autowired private RestTestClient restTestClient;
-  @Autowired private TradePortfolioJpaRepository portfolioRepo;
-  @Autowired private TradePositionJpaRepository positionRepo;
 
   private static TradeExecutionRequest domainRequest(TradeAction action, String symbol, int qty) {
     return new TradeExecutionRequest().action(action).symbol(symbol).quantity(qty);
@@ -56,6 +45,7 @@ class TradeExecutionFlowE2eTest {
 
   @ParameterizedTest
   @MethodSource("executionScenarios")
+  @Sql("/sql/portfolio.sql")
   void executeTrade(
       TradeExecutionRequest request,
       StatusEnum expectedStatus,
@@ -89,14 +79,8 @@ class TradeExecutionFlowE2eTest {
   }
 
   @Test
+  @Sql("/sql/portfolio-with-position.sql")
   void sellValid() {
-    Position pos = new Position();
-    Portfolio portfolio = portfolioRepo.findById(1L).orElseThrow();
-    pos.setPortfolio(portfolio);
-    pos.setSymbol("GMEE");
-    pos.setQuantity(10L);
-    positionRepo.save(pos);
-
     var result =
         restTestClient
             .post()
@@ -117,14 +101,8 @@ class TradeExecutionFlowE2eTest {
   }
 
   @Test
+  @Sql("/sql/portfolio-with-limited-position.sql")
   void insufficientShares() {
-    Position pos = new Position();
-    Portfolio portfolio = portfolioRepo.findById(1L).orElseThrow();
-    pos.setPortfolio(portfolio);
-    pos.setSymbol("GMEE");
-    pos.setQuantity(3L);
-    positionRepo.save(pos);
-
     var result =
         restTestClient
             .post()
