@@ -121,7 +121,7 @@ public class BroadcastSseService implements BroadcastPortIn {
             event.action(), event.result(), event.symbol(), event.quantity()));
   }
 
-  @Scheduled(fixedRateString = "#{@broadcastProperties.heartbeatRateMs}")
+  @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
   void sendHeartbeat() {
     for (SseEmitter emitter : emitters) {
       try {

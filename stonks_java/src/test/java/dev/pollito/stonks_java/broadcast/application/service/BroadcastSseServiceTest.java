@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
@@ -22,13 +23,21 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @ExtendWith(MockitoExtension.class)
 class BroadcastSseServiceTest {
 
+  private static final long SSE_TIMEOUT_MS = 300_000L;
+  private static final String PAPER_TAPE_FORMAT = "TRADE #%04d | %s %d %s @ $%.2f | TOTAL: $%.2f";
+  private static final String TRADE_PAPER_TAPE_FORMAT = "TRADE | %s %d %s @ $%.2f | TOTAL: $%.2f";
+
   private final TradePortIn tradePortIn = mock(TradePortIn.class);
+  private final BroadcastProperties broadcastProperties = mock(BroadcastProperties.class);
 
   private BroadcastSseService service;
 
   @BeforeEach
   void setUp() {
-    service = new BroadcastSseService(tradePortIn);
+    when(broadcastProperties.getSseTimeoutMs()).thenReturn(SSE_TIMEOUT_MS);
+    when(broadcastProperties.getPaperTapeEntryFormat()).thenReturn(PAPER_TAPE_FORMAT);
+    when(broadcastProperties.getTradePaperTapeFormat()).thenReturn(TRADE_PAPER_TAPE_FORMAT);
+    service = new BroadcastSseService(tradePortIn, broadcastProperties);
   }
 
   @Test
