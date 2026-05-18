@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 
+// Unit test (not E2E) because EnumUtils is a pure static utility with zero dependencies. No
+// Spring context, I/O, or HTTP endpoints are involved — simply a from-value lookup on enums.
 class EnumUtilsTest {
 
   private enum TestEnum implements ValuedEnum<String> {

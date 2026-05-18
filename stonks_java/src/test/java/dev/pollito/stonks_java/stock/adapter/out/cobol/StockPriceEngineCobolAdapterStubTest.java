@@ -6,6 +6,10 @@ import java.math.BigDecimal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+// Unit test (not E2E) because the stub is a pure in-memory algorithm with no I/O or framework
+// dependencies. Algorithmic edge cases (clamping, all trend types, zero bias) are more clearly
+// and exhaustively tested in isolation than through HTTP. An E2E test would only confirm the stub
+// output passes through the controller unchanged — adding no value over direct algorithm testing.
 class StockPriceEngineCobolAdapterStubTest {
 
   private StockPriceEngineCobolAdapterStub stub;

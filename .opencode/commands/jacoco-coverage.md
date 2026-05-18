@@ -23,6 +23,7 @@ Follow the project's testing strategy from @stonks_java/README.md:
 ### Key Rules
 - **E2E tests are the default** — if a scenario can be tested end-to-end, it should be
 - **Unit tests fill gaps** — for classes never initialized when stubs are active (e.g., real COBOL adapters) and complex edge-case logic
+- **Every non-E2E test documents why** via a class-level `//` comment explaining why E2E was not chosen
 - **MapStruct mappers in tests** use `@Spy` with the generated `Impl` class, not `@Mock`
 - **Test data** via `@Sql` fixtures in `src/test/resources/sql/`, not repository autowiring
 - **Avoid**: `@DirtiesContext`, `@TestPropertySource`, `@ActiveProfiles`, repository autowiring for setup

@@ -810,6 +810,17 @@ Some code paths are intentionally left untested. These fall into the following c
 
 These gaps keep the test suite focused on business logic regressions rather than infrastructure edge cases that are better caught by the JVM or static analysis.
 
+### Documenting Test Rationale
+
+Every non-E2E test must explain why E2E was not chosen via a class-level `//` comment. This keeps the testing strategy self-documenting as the suite grows. Common reasons:
+
+- **Profile-gated adapter** — only active under `integrated`/`production` profiles, never loaded in default (stubs) E2E context
+- **Pure algorithm** — no I/O or framework dependencies; E2E adds no value over isolated edge-case testing
+- **Infrastructure/OS concern** — exercises real subprocess spawning or OS behavior that COBOL stubs bypass
+- **Push-based/async behavior** — SSE, heartbeats, event listeners not exercisable through HTTP request-response
+- **Structural check** — compile/verify-time architecture enforcement, not behavioral
+- **Pure utility / design constraint** — zero-dependency static method or single-assertion guard
+
 ### E2E Test Data
 
 Each test declares its data needs via `@Sql` referencing reusable SQL fixtures in `src/test/resources/sql/`:

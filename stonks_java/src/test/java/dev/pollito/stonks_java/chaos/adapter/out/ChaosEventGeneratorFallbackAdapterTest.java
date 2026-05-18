@@ -7,6 +7,9 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+// Unit test (not E2E) because the fallback adapter is pure algorithmic logic (random event
+// generation) with no Spring or I/O dependencies. No HTTP endpoint exposes this functionality
+// yet, making E2E impossible. Tests verify randomness range, empty/real inputs, and consistency.
 class ChaosEventGeneratorFallbackAdapterTest {
 
   private ChaosEventGeneratorFallbackAdapter adapter;

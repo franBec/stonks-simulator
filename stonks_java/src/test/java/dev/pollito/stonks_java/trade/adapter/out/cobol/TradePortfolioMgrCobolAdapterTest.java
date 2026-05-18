@@ -20,6 +20,9 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+// Unit test (not E2E) because TradePortfolioMgrCobolAdapter is @Profile({"cobol", "production"})
+// — never loaded under the default (H2 + stubs) profile used by E2E tests. Verifies correct
+// COBOL program name, input/output DTOs, and mapper integration in isolation.
 @ExtendWith(MockitoExtension.class)
 class TradePortfolioMgrCobolAdapterTest {
 

@@ -26,29 +26,37 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+// Unit test (not E2E) because SSE is push-based and server-initiated. Testing emitter
+// lifecycle (creation, heartbeat, dead-emitter cleanup, internal emitter collection)
+// requires mocking SseEmitter and inspecting private state — concerns that cannot be
+// exercised through HTTP request-response.
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class BroadcastSseServiceTest {
 
   private static final long SSE_TIMEOUT_MS = 300_000L;
   private static final String PAPER_TAPE_FORMAT = "TRADE #%04d | %s %d %s @ $%.2f | TOTAL: $%.2f";
   private static final String TRADE_PAPER_TAPE_FORMAT = "TRADE | %s %d %s @ $%.2f | TOTAL: $%.2f";
 
-  private final TradePortIn tradePortIn = mock(TradePortIn.class);
-  private final BroadcastProperties broadcastProperties = mock(BroadcastProperties.class);
-  private BroadcastSseService service;
+  @Mock private TradePortIn tradePortIn;
+  @Mock private BroadcastProperties broadcastProperties;
+  @InjectMocks private BroadcastSseService service;
 
   @BeforeEach
-  void setUp() throws Exception {
+  void setUp() {
     when(broadcastProperties.getSseTimeoutMs()).thenReturn(SSE_TIMEOUT_MS);
     when(broadcastProperties.getPaperTapeEntryFormat()).thenReturn(PAPER_TAPE_FORMAT);
     when(broadcastProperties.getTradePaperTapeFormat()).thenReturn(TRADE_PAPER_TAPE_FORMAT);
-    service = new BroadcastSseService(tradePortIn, broadcastProperties);
   }
 
   @Test
