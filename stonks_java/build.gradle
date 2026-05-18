@@ -23,6 +23,7 @@ repositories {
 
 ext {
   set('springModulithVersion', "2.0.6")
+  set('springAiVersion', "1.1.6")
 }
 
 configurations {
@@ -60,8 +61,12 @@ dependencies {
   annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
   annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
+  implementation 'org.springframework.ai:spring-ai-openai'
   implementation 'io.swagger.core.v3:swagger-annotations:2.2.45'
   implementation 'com.fasterxml.jackson.core:jackson-databind'
+  implementation 'com.rometools:rome:2.1.0'
+  implementation 'org.springframework.boot:spring-boot-starter-cache'
+  implementation 'com.github.ben-manes.caffeine:caffeine'
 
   def h2Version = '2.4.240'
   def hibernateVersion = '7.2.6.Final'
@@ -78,6 +83,7 @@ dependencies {
 dependencyManagement {
   imports {
     mavenBom "org.springframework.modulith:spring-modulith-bom:${springModulithVersion}"
+    mavenBom "org.springframework.ai:spring-ai-bom:${springAiVersion}"
   }
 }
 

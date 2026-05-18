@@ -13,7 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile({"cobol", "production"})
+@Profile({"integrated", "production"})
 @RequiredArgsConstructor
 public class StockCatalogCobolAdapter implements StockPortOut {
   private static final String PROGRAM_NAME = "catalog";

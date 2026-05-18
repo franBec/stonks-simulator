@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.stock.application.service;
 
+import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_UP;
 import static java.time.OffsetDateTime.now;
@@ -68,6 +69,36 @@ public class StockService implements StockPortIn {
 
       events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
     }
+  }
+
+  @Override
+  public void applyImpact(String symbol, BigDecimal impactPercent) {
+    BigDecimal currentPrice = currentPrices.get(symbol);
+    if (currentPrice == null) return;
+
+    BigDecimal newPrice =
+        currentPrice
+            .multiply(ONE.add(impactPercent.divide(new BigDecimal("100"), 10, HALF_UP)))
+            .setScale(2, HALF_UP);
+    currentPrices.put(symbol, newPrice);
+
+    StockPrice stockPrice = prices.get(symbol);
+    if (stockPrice == null) return;
+
+    BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
+    BigDecimal changePercent =
+        currentPrice.compareTo(ZERO) > 0
+            ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
+            : ZERO;
+
+    StockPrice updated =
+        new StockPrice(
+            symbol, stockPrice.name(), newPrice, currentPrice, change, changePercent, now());
+    prices.put(symbol, updated);
+
+    events.publishEvent(new StockPriceUpdatedEvent(updated));
+
+    // TODO: v2 could add duration-based volatility modifiers for realism
   }
 
   @Override

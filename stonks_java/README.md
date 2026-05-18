@@ -8,21 +8,22 @@ Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation
 
 Three runtime profiles control which dependencies are active:
 
-| Profile | DB | COBOL | OTel | Use case |
-|---------|----|-------|------|----------|
-| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Disabled | Default for local dev & `./gradlew test` |
-| `cobol` | H2 (embedded) | Real COBOL process execution | Disabled | Manual testing with COBOL setup |
-| `production` | PostgreSQL | Real COBOL process execution | Enabled | Production/staging (*PG driver not yet in build.gradle*) |
+| Profile | DB | COBOL | AI | News RSS | OTel | Use case |
+|---------|----|-------|----|----------|------|----------|
+| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Stub | Stub | Disabled | Default for local dev & `./gradlew test` |
+| `integrated` | H2 (embedded) | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Disabled | All real backends, lightweight infra (no Docker) |
+| `production` | PostgreSQL | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Enabled | Production/staging (*PG driver not yet in build.gradle*) |
 
-- **`./gradlew bootRun`** — starts with H2 + stubs, no external dependencies needed.
-- **`./gradlew bootRun --spring.profiles.active=cobol`** — starts with H2 + real COBOL binaries.
+- **`./gradlew bootRun`** — starts with H2 + all stubs, no external dependencies needed.
+- **`./gradlew bootRun --spring.profiles.active=integrated`** — starts with H2 + real backends (COBOL, AI, News RSS). No Docker required.
+- **`./gradlew bootRun --spring.profiles.active=production`** — starts with PostgreSQL + real backends + OTel.
 - **`./gradlew test`** — runs against H2 + stubs. CI-ready, zero config.
 
 ### How it works
 
 - `application.yaml` (always loaded) provides H2 datasource + disables OTel by default.
-- COBOL stub adapters are annotated with `@Profile("!cobol & !production")` — active in any profile except `cobol` or `production`.
-- Real COBOL adapters are annotated with `@Profile({"cobol", "production"})` — only active when one of those profiles is set.
+- Stub adapters are annotated with `@Profile("!integrated & !production")` — active in any profile except `integrated` or `production`.
+- Real backends (COBOL, AI, News RSS) are annotated with `@Profile({"integrated", "production"})` — active when either `integrated` or `production` is set.
 - `application-production.yaml` overrides the datasource to PostgreSQL and enables OTel.
 
 ---
@@ -95,7 +96,7 @@ Every module follows the same split: the **application core** (`application/`) h
 - **`adapter/in/`** — REST controllers, scheduled task runners, SSE publishers. These translate external protocol (HTTP requests, scheduling ticks) into core service calls and map responses back to transport DTOs.
 - **`adapter/out/`** — JPA repository adapters (entity mapping, query execution), COBOL process adapters (serialization, process spawning, deserialization), and their stub counterparts used in development profiles. Each adapter implements a port interface from the core and translates between domain records and infrastructure-specific types (entities, COBOL JSON DTOs, etc.).
 
-The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by Spring's profile mechanism: stubs are active by default (`!cobol & !production`), real implementations activate only when their environment is configured.
+The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by Spring's profile mechanism: stubs are active by default (`!integrated & !production`), real implementations activate only when their environment is configured.
 
 Additional considerations for the adapter layer:
 

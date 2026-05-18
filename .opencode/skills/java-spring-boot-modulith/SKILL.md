@@ -25,16 +25,18 @@ Load this skill whenever working on Java/Spring Boot code in the `stonks_java/` 
 
 Three runtime profiles control dependencies:
 
-| Profile | DB | COBOL | OTel | Use case |
-|---------|----|-------|------|----------|
-| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Disabled | Default for local dev & `./gradlew test` |
-| `cobol` | H2 (embedded) | Real COBOL process execution | Disabled | Manual testing with COBOL setup |
-| `production` | PostgreSQL | Real COBOL process execution | Enabled | Production/staging |
+| Profile | DB | COBOL | AI | News RSS | OTel | Use case |
+|---------|----|-------|----|----------|------|----------|
+| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Stub | Stub | Disabled | Default for local dev & `./gradlew test` |
+| `integrated` | H2 (embedded) | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Disabled | All real backends, lightweight (no Docker) |
+| `production` | PostgreSQL | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Enabled | Production/staging |
 
-- Stub adapters: `@Profile("!cobol & !production")`
-- Real COBOL adapters: `@Profile({"cobol", "production"})`
+- Stub adapters: `@Profile("!integrated & !production")`
+- Real backends: `@Profile({"integrated", "production"})`
+- Infra-only (PG, OTel): `@Profile("production")`
 - `./gradlew bootRun` — H2 + stubs
-- `./gradlew bootRun --spring.profiles.active=cobol` — H2 + real COBOL
+- `./gradlew bootRun --spring.profiles.active=integrated` — H2 + all real backends
+- `./gradlew bootRun --spring.profiles.active=production` — PG + real backends + OTel
 - `./gradlew test` — H2 + stubs, CI-ready
 
 ### Architecture: Hexagonal with Modulith

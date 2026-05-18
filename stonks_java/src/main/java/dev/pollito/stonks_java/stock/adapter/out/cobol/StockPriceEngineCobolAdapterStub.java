@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("!cobol & !production")
+@Profile("!integrated & !production")
 @Slf4j
 public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut {
 

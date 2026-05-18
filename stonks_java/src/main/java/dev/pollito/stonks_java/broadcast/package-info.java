@@ -1,7 +1,14 @@
 @ApplicationModule(
-    allowedDependencies = {"stock", "stock :: domain", "trade", "trade :: domain", "trade :: in"
-      // TODO: add "chaos", "chaos :: domain" and "portfolio", "portfolio :: domain" when those
-      // modules are implemented (see architecture diagram in README)
+    allowedDependencies = {
+      "stock",
+      "stock :: domain",
+      "trade",
+      "trade :: domain",
+      "trade :: in",
+      "chaos",
+      "chaos :: domain",
+      "portfolio",
+      "portfolio :: domain"
     })
 package dev.pollito.stonks_java.broadcast;
 

@@ -12,6 +12,7 @@ import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventTriggered;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
@@ -115,6 +116,16 @@ public class BroadcastSseService implements BroadcastPortIn {
     broadcast(
         new TradeExecutedBroadcastEvent(
             event.action(), event.result(), event.symbol(), event.quantity()));
+  }
+
+  @EventListener
+  void onChaosEventTriggered(ChaosEventTriggered event) {
+    broadcast(
+        new ChaosBroadcastEvent(
+            event.chaosEvent().headline(),
+            event.chaosEvent().symbol(),
+            event.chaosEvent().impactPercent().doubleValue(),
+            event.chaosEvent().explanation()));
   }
 
   @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
