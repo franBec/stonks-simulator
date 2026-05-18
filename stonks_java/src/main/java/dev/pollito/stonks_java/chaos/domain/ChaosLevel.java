@@ -1,6 +1,8 @@
 package dev.pollito.stonks_java.chaos.domain;
 
-public enum ChaosLevel {
+import dev.pollito.stonks_java.util.enums.ValuedEnum;
+
+public enum ChaosLevel implements ValuedEnum<String> {
   PAPER_HANDS(30000L, 1.0, 600000L),
   MODERATE(15000L, 2.0, 120000L),
   HIGH_VOLATILITY(5000L, 5.0, 30000L),
@@ -27,5 +29,10 @@ public enum ChaosLevel {
 
   public long getAiEventIntervalMs() {
     return aiEventIntervalMs;
+  }
+
+  @Override
+  public String getValue() {
+    return name();
   }
 }

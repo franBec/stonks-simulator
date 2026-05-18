@@ -7,6 +7,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "stonks.chaos")
 public class ChaosProperties {
   private boolean enabled = true;
-  private int fallbackCatalogSize = 15;
   private long eventCheckIntervalMs = 10000;
 }

@@ -5,7 +5,6 @@ import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.util.List;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.messages.SystemMessage;
@@ -30,23 +29,27 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
   private final ChatModel chatModel;
 
   @Override
-  public Optional<ChaosEvent> generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+  public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
     try {
       BeanOutputConverter<ChaosEvent> converter = new BeanOutputConverter<>(ChaosEvent.class);
-      return Optional.ofNullable(
-          converter.convert(
-              chatModel
-                  .call(
-                      new Prompt(
-                          List.of(
-                              new SystemMessage(SYSTEM_PROMPT + "\n" + converter.getFormat()),
-                              new UserMessage(buildPrompt(headlines, stocks)))))
-                  .getResult()
-                  .getOutput()
-                  .getText()));
+      return converter.convert(
+          chatModel
+              .call(
+                  new Prompt(
+                      List.of(
+                          new SystemMessage(SYSTEM_PROMPT + "\n" + converter.getFormat()),
+                          new UserMessage(buildPrompt(headlines, stocks)))))
+              .getResult()
+              .getOutput()
+              .getText());
     } catch (Exception e) {
-      log.error("Failed to generate chaos event via AI", e);
-      return Optional.empty();
+      throw new ChaosEventGenerationException("Failed to generate chaos event via AI", e);
+    }
+  }
+
+  static class ChaosEventGenerationException extends RuntimeException {
+    ChaosEventGenerationException(String message, Throwable cause) {
+      super(message, cause);
     }
   }
 

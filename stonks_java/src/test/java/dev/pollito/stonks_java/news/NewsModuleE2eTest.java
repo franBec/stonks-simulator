@@ -10,6 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.modulith.test.ApplicationModuleTest;
 
 @ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT)
+// Tests via NewsPortIn directly (not REST) because the news module has no REST adapter — it is
+// an internal module consumed by other modules (chaos). @ApplicationModuleTest verifies Spring
+// context wiring and stub integration, which is the most meaningful test for a headless module.
 class NewsModuleE2eTest {
 
   @Autowired private NewsPortIn newsPortIn;

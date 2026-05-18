@@ -7,19 +7,20 @@ import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Primary
 @Profile("!integrated & !production")
 @Slf4j
 public class ChaosEventGeneratorStub implements ChaosEventGeneratorPortOut {
 
   @Override
-  public Optional<ChaosEvent> generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+  public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
     log.warn("Using stub for ChaosEventGeneratorPortOut — returning canned chaos event");
     String source =
         headlines.isEmpty()
@@ -29,14 +30,13 @@ public class ChaosEventGeneratorStub implements ChaosEventGeneratorPortOut {
         stocks.isEmpty()
             ? "GMEE"
             : stocks.get(ThreadLocalRandom.current().nextInt(stocks.size())).symbol();
-    return Optional.of(
-        new ChaosEvent(
-            "Meme Stonks Go Brrr!",
-            symbol,
-            BigDecimal.valueOf(15.0 + ThreadLocalRandom.current().nextDouble(20.0)),
-            "The algo detected extreme meme energy in the market. To the moon!",
-            List.of(symbol),
-            source,
-            OffsetDateTime.now()));
+    return new ChaosEvent(
+        "Meme Stonks Go Brrr!",
+        symbol,
+        BigDecimal.valueOf(15.0 + ThreadLocalRandom.current().nextDouble(20.0)),
+        "The algo detected extreme meme energy in the market. To the moon!",
+        List.of(symbol),
+        source,
+        OffsetDateTime.now());
   }
 }

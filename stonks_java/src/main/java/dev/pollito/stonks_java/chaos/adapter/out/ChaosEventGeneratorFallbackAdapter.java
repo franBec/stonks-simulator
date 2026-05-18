@@ -2,6 +2,7 @@ package dev.pollito.stonks_java.chaos.adapter.out;
 
 import static java.util.concurrent.ThreadLocalRandom.current;
 
+import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
@@ -9,11 +10,13 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
+@Profile({"integrated", "production"})
 @Slf4j
-public class ChaosEventGeneratorFallbackAdapter {
+public class ChaosEventGeneratorFallbackAdapter implements ChaosEventGeneratorPortOut {
 
   private static final List<FallbackEvent> CATALOG =
       List.of(

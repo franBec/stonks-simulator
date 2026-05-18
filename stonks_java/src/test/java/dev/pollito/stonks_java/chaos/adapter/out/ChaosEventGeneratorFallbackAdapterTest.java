@@ -2,7 +2,6 @@ package dev.pollito.stonks_java.chaos.adapter.out;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,7 +18,7 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void generatesEventWithEmptyInputs() {
-    ChaosEvent event = adapter.generate(Collections.emptyList(), Collections.emptyList());
+    var event = adapter.generate(Collections.emptyList(), Collections.emptyList());
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
     assertThat(event.symbol()).isNotBlank();
@@ -32,7 +31,7 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void generatesEventWithRealInputs() {
-    ChaosEvent event =
+    var event =
         adapter.generate(
             List.of(
                 new dev.pollito.stonks_java.news.domain.NewsHeadline(
@@ -57,15 +56,17 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void returnsRandomEventsOnMultipleCalls() {
-    ChaosEvent first = adapter.generate(Collections.emptyList(), Collections.emptyList());
-    ChaosEvent second = adapter.generate(Collections.emptyList(), Collections.emptyList());
-    assertThat(first).isNotNull();
-    assertThat(second).isNotNull();
+    assertThat(adapter.generate(Collections.emptyList(), Collections.emptyList())).isNotNull();
+    assertThat(adapter.generate(Collections.emptyList(), Collections.emptyList())).isNotNull();
   }
 
   @Test
   void impactPercentIsWithinReasonableRange() {
-    ChaosEvent event = adapter.generate(Collections.emptyList(), Collections.emptyList());
-    assertThat(event.impactPercent().doubleValue()).isBetween(-50.0, 51.0);
+    assertThat(
+            adapter
+                .generate(Collections.emptyList(), Collections.emptyList())
+                .impactPercent()
+                .doubleValue())
+        .isBetween(-50.0, 51.0);
   }
 }

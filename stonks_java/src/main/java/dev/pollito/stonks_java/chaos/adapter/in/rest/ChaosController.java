@@ -12,6 +12,7 @@ import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
 import dev.pollito.stonks_java.generated.model.ChaosEventsResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
+import dev.pollito.stonks_java.util.enums.EnumUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
@@ -78,7 +79,7 @@ public class ChaosController implements ChaosApi {
   @Override
   public ResponseEntity<ChaosLevelResponse> setChaosLevel(String body) {
     dev.pollito.stonks_java.chaos.domain.ChaosLevel level =
-        dev.pollito.stonks_java.chaos.domain.ChaosLevel.valueOf(body);
+        EnumUtils.fromValue(dev.pollito.stonks_java.chaos.domain.ChaosLevel.class, body);
     chaosPortIn.setLevel(level);
     return ResponseEntity.ok(
         new ChaosLevelResponse()
@@ -87,18 +88,6 @@ public class ChaosController implements ChaosApi {
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
             .data(mapper.mapLevel(level)));
-  }
-
-  @Override
-  public ResponseEntity<ChaosEventTriggeredResponse> triggerChaos() {
-    dev.pollito.stonks_java.chaos.domain.ChaosEvent domainEvent = chaosPortIn.triggerEvent();
-    return ResponseEntity.ok(
-        new ChaosEventTriggeredResponse()
-            .instance(request.getRequestURI())
-            .status(OK.value())
-            .timestamp(now())
-            .trace(current().getSpanContext().getTraceId())
-            .data(mapper.map(domainEvent)));
   }
 
   @Override

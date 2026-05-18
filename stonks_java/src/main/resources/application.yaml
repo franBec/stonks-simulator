@@ -71,7 +71,9 @@ stonks:
   news:
     rss:
       feed-urls:
-        - https://example.com/rss
+        - https://feeds.reuters.com/reuters/businessNews
+        - https://feeds.bbci.co.uk/news/technology/rss.xml
+        - https://techcrunch.com/feed/
   chaos:
     enabled: true
     event-check-interval-ms: 10000

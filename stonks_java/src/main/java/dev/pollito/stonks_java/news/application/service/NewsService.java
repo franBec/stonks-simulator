@@ -20,6 +20,9 @@ public class NewsService implements NewsPortIn {
 
   @Override
   @Cacheable(value = "headlines", unless = "#result.isEmpty()")
+  // @Cacheable is in the service layer because stale headline data is a business decision:
+  // serving headlines within the 60-second TTL is acceptable for generating chaos events.
+  // This is performance optimization with a clear business constraint, not infrastructure.
   public List<NewsHeadline> getHeadlines() {
     return newsClient.fetchHeadlines().stream()
         .collect(

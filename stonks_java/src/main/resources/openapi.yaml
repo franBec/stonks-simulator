@@ -326,27 +326,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /chaos/trigger:
-    post:
-      tags:
-        - Chaos
-      operationId: triggerChaos
-      summary: Triggers a new chaos event
-      description: |
-        Triggers a new chaos event immediately without requiring a request body.
-      responses:
-        '200':
-          description: Chaos event triggered
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChaosEventTriggeredResponse'
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
   /chaos/history:
     get:
       tags:
