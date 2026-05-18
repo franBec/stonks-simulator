@@ -259,6 +259,15 @@ Object mapping uses **MapStruct** with the Spring component model (`componentMod
 - **JPA mappers** (`adapter/out/jpa/mapper/`) — convert between JPA entities and domain records. `TradeExecutionEntityMapper` builds `TradeHistory` entities from domain objects; `TradeHistoryJpaMapper` maps entities back to domain `TradeHistoryItem` records.
 - **Inline mapping** is used instead of a dedicated mapper when the conversion is trivial — directly in the controller or adapter method body.
 
+### OpenAPI-First REST Development
+
+REST endpoints follow an **OpenAPI-first** (contract-first) approach:
+1. The API contract is defined in an OpenAPI specification under `src/main/resources/openapi/`.
+2. DTOs and server interfaces are generated from that spec into the `generated` module (see [Module Architecture Graph](#module-architecture-graph)).
+3. Generated DTOs are the canonical request/response types in the adapter layer and are never modified manually. Controllers implement the generated interfaces.
+
+**Exceptions:** Endpoints whose primary purpose is streaming or real-time communication (e.g., `GET /stream`, `GET /api/trades/paper-tape`) are defined directly as controller methods rather than via OpenAPI, because their response semantics (`SseEmitter`, formatted text lines) do not map cleanly to the OpenAPI 3.x request/response model. Exceptions are kept to a minimum and noted inline in the controller.
+
 ---
 
 ## End to End Flows

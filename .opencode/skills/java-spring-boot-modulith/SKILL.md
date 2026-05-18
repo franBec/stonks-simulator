@@ -1,6 +1,6 @@
 ---
 name: java-spring-boot-modulith
-description: Guidelines for developing in the stonks_java Spring Boot Modulith project. Covers hexagonal architecture, module structure, naming conventions, environment profiles, COBOL integration, testing approach, and cross-cutting concerns. Load when working on any Java/Spring Boot code in the stonks_java/ directory.
+description: Guidelines for developing in the stonks_java Spring Boot Modulith project. Covers hexagonal architecture, module structure, naming conventions, environment profiles, COBOL integration, testing approach, OpenAPI-first REST development, and cross-cutting concerns. Load when working on any Java/Spring Boot code in the stonks_java/ directory.
 license: MIT
 compatibility: opencode
 ---
@@ -106,6 +106,15 @@ MapStruct with Spring component model (`componentModel = SPRING`):
 - **COBOL mappers** (`adapter/out/cobol/mapper/`) — domain records ↔ COBOL JSON DTOs
 - **JPA mappers** (`adapter/out/jpa/mapper/`) — JPA entities ↔ domain records
 - **Inline mapping** for trivial conversions
+
+#### OpenAPI-First REST Development
+
+- REST endpoints follow an **OpenAPI-first** (contract-first) approach:
+  1. Define the API contract in an OpenAPI spec under `src/main/resources/openapi/`.
+  2. Generate DTOs and server interfaces into the `generated` module.
+  3. Generated DTOs are the canonical request/response types — never modify them manually.
+  4. Controllers implement the generated server interfaces.
+- **Exceptions:** SSE/streaming endpoints (e.g., `GET /stream`, paper tape) whose semantics don't map to OpenAPI 3.x request/response model are defined directly as controller methods. Keep exceptions minimal and document inline.
 
 ### Testing Approach
 
