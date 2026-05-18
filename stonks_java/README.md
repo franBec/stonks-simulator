@@ -786,6 +786,20 @@ Tests run against H2 with COBOL stubs active by default — zero external depend
 
 Coverage thresholds are a suggestion, not a hard rule. Adjust them up or down as the codebase evolves. The goal is to catch regressions, not to chase a number.
 
+### Acceptable Gaps
+
+Some code paths are intentionally left untested. These fall into the following categories:
+
+1. **Preconditions validated at a higher layer** — A branch in a stub adapter (e.g., null action or negative quantity) may be unreachable from E2E tests because the REST layer rejects the request with `@Valid` / `@Min` before it reaches the adapter. Testing these paths through the stub directly would duplicate the validation contract.
+
+2. **Safety guards** — Branches that exist as defensive checks against programming errors. They are never expected to trigger in normal operation. Testing them would require artificially corrupting internal state.
+
+3. **MapStruct-generated null guards** — Generated mapper implementations contain null checks on every parameter. These branches would only fire if a null value propagates past compile-time type safety, indicating a bug upstream. Testing each null guard individually adds noise without signal.
+
+4. **Environment-dependent error paths** — Process timeout handling in `CobolProgramExecutor` relies on `Process.waitFor(timeout, unit)` and `Process.destroyForcibly()`. These JDK APIs behave correctly on standard Linux runtimes but may block on constrained environments (e.g., BusyBox on NixOS). The timeout logic is tested at the code level; the integration test for this specific path is omitted where the OS cannot reliably kill orphaned child processes.
+
+These gaps keep the test suite focused on business logic regressions rather than infrastructure edge cases that are better caught by the JVM or static analysis.
+
 ### E2E Test Data
 
 Each test declares its data needs via `@Sql` referencing reusable SQL fixtures in `src/test/resources/sql/`:

@@ -1,16 +1,28 @@
 package dev.pollito.stonks_java.broadcast.application.service;
 
+import static java.math.BigDecimal.valueOf;
+import static java.time.OffsetDateTime.now;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
+import dev.pollito.stonks_java.stock.domain.StockPrice;
+import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
+import dev.pollito.stonks_java.trade.domain.TradeAction;
+import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
+import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
-import java.time.OffsetDateTime;
+import dev.pollito.stonks_java.trade.domain.ValidationStatus;
+import java.io.IOException;
+import java.lang.reflect.Field;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -29,11 +41,10 @@ class BroadcastSseServiceTest {
 
   private final TradePortIn tradePortIn = mock(TradePortIn.class);
   private final BroadcastProperties broadcastProperties = mock(BroadcastProperties.class);
-
   private BroadcastSseService service;
 
   @BeforeEach
-  void setUp() {
+  void setUp() throws Exception {
     when(broadcastProperties.getSseTimeoutMs()).thenReturn(SSE_TIMEOUT_MS);
     when(broadcastProperties.getPaperTapeEntryFormat()).thenReturn(PAPER_TAPE_FORMAT);
     when(broadcastProperties.getTradePaperTapeFormat()).thenReturn(TRADE_PAPER_TAPE_FORMAT);
@@ -57,11 +68,11 @@ class BroadcastSseServiceTest {
 
   @Test
   void getPaperTapeReturnsFormattedEntries() {
-    var historyItem =
-        new TradeHistoryItem(42L, "BUY", "GMEE", 10, 47.85, 478.50, 9521.50, OffsetDateTime.now());
-
-    Page<TradeHistoryItem> historyPage = new PageImpl<>(List.of(historyItem));
-    when(tradePortIn.getTradeHistory(any())).thenReturn(historyPage);
+    when(tradePortIn.getTradeHistory(any()))
+        .thenReturn(
+            new PageImpl<>(
+                List.of(
+                    new TradeHistoryItem(42L, "BUY", "GMEE", 10, 47.85, 478.50, 9521.50, now()))));
 
     Page<PaperTapeEntry> result = service.getPaperTape(PageRequest.of(0, 10));
 
@@ -76,11 +87,84 @@ class BroadcastSseServiceTest {
 
   @Test
   void getPaperTapeEmptyWhenNoTrades() {
-    Page<TradeHistoryItem> emptyPage = new PageImpl<>(List.of());
-    when(tradePortIn.getTradeHistory(any())).thenReturn(emptyPage);
+    when(tradePortIn.getTradeHistory(any())).thenReturn(new PageImpl<>(List.of()));
+    assertThat(service.getPaperTape(PageRequest.of(0, 10))).isEmpty();
+  }
 
-    Page<PaperTapeEntry> result = service.getPaperTape(PageRequest.of(0, 10));
+  @Test
+  void onStockPriceUpdatedBroadcastsToAllEmitters() throws Exception {
+    SseEmitter mockEmitter = mock(SseEmitter.class);
+    addMockEmitter(mockEmitter);
 
-    assertThat(result).isEmpty();
+    service.onStockPriceUpdated(
+        new StockPriceUpdatedEvent(
+            new StockPrice(
+                "GMEE",
+                "GameStonks",
+                valueOf(50.25),
+                valueOf(50.00),
+                valueOf(0.25),
+                valueOf(0.50),
+                now())));
+
+    verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+  }
+
+  @Test
+  void onTradeExecutedBroadcastsToAllEmitters() throws Exception {
+    SseEmitter mockEmitter = mock(SseEmitter.class);
+    addMockEmitter(mockEmitter);
+
+    service.onTradeExecuted(
+        new TradeExecutedEvent(
+            TradeAction.BUY,
+            new TradeExecutionResult(ValidationStatus.ACCEPTED, null, "OK", 9550.0, 10, 450.0),
+            "GMEE",
+            10));
+
+    verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+  }
+
+  @Test
+  void sendHeartbeatSendsCommentToAllEmitters() throws Exception {
+    SseEmitter mockEmitter = mock(SseEmitter.class);
+    addMockEmitter(mockEmitter);
+
+    service.sendHeartbeat();
+
+    verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+  }
+
+  @Test
+  void deadEmitterIsRemovedOnError() throws Exception {
+    SseEmitter mockEmitter = mock(SseEmitter.class);
+    doThrow(new IOException("test error"))
+        .when(mockEmitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+    addMockEmitter(mockEmitter);
+
+    service.onStockPriceUpdated(
+        new StockPriceUpdatedEvent(
+            new StockPrice(
+                "GMEE",
+                "GameStonks",
+                valueOf(50.25),
+                valueOf(50.00),
+                valueOf(0.25),
+                valueOf(0.50),
+                now())));
+
+    assertThat(getEmitters()).isEmpty();
+  }
+
+  private void addMockEmitter(SseEmitter emitter) throws Exception {
+    getEmitters().add(emitter);
+  }
+
+  @SuppressWarnings("unchecked")
+  private CopyOnWriteArrayList<SseEmitter> getEmitters() throws Exception {
+    Field field = BroadcastSseService.class.getDeclaredField("emitters");
+    field.setAccessible(true);
+    return (CopyOnWriteArrayList<SseEmitter>) field.get(service);
   }
 }

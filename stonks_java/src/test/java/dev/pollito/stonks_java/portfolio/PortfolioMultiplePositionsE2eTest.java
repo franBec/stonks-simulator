@@ -44,8 +44,10 @@ class PortfolioMultiplePositionsE2eTest {
     List<Position> positions = data.getPositions();
     assertThat(positions).hasSize(2);
 
-    Position gmee = positions.stream().filter(p -> "GMEE".equals(p.getSymbol())).findFirst().orElseThrow();
-    Position doge = positions.stream().filter(p -> "DOGE".equals(p.getSymbol())).findFirst().orElseThrow();
+    Position gmee =
+        positions.stream().filter(p -> "GMEE".equals(p.getSymbol())).findFirst().orElseThrow();
+    Position doge =
+        positions.stream().filter(p -> "DOGE".equals(p.getSymbol())).findFirst().orElseThrow();
 
     assertThat(gmee.getQuantity()).isEqualTo(10);
     assertThat(doge.getQuantity()).isEqualTo(50);

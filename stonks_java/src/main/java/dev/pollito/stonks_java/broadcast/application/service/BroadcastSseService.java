@@ -1,24 +1,23 @@
 package dev.pollito.stonks_java.broadcast.application.service;
 
+import static java.lang.String.format;
+import static java.lang.String.valueOf;
+import static java.util.Map.of;
+import static org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event;
+
 import dev.pollito.stonks_java.broadcast.application.port.in.BroadcastPortIn;
+import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
-import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
-
-import static java.lang.String.format;
-import static java.lang.String.valueOf;
-import static java.util.Map.of;
-import static org.springframework.web.servlet.mvc.method.annotation.SseEmitter.event;
-
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -67,10 +66,7 @@ public class BroadcastSseService implements BroadcastPortIn {
         });
 
     try {
-      emitter.send(
-          event()
-              .name("connected")
-              .data("{\"message\":\"Connected to stonks stream\"}"));
+      emitter.send(event().name("connected").data("{\"message\":\"Connected to stonks stream\"}"));
     } catch (IOException e) {
       log.warn("Failed to send initial connection event", e);
     }
@@ -144,7 +140,8 @@ public class BroadcastSseService implements BroadcastPortIn {
                   "result", te.result(),
                   "symbol", te.symbol(),
                   "quantity", te.quantity(),
-                  "paperTape", formatTradePaperTape(te.result(), te.symbol(), te.quantity(), te.action()));
+                  "paperTape",
+                      formatTradePaperTape(te.result(), te.symbol(), te.quantity(), te.action()));
       case ChaosBroadcastEvent ch ->
           dataToSend =
               of(
@@ -165,6 +162,10 @@ public class BroadcastSseService implements BroadcastPortIn {
       TradeExecutionResult result, String symbol, int quantity, TradeAction action) {
     return format(
         broadcastProperties.getTradePaperTapeFormat(),
-        action.getValue(), quantity, symbol, result.totalCost(), result.totalCost());
+        action.getValue(),
+        quantity,
+        symbol,
+        result.totalCost(),
+        result.totalCost());
   }
 }
