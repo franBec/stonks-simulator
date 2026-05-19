@@ -271,6 +271,8 @@ REST endpoints follow an **OpenAPI-first** (contract-first) approach:
 
 ## End to End Flows
 
+**Diagram convention:** Cross-module calls (service in module A calling into module B) always point at a **port interface** (`StockPortIn`, `TradePortIn`, `NewsPortIn`) — the module boundary contract. Within-module outbound calls (service → its own adapter) use the **adapter implementation** name, which also distinguishes Real vs Stub scenarios. Event-driven flows (SSE via `ApplicationEventPublisher`) use the **service class** as the publisher.
+
 ### Trade Validation
 
 `POST /api/trades/validate` validates a trade request (symbol, action, quantity) against business rules — checking symbol existence, action validity, and fund sufficiency. In production, the `TradeService` delegates to `TradeValidationPortOut` which calls the COBOL `trade-validator` program. In dev, the stub adapter performs the same checks in-memory.
@@ -489,7 +491,7 @@ sequenceDiagram
     participant TS as TradeService
     end
     box "stock: Application"
-    participant SS as StockService
+    participant SS as StockPortIn
     end
     box "trade: Adapter Out (JPA)"
     participant TPSJA as TradePortfolioStateJpaAdapter
@@ -559,7 +561,7 @@ sequenceDiagram
     participant TS as TradeService
     end
     box "stock: Application"
-    participant SS as StockService
+    participant SS as StockPortIn
     end
     box "trade: Adapter Out (JPA)"
     participant TPSJA as TradePortfolioStateJpaAdapter
@@ -626,7 +628,7 @@ sequenceDiagram
     participant PJA as PortfolioJpaAdapter
     end
     box "stock: Application"
-    participant SS as StockService
+    participant SS as StockPortIn
     end
     participant DB as H2
 
@@ -685,7 +687,7 @@ sequenceDiagram
 
 ### SSE Streaming (Real-Time Broadcast)
 
-`GET /stream` opens a Server-Sent Events connection that pushes real-time market events to clients. The `BroadcastSseService` maintains a thread-safe list of connected emitters and listens to Spring application events from the `stock` and `trade` modules.
+`GET /stream` opens a Server-Sent Events connection that pushes real-time market events to clients. The `BroadcastSseService` maintains a thread-safe list of connected emitters and listens to Spring application events from the `stock`, `trade`, and `chaos` modules.
 
 #### Event Flow
 
@@ -925,6 +927,139 @@ sequenceDiagram
     CS-->>CC: List<ChaosEvent>
     CC-->>Client: 200 ChaosEventsResponse
 ```
+
+### News Headline Fetching
+
+The news module is a leaf module (`@ApplicationModule(allowedDependencies = {})`) that fetches and caches headlines from RSS feeds. It exposes `NewsPortIn` to other modules — primarily consumed by `ChaosService` during event generation.
+
+The flow is triggered when `ChaosService.triggerEvent()` calls `newsPortIn.getHeadlines()`. Headlines are cached for 60 seconds via Caffeine (`@Cacheable(value = "headlines", unless = "#result.isEmpty()")`). Subsequent calls within the TTL return cached data without a fresh fetch.
+
+#### Real Scenario (RSS)
+
+```mermaid
+sequenceDiagram
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+    box "news: Application"
+    participant NS as NewsService
+    end
+    box "news: Adapter Out"
+    participant NRCA as NewsRssClientAdapter
+    participant NSM as NewsSyndMapper
+    end
+    participant RSS as News RSS Feeds
+
+    Note over CS: triggerEvent() needs headlines
+    CS->>NS: getHeadlines()
+
+    Note over NS: @Cacheable("headlines")<br/>Cache miss → fetch
+    NS->>NRCA: fetchHeadlines()
+    loop For each feed URL (Reuters, BBC Tech, TechCrunch)
+        NRCA->>RSS: GET (RestClient)
+        RSS-->>NRCA: RSS XML
+        NRCA->>NRCA: parseFeed() — SyndFeedInput
+        NRCA->>NSM: map(SyndEntry → NewsHeadline)
+        NSM-->>NRCA: NewsHeadline
+    end
+
+    Note over NRCA: Per-feed error isolation<br/>Failed feeds return empty,<br/>others unaffected
+
+    NRCA-->>NS: List<NewsHeadline> (merged, per-feed dedup)
+    Note over NS: Deduplicate by title (case-insensitive)<br/>LinkedHashMap preserves insertion order
+    Note over NS: Cache result for 60s
+
+    NS-->>CS: List<NewsHeadline>
+
+    Note over CS,NS: Subsequent calls within 60s TTL
+    CS->>NS: getHeadlines()
+    Note over NS: @Cacheable → cache hit<br/>Returns cached headlines<br/>No RSS fetch
+    NS-->>CS: List<NewsHeadline> (cached)
+```
+
+#### Dev Stub Scenario (no RSS)
+
+```mermaid
+sequenceDiagram
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+    box "news: Application"
+    participant NS as NewsService
+    end
+    box "news: Adapter Out"
+    participant NCS as NewsClientStub
+    end
+
+    CS->>NS: getHeadlines()
+    NS->>NCS: fetchHeadlines()
+    Note over NCS: AtomicInteger counter cycles<br/>through 3 batches of 2 headlines
+    Note over NCS: Batch 0: "Fed Holds..." + "Tech Stocks..."<br/>Batch 1: "Oil Prices..." + "Bitcoin $100K..."<br/>Batch 2: "Housing Market..." + "Retail Sales..."
+    NCS-->>NS: List<NewsHeadline> (rotating batch)
+    NS-->>CS: List<NewsHeadline>
+```
+
+### News as Chaos Context
+
+The headlines fetched by the news module are passed as context to the chaos event generator. This flow shows how raw news headlines become part of an AI-generated or catalog-based chaos event. The details of generation differ by profile, but the headline-handoff is identical.
+
+```mermaid
+sequenceDiagram
+    box "chaos: Application"
+    participant CS2 as ChaosService
+    end
+    box "news: Application"
+    participant NS2 as NewsService
+    end
+    box "stock: Application"
+    participant SI as StockPortIn
+    end
+    box "chaos: Adapter Out"
+    participant CEG as ChaosEventGeneratorPortOut
+    end
+
+    CS2->>NS2: getHeadlines()
+    NS2-->>CS2: List<NewsHeadline> (cached or fresh)
+
+    CS2->>SI: getStocks()
+    SI-->>CS2: List<StockPrice>
+
+    CS2->>CEG: generate(headlines, stocks)
+
+    alt OpenRouter AI (integrated/production)
+        Note over CEG: Builds LLM prompt with headline<br/>titles + sources to inspire<br/>meme-worthy chaos event
+    else Fallback catalog (integrated/production)
+        Note over CEG: Randomly picks headline title<br/>as sourceHeadline, selects event<br/>from 15 hardcoded meme scenarios
+    else Stub (default/dev)
+        Note over CEG: Randomly picks headline title<br/>as sourceHeadline for<br/>"Meme Stonks Go Brrr!" event
+    end
+
+    CEG-->>CS2: ChaosEvent (with sourceHeadline)
+```
+
+### RSS Configuration
+
+```yaml
+stonks:
+  news:
+    rss:
+      feed-urls:
+        - https://feeds.reuters.com/reuters/businessNews
+        - https://feeds.bbci.co.uk/news/technology/rss.xml
+        - https://techcrunch.com/feed/
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=500, expireAfterWrite=60s
+```
+
+| Property | Value | Description |
+|----------|-------|-------------|
+| RSS Feed URLs | Reuters Business, BBC Tech, TechCrunch | Fetched in parallel via `RestClient`, per-feed error isolation |
+| Cache Provider | Caffeine | In-memory, concurrent, high-performance |
+| Cache TTL | 60s (`expireAfterWrite`) | Stale headlines acceptable for chaos event generation |
+| Max Cache Size | 500 entries | Safety ceiling (unlikely to be hit) |
+| Empty Result | Not cached (`unless = "#result.isEmpty()"`) | Avoids caching transient network failures |
 
 ---
 
