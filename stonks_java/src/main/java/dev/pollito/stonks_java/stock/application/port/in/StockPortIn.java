@@ -10,4 +10,6 @@ public interface StockPortIn {
   void applyImpact(String symbol, BigDecimal impactPercent);
 
   List<StockPrice> getStocks();
+
+  void setVolatilityMultiplier(double multiplier);
 }

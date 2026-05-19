@@ -411,7 +411,11 @@ sequenceDiagram
 
 ### Price Simulation (Scheduled, Event-Driven)
 
-The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. Price tracking is handled in-memory within `StockService`.
+The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog (cached at startup), scales volatility by the current chaos level's `volatilityMultiplier`, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. If the price engine fails for any stock, that stock is skipped for the tick and a warning is logged — the tick continues for remaining stocks.
+
+The `StockPriceTickScheduler` uses an `AtomicBoolean` guard to skip overlapping ticks when the previous tick is still running, preventing queue buildup with slow COBOL calls.
+
+A `ReentrantLock` guards both `simulate()` and `applyImpact()` to prevent race conditions when a chaos event modifies prices mid-tick.
 
 #### Real Scenario (COBOL)
 
@@ -432,10 +436,13 @@ sequenceDiagram
     participant COBOL as price-engine (COBOL)
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
+    Note over Sched: Skip if previous tick still running
     Sched->>SS: simulate()
-    Note over SS: read stock catalog from<br/>StockCatalogCobolAdapter, then<br/>for each stock...
+    Note over SS: Acquire simulationLock
+    Note over SS: Read cached catalog<br/>(loaded at @PostConstruct)
     loop For each stock
-        SS->>PEA: calculate(currentPrice, volatility, trend)
+        SS->>SS: effectiveVolatility = stock.volatility × volatilityMultiplier
+        SS->>PEA: calculate(currentPrice, effectiveVolatility, trend)
         PEA->>CPE: execute("price-engine", request, CobolPriceEngineResult.class)
         CPE->>COBOL: spawn process, write JSON to stdin
         COBOL-->>CPE: stdout JSON {newPrice}
@@ -443,6 +450,7 @@ sequenceDiagram
         PEA-->>SS: newPrice (BigDecimal)
         SS->>SS: publishEvent(StockPriceUpdatedEvent)
     end
+    Note over SS: Release simulationLock
 ```
 
 #### Dev Stub Scenario (no COBOL)
@@ -460,14 +468,18 @@ sequenceDiagram
     end
 
     Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
+    Note over Sched: Skip if previous tick still running
     Sched->>SS: simulate()
-    Note over SS: read stock catalog from<br/>StockCatalogCobolAdapterStub, then<br/>for each stock...
+    Note over SS: Acquire simulationLock
+    Note over SS: Read cached catalog<br/>(loaded at @PostConstruct)
     loop For each stock
-        SS->>PES: calculate(currentPrice, volatility, trend)
+        SS->>SS: effectiveVolatility = stock.volatility × volatilityMultiplier
+        SS->>PES: calculate(currentPrice, effectiveVolatility, trend)
         Note over PES: Random walk with trend bias,<br/>circuit breaker, price bounds
         PES-->>SS: newPrice (BigDecimal)
         SS->>SS: publishEvent(StockPriceUpdatedEvent)
     end
+    Note over SS: Release simulationLock
 ```
 
 ### Trade Execution
@@ -872,13 +884,17 @@ sequenceDiagram
 
 #### Chaos Levels
 
-| Level | tickIntervalMs | volatilityMultiplier | aiEventIntervalMs |
-|-------|---------------|---------------------|-------------------|
-| `PAPER_HANDS` | 30,000 ms | 1.0× | 600,000 ms (10 min) |
-| `MODERATE` | 15,000 ms | 2.0× | 120,000 ms (2 min) |
-| `HIGH_VOLATILITY` | 5,000 ms | 5.0× | 30,000 ms (30 s) |
-| `EXTREME` | 2,000 ms | 12.5× | 15,000 ms (15 s) |
-| `MAXIMUM_OVERDRIVE` | 1,000 ms | 25.0× | 10,000 ms (10 s) |
+| Level | volatilityMultiplier | aiEventIntervalMs |
+|-------|---------------------|-------------------|
+| `PAPER_HANDS` | 1.0× | 600,000 ms (10 min) |
+| `MODERATE` | 2.0× | 120,000 ms (2 min) |
+| `HIGH_VOLATILITY` | 5.0× | 30,000 ms (30 s) |
+| `EXTREME` | 12.5× | 15,000 ms (15 s) |
+| `MAXIMUM_OVERDRIVE` | 25.0× | 10,000 ms (10 s) |
+
+- **`volatilityMultiplier`** — scales the stock's base volatility passed to the price engine. Changing chaos level immediately adjusts market volatility.
+- **`aiEventIntervalMs`** — minimum interval between AI chaos events. The `ChaosEventScheduler` checks every `stonks.chaos.event-check-interval-ms` (default 10s) and fires an event if this interval has elapsed since the last one.
+- Price tick frequency is controlled by `stonks.market.simulation.interval-ms` (default 2s) and is independent of chaos level.
 
 #### Flow
 
@@ -902,6 +918,8 @@ sequenceDiagram
     CC->>CC: EnumUtils.fromValue(ChaosLevel.class, body)
     CC->>CS: setLevel(EXTREME)
     CS->>CS: currentLevel.set(EXTREME)
+    CS->>CS: stockPortIn.setVolatilityMultiplier(12.5)
+    Note over CS: Market volatility immediately scales<br/>by 12.5× on next tick
     CC-->>Client: 200 ChaosLevelResponse
 ```
 
@@ -1060,6 +1078,25 @@ stonks:
 | Cache TTL | 60s (`expireAfterWrite`) | Stale headlines acceptable for chaos event generation |
 | Max Cache Size | 500 entries | Safety ceiling (unlikely to be hit) |
 | Empty Result | Not cached (`unless = "#result.isEmpty()"`) | Avoids caching transient network failures |
+
+### Scheduling Constraints
+
+The system has multiple scheduled processes that must coexist without conflicting. The key timing parameters and their constraints:
+
+| Parameter | Default | Source | Constraint |
+|-----------|---------|--------|------------|
+| `stonks.market.simulation.interval-ms` | 2,000 ms | `application.yaml` | Must be ≥ expected max tick duration (11 COBOL spawns × per-program timeout). In integrated profile, consider ≥ 5s. |
+| `stonks.chaos.event-check-interval-ms` | 10,000 ms | `application.yaml` | Must be ≤ smallest `aiEventIntervalMs` across chaos levels, otherwise events won't fire at the expected rate |
+| `stonks.broadcast.sse-timeout-ms` | 300,000 ms (5 min) | `application.yaml` | Must be > `heartbeat-rate-ms` |
+| `stonks.broadcast.heartbeat-rate-ms` | 15,000 ms | `application.yaml` | Must be < `sse-timeout-ms` |
+| News cache TTL | 60s | `application.yaml` | Should be ≤ `aiEventIntervalMs` at aggressive chaos levels |
+| COBOL program timeout | 5s per program | `application.yaml` | Must be < `simulation.interval-ms` for any single program; total per-tick timeout is 1+N programs × 5s |
+
+**Race condition protection:** `StockService.simulate()` and `StockService.applyImpact()` share a `ReentrantLock` to prevent concurrent modifications to price state when chaos events and price ticks overlap.
+
+**Overlapping tick protection:** `StockPriceTickScheduler` uses an `AtomicBoolean` guard — if a tick is still running when the next one is scheduled, the new tick is skipped with a warning log. This prevents queue buildup when COBOL calls are slow.
+
+**Per-stock resilience:** If the price engine fails for a single stock (COBOL timeout, error), that stock is skipped for the tick. Remaining stocks continue normally. The failed stock retains its previous price until the next successful tick.
 
 ---
 

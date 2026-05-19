@@ -17,12 +17,16 @@ import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class StockService implements StockPortIn {
 
   private final StockPriceEnginePortOut priceEnginePortOut;
@@ -31,11 +35,15 @@ public class StockService implements StockPortIn {
 
   private final ConcurrentHashMap<String, BigDecimal> currentPrices = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, StockPrice> prices = new ConcurrentHashMap<>();
+  private final AtomicReference<Double> volatilityMultiplier = new AtomicReference<>(1.0);
+  private final ReentrantLock simulationLock = new ReentrantLock();
+  private volatile List<Stock> catalog;
 
   @PostConstruct
   public void initialize() {
+    catalog = stockPortOut.getStocks();
     OffsetDateTime now = now();
-    for (Stock stock : stockPortOut.getStocks()) {
+    for (Stock stock : catalog) {
       currentPrices.put(stock.symbol(), stock.basePrice());
       prices.put(
           stock.symbol(),
@@ -46,15 +54,61 @@ public class StockService implements StockPortIn {
 
   @Override
   public void simulate() {
-    List<Stock> stocks = stockPortOut.getStocks();
-    OffsetDateTime now = now();
-    for (Stock stock : stocks) {
-      BigDecimal currentPrice = currentPrices.get(stock.symbol());
-      if (currentPrice == null) continue;
+    simulationLock.lock();
+    try {
+      List<Stock> stocks = catalog;
+      OffsetDateTime now = now();
+      double multiplier = volatilityMultiplier.get();
+      for (Stock stock : stocks) {
+        BigDecimal currentPrice = currentPrices.get(stock.symbol());
+        if (currentPrice == null) continue;
+
+        BigDecimal effectiveVolatility =
+            stock.volatility().multiply(BigDecimal.valueOf(multiplier));
+        BigDecimal newPrice;
+        try {
+          newPrice =
+              priceEnginePortOut.calculate(currentPrice, effectiveVolatility, stock.trend());
+        } catch (Exception e) {
+          log.warn(
+              "Price engine failed for {}, skipping tick: {}", stock.symbol(), e.getMessage());
+          continue;
+        }
+        currentPrices.put(stock.symbol(), newPrice);
+
+        BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
+        BigDecimal changePercent =
+            currentPrice.compareTo(ZERO) > 0
+                ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
+                : ZERO;
+
+        StockPrice stockPrice =
+            new StockPrice(
+                stock.symbol(), stock.name(), newPrice, currentPrice, change, changePercent, now);
+        prices.put(stock.symbol(), stockPrice);
+
+        events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
+      }
+    } finally {
+      simulationLock.unlock();
+    }
+  }
+
+  @Override
+  public void applyImpact(String symbol, BigDecimal impactPercent) {
+    simulationLock.lock();
+    try {
+      BigDecimal currentPrice = currentPrices.get(symbol);
+      if (currentPrice == null) return;
 
       BigDecimal newPrice =
-          priceEnginePortOut.calculate(currentPrice, stock.volatility(), stock.trend());
-      currentPrices.put(stock.symbol(), newPrice);
+          currentPrice
+              .multiply(ONE.add(impactPercent.divide(new BigDecimal("100"), 10, HALF_UP)))
+              .setScale(2, HALF_UP);
+      currentPrices.put(symbol, newPrice);
+
+      StockPrice stockPrice = prices.get(symbol);
+      if (stockPrice == null) return;
 
       BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
       BigDecimal changePercent =
@@ -62,47 +116,24 @@ public class StockService implements StockPortIn {
               ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
               : ZERO;
 
-      StockPrice stockPrice =
+      StockPrice updated =
           new StockPrice(
-              stock.symbol(), stock.name(), newPrice, currentPrice, change, changePercent, now);
-      prices.put(stock.symbol(), stockPrice);
+              symbol, stockPrice.name(), newPrice, currentPrice, change, changePercent, now());
+      prices.put(symbol, updated);
 
-      events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
+      events.publishEvent(new StockPriceUpdatedEvent(updated));
+    } finally {
+      simulationLock.unlock();
     }
-  }
-
-  @Override
-  public void applyImpact(String symbol, BigDecimal impactPercent) {
-    BigDecimal currentPrice = currentPrices.get(symbol);
-    if (currentPrice == null) return;
-
-    BigDecimal newPrice =
-        currentPrice
-            .multiply(ONE.add(impactPercent.divide(new BigDecimal("100"), 10, HALF_UP)))
-            .setScale(2, HALF_UP);
-    currentPrices.put(symbol, newPrice);
-
-    StockPrice stockPrice = prices.get(symbol);
-    if (stockPrice == null) return;
-
-    BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
-    BigDecimal changePercent =
-        currentPrice.compareTo(ZERO) > 0
-            ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
-            : ZERO;
-
-    StockPrice updated =
-        new StockPrice(
-            symbol, stockPrice.name(), newPrice, currentPrice, change, changePercent, now());
-    prices.put(symbol, updated);
-
-    events.publishEvent(new StockPriceUpdatedEvent(updated));
-
-    // TODO: v2 could add duration-based volatility modifiers for realism
   }
 
   @Override
   public List<StockPrice> getStocks() {
     return new ArrayList<>(prices.values());
+  }
+
+  @Override
+  public void setVolatilityMultiplier(double multiplier) {
+    volatilityMultiplier.set(multiplier);
   }
 }

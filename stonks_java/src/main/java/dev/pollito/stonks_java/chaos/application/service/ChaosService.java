@@ -53,5 +53,6 @@ public class ChaosService implements ChaosPortIn {
   @Override
   public void setLevel(ChaosLevel level) {
     currentLevel.set(level);
+    stockPortIn.setVolatilityMultiplier(level.getVolatilityMultiplier());
   }
 }
