@@ -223,62 +223,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-  /chaos/events/{eventId}:
-    get:
-      tags:
-        - Chaos
-      operationId: getChaosEvent
-      summary: Returns details of a specific chaos event
-      description: |
-        Returns the full details of a chaos event identified by its event ID.
-      parameters:
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Chaos event details
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChaosEventResponse'
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-    delete:
-      tags:
-        - Chaos
-      operationId: cancelChaosEvent
-      summary: Cancels an active chaos event
-      description: |
-        Cancels and removes an active chaos event, stopping its effects on the market.
-      parameters:
-        - name: eventId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        '200':
-          description: Chaos event cancelled
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ChaosEventResponse'
-        default:
-          description: Error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
-
   /chaos/level:
     get:
       tags:
@@ -959,18 +903,6 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/ChaosEvent'
-          required:
-            - data
-    ChaosEventResponse:
-      x-implements:
-        - dev.pollito.stonks_java.util.metadata.ResponseMetadata
-      description: Standard response where the data property is a single chaos event
-      allOf:
-        - $ref: '#/components/schemas/ResponseMetadata'
-        - type: object
-          properties:
-            data:
-              $ref: '#/components/schemas/ChaosEvent'
           required:
             - data
     ChaosEventTriggerRequest:

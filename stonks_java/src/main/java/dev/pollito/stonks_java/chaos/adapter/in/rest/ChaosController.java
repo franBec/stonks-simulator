@@ -7,7 +7,6 @@ import static org.springframework.http.HttpStatus.OK;
 import dev.pollito.stonks_java.chaos.adapter.in.rest.mapper.ChaosRestMapper;
 import dev.pollito.stonks_java.chaos.application.port.in.ChaosPortIn;
 import dev.pollito.stonks_java.generated.api.ChaosApi;
-import dev.pollito.stonks_java.generated.model.ChaosEventResponse;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
 import dev.pollito.stonks_java.generated.model.ChaosEventsResponse;
@@ -15,7 +14,6 @@ import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
 import dev.pollito.stonks_java.util.enums.EnumUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -52,16 +50,6 @@ public class ChaosController implements ChaosApi {
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
             .data(mapper.map(domainEvent)));
-  }
-
-  @Override
-  public ResponseEntity<ChaosEventResponse> getChaosEvent(UUID eventId) {
-    return ResponseEntity.notFound().build();
-  }
-
-  @Override
-  public ResponseEntity<ChaosEventResponse> cancelChaosEvent(UUID eventId) {
-    return ResponseEntity.notFound().build();
   }
 
   @Override
