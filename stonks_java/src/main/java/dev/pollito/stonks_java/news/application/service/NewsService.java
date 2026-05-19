@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.news.application.service;
 
+import static java.util.function.Function.identity;
 import static java.util.stream.Collectors.toMap;
 
 import dev.pollito.stonks_java.news.application.port.in.NewsPortIn;
@@ -7,7 +8,6 @@ import dev.pollito.stonks_java.news.application.port.out.NewsClientPortOut;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
@@ -25,9 +25,7 @@ public class NewsService implements NewsPortIn {
   // This is performance optimization with a clear business constraint, not infrastructure.
   public List<NewsHeadline> getHeadlines() {
     return newsClient.fetchHeadlines().stream()
-        .collect(
-            toMap(
-                h -> h.title().toLowerCase(), Function.identity(), (a, b) -> b, LinkedHashMap::new))
+        .collect(toMap(h -> h.title().toLowerCase(), identity(), (a, b) -> b, LinkedHashMap::new))
         .values()
         .stream()
         .toList();

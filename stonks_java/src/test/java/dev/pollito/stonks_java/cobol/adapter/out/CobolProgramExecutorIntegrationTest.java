@@ -16,7 +16,8 @@ import org.junit.jupiter.api.Test;
 // Integration test (not E2E) because it exercises real subprocess spawning (shell scripts),
 // stdin/stdout piping, JSON parsing, timeout, and error handling for non-zero exit codes —
 // low-level infrastructure concerns of the COBOL bridge. E2E tests use COBOL stubs which bypass
-// this code path entirely. Also lives in the shared 'cobol' module, not loaded by @ApplicationModuleTest.
+// this code path entirely. Also lives in the shared 'cobol' module, not loaded by
+// @ApplicationModuleTest.
 class CobolProgramExecutorIntegrationTest {
   public record TestRequest(String value) {}
 

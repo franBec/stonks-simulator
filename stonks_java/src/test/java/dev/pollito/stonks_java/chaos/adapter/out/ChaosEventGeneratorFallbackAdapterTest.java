@@ -1,8 +1,11 @@
 package dev.pollito.stonks_java.chaos.adapter.out;
 
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.valueOf;
+import static java.time.OffsetDateTime.now;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -21,7 +24,7 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void generatesEventWithEmptyInputs() {
-    var event = adapter.generate(Collections.emptyList(), Collections.emptyList());
+    var event = adapter.generate(emptyList(), emptyList());
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
     assertThat(event.symbol()).isNotBlank();
@@ -38,20 +41,10 @@ class ChaosEventGeneratorFallbackAdapterTest {
         adapter.generate(
             List.of(
                 new dev.pollito.stonks_java.news.domain.NewsHeadline(
-                    "Test Headline",
-                    "Test Source",
-                    "test",
-                    "https://example.com",
-                    java.time.OffsetDateTime.now())),
+                    "Test Headline", "Test Source", "test", "https://example.com", now())),
             List.of(
                 new dev.pollito.stonks_java.stock.domain.StockPrice(
-                    "TEST",
-                    "Test Stock",
-                    java.math.BigDecimal.valueOf(100),
-                    java.math.BigDecimal.valueOf(99),
-                    java.math.BigDecimal.ONE,
-                    java.math.BigDecimal.valueOf(1.01),
-                    java.time.OffsetDateTime.now())));
+                    "TEST", "Test Stock", valueOf(100), valueOf(99), ONE, valueOf(1.01), now())));
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
     assertThat(event.sourceHeadline()).isEqualTo("Test Headline");
@@ -59,17 +52,13 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void returnsRandomEventsOnMultipleCalls() {
-    assertThat(adapter.generate(Collections.emptyList(), Collections.emptyList())).isNotNull();
-    assertThat(adapter.generate(Collections.emptyList(), Collections.emptyList())).isNotNull();
+    assertThat(adapter.generate(emptyList(), emptyList())).isNotNull();
+    assertThat(adapter.generate(emptyList(), emptyList())).isNotNull();
   }
 
   @Test
   void impactPercentIsWithinReasonableRange() {
-    assertThat(
-            adapter
-                .generate(Collections.emptyList(), Collections.emptyList())
-                .impactPercent()
-                .doubleValue())
+    assertThat(adapter.generate(emptyList(), emptyList()).impactPercent().doubleValue())
         .isBetween(-50.0, 51.0);
   }
 }

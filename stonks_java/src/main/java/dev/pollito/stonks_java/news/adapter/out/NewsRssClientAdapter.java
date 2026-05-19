@@ -3,6 +3,7 @@ package dev.pollito.stonks_java.news.adapter.out;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static java.util.Collections.emptyList;
 import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Stream.empty;
 
 import com.rometools.rome.io.SyndFeedInput;
 import com.rometools.rome.io.XmlReader;
@@ -38,7 +39,7 @@ public class NewsRssClientAdapter implements NewsClientPortOut {
                     .stream();
               } catch (Exception e) {
                 log.error("Failed to fetch RSS feed: {}", feedUrl, e);
-                return java.util.stream.Stream.empty();
+                return empty();
               }
             })
         .toList();

@@ -1,22 +1,22 @@
 package dev.pollito.stonks_java.news.adapter.out.mapper;
 
+import static java.time.OffsetDateTime.now;
+import static java.time.ZoneOffset.UTC;
+import static org.mapstruct.MappingConstants.ComponentModel.SPRING;
+import static org.mapstruct.ReportingPolicy.IGNORE;
+
 import com.rometools.rome.feed.synd.SyndCategory;
 import com.rometools.rome.feed.synd.SyndEntry;
 import com.rometools.rome.feed.synd.SyndFeed;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.Date;
 import java.util.List;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.MappingConstants;
 import org.mapstruct.Named;
-import org.mapstruct.ReportingPolicy;
 
-@Mapper(
-    componentModel = MappingConstants.ComponentModel.SPRING,
-    unmappedTargetPolicy = ReportingPolicy.IGNORE)
+@Mapper(componentModel = SPRING, unmappedTargetPolicy = IGNORE)
 public interface NewsSyndMapper {
 
   @Mapping(target = "source", source = "source", qualifiedByName = "toSourceName")
@@ -37,8 +37,6 @@ public interface NewsSyndMapper {
 
   @Named("toOffsetDateTime")
   default OffsetDateTime toOffsetDateTime(Date publishedDate) {
-    return publishedDate != null
-        ? publishedDate.toInstant().atOffset(ZoneOffset.UTC)
-        : OffsetDateTime.now();
+    return publishedDate != null ? publishedDate.toInstant().atOffset(UTC) : now();
   }
 }

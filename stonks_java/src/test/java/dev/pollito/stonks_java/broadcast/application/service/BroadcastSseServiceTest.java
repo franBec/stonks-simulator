@@ -11,6 +11,8 @@ import static org.mockito.Mockito.when;
 
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
+import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventTriggered;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
@@ -21,6 +23,7 @@ import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import dev.pollito.stonks_java.trade.domain.ValidationStatus;
 import java.io.IOException;
 import java.lang.reflect.Field;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import org.junit.jupiter.api.BeforeEach;
@@ -139,6 +142,25 @@ class BroadcastSseServiceTest {
     addMockEmitter(mockEmitter);
 
     service.sendHeartbeat();
+
+    verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
+  }
+
+  @Test
+  void onChaosEventTriggeredBroadcastsToAllEmitters() throws Exception {
+    SseEmitter mockEmitter = mock(SseEmitter.class);
+    addMockEmitter(mockEmitter);
+
+    service.onChaosEventTriggered(
+        new ChaosEventTriggered(
+            new ChaosEvent(
+                "Meme Stonks Go Brrr!",
+                "GMEE",
+                BigDecimal.valueOf(15.0),
+                "The algo detected meme energy.",
+                List.of("GMEE"),
+                "Market Pulse",
+                now())));
 
     verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
   }
