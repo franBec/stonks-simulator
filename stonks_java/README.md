@@ -37,7 +37,8 @@ graph TB
     broadcast["broadcast<br/><small>SSE streaming · paper tape · event hub</small>"]
     stock["stock<br/><small>catalog · price engine · REST · orchestration</small>"]
     trade["trade<br/><small>validation · execution · history</small>"]
-    chaos["chaos<br/><small>(placeholder)</small>"]
+    chaos["chaos<br/><small>event generation · level management · AI integration</small>"]
+    news["news<br/><small>RSS headline fetching · caching</small>"]
     portfolio["portfolio<br/><small>cash · positions · P&L</small>"]
     db[("DB<br/><small>portfolio · position<br/>trade_history</small>")]
 
@@ -51,10 +52,9 @@ graph TB
     broadcast ---> stock
     broadcast ---> trade
     broadcast ---> chaos
-    broadcast ---> portfolio
 
     trade ---> stock
-    trade ---> portfolio
+    chaos ---> news
     chaos ---> stock
     portfolio ---> stock
 
@@ -62,7 +62,6 @@ graph TB
     trade -.->|reads/writes| db
 
     style stock stroke-width:2px
-    style chaos stroke-dasharray: 5 5
     style cobol fill:#e6f3ff,stroke:#4a9eff
     style config fill:#e6f3ff,stroke:#4a9eff
     style generated fill:#e6f3ff,stroke:#4a9eff
@@ -705,6 +704,9 @@ sequenceDiagram
     box "trade: Application"
     participant TS as TradeService
     end
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
 
     Client->>BC: GET /stream
     BC->>BS: createEmitter()
@@ -726,6 +728,12 @@ sequenceDiagram
     BS->>BS: build TradeExecutedBroadcastEvent
     BS->>Client: event: TRADE_EXECUTED<br/>data: {result, symbol, quantity, paperTape}
 
+    Note over CS: Chaos event triggered
+    CS->>CS: publishEvent(ChaosEventTriggered)
+    BS->>BS: @EventListener ChaosEventTriggered
+    BS->>BS: build ChaosBroadcastEvent
+    BS->>Client: event: CHAOS_EVENT<br/>data: {headline, symbol, impact, explanation}
+
     Note over BS: Dead emitter cleanup<br/>onCompletion / onTimeout / onError
 ```
 
@@ -735,7 +743,7 @@ sequenceDiagram
 |-------|--------|--------------|
 | `PRICE_TICK` | Stock module (every simulation tick) | `{symbol, name, price, change, changePercent, timestamp}` |
 | `TRADE_EXECUTED` | Trade module (on accepted trade) | `{result, symbol, quantity, paperTape}` |
-| `CHAOS_EVENT` | Chaos module (future) | `{headline, symbol, impact, explanation}` |
+| `CHAOS_EVENT` | Chaos module (on triggered event) | `{headline, symbol, impact, explanation}` |
 
 ### Paper Tape
 
@@ -767,6 +775,155 @@ sequenceDiagram
     BS-->>BC: Page<PaperTapeEntry>
     BC->>BC: map(PaperTapeEntry → PaperTapeResponseData)
     BC-->>Client: 200 PaperTapeResponse
+```
+
+### Chaos Event Generation
+
+The chaos module injects AI-generated madness into the market. Events are triggered either by the `ChaosEventScheduler` (based on the current chaos level's `aiEventIntervalMs`) or manually via `POST /api/chaos/events`. Each event transforms real-world news headlines into a memeified price impact on a target stock, adjusts the stock price, and broadcasts the event via SSE.
+
+#### Flow (Scheduled + Manual)
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "chaos: Adapter In"
+    participant CES as ChaosEventScheduler
+    participant CC as ChaosController
+    end
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+    box "news: Application"
+    participant NI as NewsPortIn
+    end
+    box "stock: Application"
+    participant SI as StockPortIn
+    end
+    box "chaos: Adapter Out"
+    participant CEG as ChaosEventGenerator
+    end
+    box "broadcast: Application"
+    participant BSS as BroadcastSseService
+    end
+
+    Note over CES: Every ${stonks.chaos.event-check-interval-ms} (default 10s)
+    Note over CES: Check if enabled && elapsed >= level.aiEventIntervalMs
+
+    alt Scheduled trigger
+        CES->>CS: triggerEvent()
+    else Manual trigger
+        Client->>CC: POST /api/chaos/events
+        CC->>CS: triggerEvent()
+    end
+
+    Note over CS: 1. Fetch context
+    CS->>NI: getHeadlines()
+    NI-->>CS: List<NewsHeadline> (RSS feeds, cached 60s)
+    CS->>SI: getStocks()
+    SI-->>CS: List<StockPrice>
+
+    Note over CS: 2. Generate chaos event
+    CS->>CEG: generate(headlines, stocks)
+    Note over CEG: [default] Stub → canned random +15-35% event<br/>[integrated/production] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: Fallback catalog (15 built-in events)
+    CEG-->>CS: ChaosEvent
+
+    Note over CS: 3. Apply price impact
+    CS->>SI: applyImpact(event.symbol, event.impactPercent)
+    Note over SI: newPrice = currentPrice × (1 + impactPercent/100)<br/>publishEvent(StockPriceUpdatedEvent)
+    SI-->>CS: void
+
+    Note over CS: 4. Publish event & store history
+    CS->>CS: publishEvent(ChaosEventTriggered)
+    CS->>CS: history.add(event) [bounded to 100]
+    BSS->>BSS: @EventListener ChaosEventTriggered
+    BSS->>BSS: build ChaosBroadcastEvent
+    BSS-->>BSS: SSE broadcast to clients
+    CS-->>CC: ChaosEvent
+    CC->>CC: map → ChaosEventTriggeredResponse
+    CC-->>Client: 200 ChaosEventTriggeredResponse
+```
+
+#### Dev Stub Scenario (no AI)
+
+```mermaid
+sequenceDiagram
+    box "chaos: Adapter In"
+    participant CES as ChaosEventScheduler
+    end
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+    box "chaos: Adapter Out"
+    participant CEGS as ChaosEventGeneratorStub
+    end
+
+    Note over CES: Every 10s (if interval elapsed)
+    CES->>CS: triggerEvent()
+    CS->>CEGS: generate(headlines, stocks)
+    Note over CEGS: Always returns:<br/>headline: "Meme Stonks Go Brrr!"<br/>impact: random +15% to +35%<br/>symbol: random from stock list
+    CEGS-->>CS: ChaosEvent
+```
+
+### Chaos Level Management
+
+`GET /api/chaos/level` returns the current chaos level (default `PAPER_HANDS`). `POST /api/chaos/level` changes it. The level controls how frequently chaos events are generated and modulates market volatility.
+
+#### Chaos Levels
+
+| Level | tickIntervalMs | volatilityMultiplier | aiEventIntervalMs |
+|-------|---------------|---------------------|-------------------|
+| `PAPER_HANDS` | 30,000 ms | 1.0× | 600,000 ms (10 min) |
+| `MODERATE` | 15,000 ms | 2.0× | 120,000 ms (2 min) |
+| `HIGH_VOLATILITY` | 5,000 ms | 5.0× | 30,000 ms (30 s) |
+| `EXTREME` | 2,000 ms | 12.5× | 15,000 ms (15 s) |
+| `MAXIMUM_OVERDRIVE` | 1,000 ms | 25.0× | 10,000 ms (10 s) |
+
+#### Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "chaos: Adapter In"
+    participant CC as ChaosController
+    end
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+
+    Client->>CC: GET /api/chaos/level
+    CC->>CS: getCurrentLevel()
+    Note over CS: AtomicReference<ChaosLevel>, defaults to PAPER_HANDS
+    CS-->>CC: ChaosLevel
+    CC-->>Client: 200 ChaosLevelResponse
+
+    Client->>CC: POST /api/chaos/level (body: "EXTREME")
+    CC->>CC: EnumUtils.fromValue(ChaosLevel.class, body)
+    CC->>CS: setLevel(EXTREME)
+    CS->>CS: currentLevel.set(EXTREME)
+    CC-->>Client: 200 ChaosLevelResponse
+```
+
+### Chaos Event History
+
+`GET /api/chaos/events` and `GET /api/chaos/history` return the in-memory history of triggered chaos events. The history is bounded to 100 entries (FIFO eviction).
+
+#### Flow
+
+```mermaid
+sequenceDiagram
+    participant Client as HTTP Client
+    box "chaos: Adapter In"
+    participant CC as ChaosController
+    end
+    box "chaos: Application"
+    participant CS as ChaosService
+    end
+
+    Client->>CC: GET /api/chaos/events
+    CC->>CS: getHistory()
+    CS->>CS: history.getAll() → List.copyOf (immutable snapshot)
+    CS-->>CC: List<ChaosEvent>
+    CC-->>Client: 200 ChaosEventsResponse
 ```
 
 ---
@@ -887,7 +1044,7 @@ When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a tr
 | Component | Technology | Status |
 |-----------|------------|--------|
 | Logging | Logback via Spring Boot + custom `MaskingPatternLayout` | Implemented |
-| Tracing | OpenTelemetry with Grafana Tempo | Pending |
+| Tracing | OpenTelemetry (trace ID in responses & MDC logs) | Implemented |
 | Metrics | Micrometer with Prometheus registry | Pending |
 | Visualization | Grafana Dashboards | Pending |
 
@@ -896,6 +1053,8 @@ When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a tr
 | Integration | Purpose | Status |
 |-------------|---------|--------|
 | COBOL Programs | Trade validation, price engine, portfolio management, catalog | Implemented via `CobolProgramExecutor` (stdin/stdout JSON) |
+| OpenRouter (AI) | AI-powered chaos event generation via Spring AI `ChatModel` | Implemented via `spring-ai-openai` |
+| RSS News Feeds | Real-world headline fetching for chaos event context | Implemented via ROME (Reuters, BBC Tech, TechCrunch) |
 
 ### CI/CD & Deployment
 
