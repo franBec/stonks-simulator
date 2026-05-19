@@ -413,6 +413,8 @@ sequenceDiagram
 
 The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog (cached at startup), scales volatility by the current chaos level's `volatilityMultiplier`, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. If the price engine fails for any stock, that stock is skipped for the tick and a warning is logged — the tick continues for remaining stocks.
 
+The volatility multiplier is pushed to `StockService` by `ChaosService.setLevel()` via `StockPortIn.setVolatilityMultiplier()`, so chaos level changes take effect immediately on the next tick.
+
 The `StockPriceTickScheduler` uses an `AtomicBoolean` guard to skip overlapping ticks when the previous tick is still running, preventing queue buildup with slow COBOL calls.
 
 A `ReentrantLock` guards both `simulate()` and `applyImpact()` to prevent race conditions when a chaos event modifies prices mid-tick.
@@ -907,6 +909,9 @@ sequenceDiagram
     box "chaos: Application"
     participant CS as ChaosService
     end
+    box "stock: Application"
+    participant SS as StockPortIn
+    end
 
     Client->>CC: GET /api/chaos/level
     CC->>CS: getCurrentLevel()
@@ -918,8 +923,8 @@ sequenceDiagram
     CC->>CC: EnumUtils.fromValue(ChaosLevel.class, body)
     CC->>CS: setLevel(EXTREME)
     CS->>CS: currentLevel.set(EXTREME)
-    CS->>CS: stockPortIn.setVolatilityMultiplier(12.5)
-    Note over CS: Market volatility immediately scales<br/>by 12.5× on next tick
+    CS->>SS: setVolatilityMultiplier(12.5)
+    Note over CS,SS: Market volatility immediately scales<br/>by 12.5× on next tick
     CC-->>Client: 200 ChaosLevelResponse
 ```
 

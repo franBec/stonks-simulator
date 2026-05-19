@@ -3,7 +3,6 @@ package dev.pollito.stonks_java.stock.application.service;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -12,7 +11,6 @@ import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
 import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
-import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +21,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 
+// Unit test (not E2E) for StockService because @PostConstruct initialization,
+// ReentrantLock-based concurrency, and per-stock exception handling require precise
+// mock control over port behavior not achievable through the HTTP layer.
 @ExtendWith(MockitoExtension.class)
 class StockServiceTest {
 
@@ -46,8 +47,7 @@ class StockServiceTest {
 
   @Test
   void simulateUsesCachedCatalogNotPortOut() {
-    when(priceEnginePortOut.calculate(any(), any(), any()))
-        .thenAnswer(inv -> inv.getArgument(0));
+    when(priceEnginePortOut.calculate(any(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
     stockService.simulate();
 
@@ -56,30 +56,25 @@ class StockServiceTest {
 
   @Test
   void simulateAppliesVolatilityMultiplier() {
-    stockService.setVolatilityMultiplier(2.0);
-    when(priceEnginePortOut.calculate(any(), any(), any()))
-        .thenAnswer(inv -> inv.getArgument(0));
+    stockService.setVolatilityMultiplier(new BigDecimal("2.0"));
+    when(priceEnginePortOut.calculate(any(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
     stockService.simulate();
 
     ArgumentCaptor<BigDecimal> volatilityCaptor = ArgumentCaptor.forClass(BigDecimal.class);
-    verify(priceEnginePortOut)
-        .calculate(any(), volatilityCaptor.capture(), eq("BULL"));
+    verify(priceEnginePortOut).calculate(any(), volatilityCaptor.capture(), eq("BULL"));
 
-    assertThat(volatilityCaptor.getValue())
-        .isEqualByComparingTo(new BigDecimal("0.10"));
+    assertThat(volatilityCaptor.getValue()).isEqualByComparingTo(new BigDecimal("0.10"));
   }
 
   @Test
   void simulateWithDefaultMultiplierPassesVolatilityUnchanged() {
-    when(priceEnginePortOut.calculate(any(), any(), any()))
-        .thenAnswer(inv -> inv.getArgument(0));
+    when(priceEnginePortOut.calculate(any(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
     stockService.simulate();
 
     ArgumentCaptor<BigDecimal> volatilityCaptor = ArgumentCaptor.forClass(BigDecimal.class);
-    verify(priceEnginePortOut, times(2))
-        .calculate(any(), volatilityCaptor.capture(), any());
+    verify(priceEnginePortOut, times(2)).calculate(any(), volatilityCaptor.capture(), any());
 
     assertThat(volatilityCaptor.getAllValues())
         .usingElementComparator(BigDecimal::compareTo)
@@ -99,29 +94,26 @@ class StockServiceTest {
     assertThat(prices).hasSize(2);
     assertThat(prices.stream().filter(p -> p.symbol().equals("GMEE")).findFirst())
         .isPresent()
-        .hasValueSatisfying(p -> assertThat(p.price()).isEqualByComparingTo(new BigDecimal("51.00")));
+        .hasValueSatisfying(
+            p -> assertThat(p.price()).isEqualByComparingTo(new BigDecimal("51.00")));
   }
 
   @Test
   void setVolatilityMultiplierAffectsPriceCalculation() {
-    stockService.setVolatilityMultiplier(5.0);
-    when(priceEnginePortOut.calculate(any(), any(), any()))
-        .thenAnswer(inv -> inv.getArgument(0));
+    stockService.setVolatilityMultiplier(new BigDecimal("5.0"));
+    when(priceEnginePortOut.calculate(any(), any(), any())).thenAnswer(inv -> inv.getArgument(0));
 
     stockService.simulate();
 
     ArgumentCaptor<BigDecimal> volatilityCaptor = ArgumentCaptor.forClass(BigDecimal.class);
-    verify(priceEnginePortOut)
-        .calculate(any(), volatilityCaptor.capture(), eq("BULL"));
+    verify(priceEnginePortOut).calculate(any(), volatilityCaptor.capture(), eq("BULL"));
 
-    assertThat(volatilityCaptor.getValue())
-        .isEqualByComparingTo(new BigDecimal("0.25"));
+    assertThat(volatilityCaptor.getValue()).isEqualByComparingTo(new BigDecimal("0.25"));
   }
 
   @Test
   void applyImpactUpdatesPrice() {
-    when(priceEnginePortOut.calculate(any(), any(), any()))
-        .thenReturn(new BigDecimal("52.00"));
+    when(priceEnginePortOut.calculate(any(), any(), any())).thenReturn(new BigDecimal("52.00"));
     stockService.simulate();
 
     stockService.applyImpact("GMEE", new BigDecimal("10"));

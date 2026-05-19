@@ -35,7 +35,8 @@ public class StockService implements StockPortIn {
 
   private final ConcurrentHashMap<String, BigDecimal> currentPrices = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, StockPrice> prices = new ConcurrentHashMap<>();
-  private final AtomicReference<Double> volatilityMultiplier = new AtomicReference<>(1.0);
+  private final AtomicReference<BigDecimal> volatilityMultiplier =
+      new AtomicReference<>(BigDecimal.ONE);
   private final ReentrantLock simulationLock = new ReentrantLock();
   private volatile List<Stock> catalog;
 
@@ -58,20 +59,17 @@ public class StockService implements StockPortIn {
     try {
       List<Stock> stocks = catalog;
       OffsetDateTime now = now();
-      double multiplier = volatilityMultiplier.get();
+      BigDecimal multiplier = volatilityMultiplier.get();
       for (Stock stock : stocks) {
         BigDecimal currentPrice = currentPrices.get(stock.symbol());
         if (currentPrice == null) continue;
 
-        BigDecimal effectiveVolatility =
-            stock.volatility().multiply(BigDecimal.valueOf(multiplier));
+        BigDecimal effectiveVolatility = stock.volatility().multiply(multiplier);
         BigDecimal newPrice;
         try {
-          newPrice =
-              priceEnginePortOut.calculate(currentPrice, effectiveVolatility, stock.trend());
+          newPrice = priceEnginePortOut.calculate(currentPrice, effectiveVolatility, stock.trend());
         } catch (Exception e) {
-          log.warn(
-              "Price engine failed for {}, skipping tick: {}", stock.symbol(), e.getMessage());
+          log.warn("Price engine failed for {}, skipping tick: {}", stock.symbol(), e.getMessage());
           continue;
         }
         currentPrices.put(stock.symbol(), newPrice);
@@ -133,7 +131,7 @@ public class StockService implements StockPortIn {
   }
 
   @Override
-  public void setVolatilityMultiplier(double multiplier) {
+  public void setVolatilityMultiplier(BigDecimal multiplier) {
     volatilityMultiplier.set(multiplier);
   }
 }

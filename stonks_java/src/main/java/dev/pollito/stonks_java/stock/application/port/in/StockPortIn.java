@@ -11,5 +11,5 @@ public interface StockPortIn {
 
   List<StockPrice> getStocks();
 
-  void setVolatilityMultiplier(double multiplier);
+  void setVolatilityMultiplier(BigDecimal multiplier);
 }
