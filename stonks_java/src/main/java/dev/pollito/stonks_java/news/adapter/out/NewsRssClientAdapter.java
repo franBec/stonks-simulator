@@ -15,12 +15,12 @@ import java.io.ByteArrayInputStream;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 
 @Service
-@Profile({"integrated", "production"})
+@ConditionalOnProperty(prefix = "stonks.adapters", name = "news", havingValue = "real")
 @RequiredArgsConstructor
 @Slf4j
 public class NewsRssClientAdapter implements NewsClientPortOut {

@@ -6,25 +6,29 @@ Orchestrates the stonks-simulator: exposes REST APIs, runs the market simulation
 
 ## Environments
 
-Three runtime profiles control which dependencies are active:
+Each external dependency is toggled independently via `stonks.adapters.*` properties. Run with no flags for the default dev experience (H2 + all stubs), or opt into individual real backends as needed.
 
-| Profile | DB | COBOL | AI | News RSS | OTel | Use case |
-|---------|----|-------|----|----------|------|----------|
-| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Stub | Stub | Disabled | Default for local dev & `./gradlew test` |
-| `integrated` | H2 (embedded) | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Disabled | All real backends, lightweight infra (no Docker) |
-| `production` | PostgreSQL | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Enabled | Production/staging (*PG driver not yet in build.gradle*) |
+| Property | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `stonks.adapters.db` | `h2`, `postgresql` | `h2` | Database backend |
+| `stonks.adapters.cobol` | `stub`, `real` | `stub` | COBOL process execution |
+| `stonks.adapters.ai` | `stub`, `real` | `stub` | AI chaos event generation (OpenRouter) |
+| `stonks.adapters.news` | `stub`, `real` | `stub` | RSS news headline fetching |
+| `stonks.adapters.otel` | `true`, `false` | `false` | OpenTelemetry metrics export |
 
 - **`./gradlew bootRun`** — starts with H2 + all stubs, no external dependencies needed.
-- **`./gradlew bootRun --spring.profiles.active=integrated`** — starts with H2 + real backends (COBOL, AI, News RSS). No Docker required.
-- **`./gradlew bootRun --spring.profiles.active=production`** — starts with PostgreSQL + real backends + OTel.
+- **`./gradlew bootRun --args='--stonks.adapters.cobol=real'`** — starts with H2 + real COBOL only.
+- **`./gradlew bootRun --args='--stonks.adapters.cobol=real --stonks.adapters.ai=real --stonks.adapters.news=real'`** — starts with H2 + all real backends.
+- **`./gradlew bootRun --args='--stonks.adapters.db=postgresql --stonks.adapters.cobol=real --stonks.adapters.ai=real --stonks.adapters.news=real --stonks.adapters.otel=true'`** — starts with PostgreSQL + all real backends + OTel.
 - **`./gradlew test`** — runs against H2 + stubs. CI-ready, zero config.
 
 ### How it works
 
-- `application.yaml` (always loaded) provides H2 datasource + disables OTel by default.
-- Stub adapters are annotated with `@Profile("!integrated & !production")` — active in any profile except `integrated` or `production`.
-- Real backends (COBOL, AI, News RSS) are annotated with `@Profile({"integrated", "production"})` — active when either `integrated` or `production` is set.
-- `application-production.yaml` overrides the datasource to PostgreSQL and enables OTel.
+- `application.yaml` declares `stonks.adapters.*` defaults (all stubs, H2, OTel off).
+- An `EnvironmentPostProcessor` (`StonksAdapterEnvironmentPostProcessor`) maps `stonks.adapters.db` to the correct `spring.datasource.*` and `spring.jpa.*` properties before Spring Boot auto-configuration runs.
+- Stub adapters use `@ConditionalOnProperty(prefix = "stonks.adapters", name = "...", havingValue = "stub", matchIfMissing = true)`.
+- Real backends use `@ConditionalOnProperty(prefix = "stonks.adapters", name = "...", havingValue = "real")`.
+- OTel export is controlled by the placeholder `${stonks.adapters.otel:false}` in `management.otlp.metrics.export.enabled`.
 
 ---
 
@@ -93,9 +97,9 @@ A purist hexagonal architecture demands **one port per driven concern** and forb
 Every module follows the same split: the **application core** (`application/`) holds only business logic expressed as service classes that depend exclusively on domain records and port interfaces. The **adapter layer** (`adapter/in/`, `adapter/out/`) owns everything that touches infrastructure:
 
 - **`adapter/in/`** — REST controllers, scheduled task runners, SSE publishers. These translate external protocol (HTTP requests, scheduling ticks) into core service calls and map responses back to transport DTOs.
-- **`adapter/out/`** — JPA repository adapters (entity mapping, query execution), COBOL process adapters (serialization, process spawning, deserialization), and their stub counterparts used in development profiles. Each adapter implements a port interface from the core and translates between domain records and infrastructure-specific types (entities, COBOL JSON DTOs, etc.).
+- **`adapter/out/`** — JPA repository adapters (entity mapping, query execution), COBOL process adapters (serialization, process spawning, deserialization), and their stub counterparts used in development mode. Each adapter implements a port interface from the core and translates between domain records and infrastructure-specific types (entities, COBOL JSON DTOs, etc.).
 
-The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by Spring's profile mechanism: stubs are active by default (`!integrated & !production`), real implementations activate only when their environment is configured.
+The core never imports a JPA entity, a MapStruct mapper, a REST DTO, or a COBOL bridge class. Those live in the adapters, swapped by `@ConditionalOnProperty` on `stonks.adapters.*` properties: stubs are active by default, real implementations activate only when explicitly configured.
 
 Additional considerations for the adapter layer:
 
@@ -840,7 +844,7 @@ sequenceDiagram
 
     Note over CS: 2. Generate chaos event
     CS->>CEG: generate(headlines, stocks)
-    Note over CEG: [default] Stub → canned random +15-35% event<br/>[integrated/production] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: Fallback catalog (15 built-in events)
+    Note over CEG: [default] Stub → canned random +15-35% event<br/>[real AI adapter] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: Fallback catalog (15 built-in events)
     CEG-->>CS: ChaosEvent
 
     Note over CS: 3. Apply price impact
@@ -1049,11 +1053,11 @@ sequenceDiagram
 
     CS2->>CEG: generate(headlines, stocks)
 
-    alt OpenRouter AI (integrated/production)
+    alt OpenRouter AI (real adapter)
         Note over CEG: Builds LLM prompt with headline<br/>titles + sources to inspire<br/>meme-worthy chaos event
-    else Fallback catalog (integrated/production)
+    else Fallback catalog (real adapter)
         Note over CEG: Randomly picks headline title<br/>as sourceHeadline, selects event<br/>from 15 hardcoded meme scenarios
-    else Stub (default/dev)
+    else Stub (default)
         Note over CEG: Randomly picks headline title<br/>as sourceHeadline for<br/>"Meme Stonks Go Brrr!" event
     end
 
@@ -1090,7 +1094,7 @@ The system has multiple scheduled processes that must coexist without conflictin
 
 | Parameter | Default | Source | Constraint |
 |-----------|---------|--------|------------|
-| `stonks.market.simulation.interval-ms` | 2,000 ms | `application.yaml` | Must be ≥ expected max tick duration (11 COBOL spawns × per-program timeout). In integrated profile, consider ≥ 5s. |
+| `stonks.market.simulation.interval-ms` | 2,000 ms | `application.yaml` | Must be ≥ expected max tick duration (11 COBOL spawns × per-program timeout). With real COBOL adapters, consider ≥ 5s. |
 | `stonks.chaos.event-check-interval-ms` | 10,000 ms | `application.yaml` | Must be ≤ smallest `aiEventIntervalMs` across chaos levels, otherwise events won't fire at the expected rate |
 | `stonks.broadcast.sse-timeout-ms` | 300,000 ms (5 min) | `application.yaml` | Must be > `heartbeat-rate-ms` |
 | `stonks.broadcast.heartbeat-rate-ms` | 15,000 ms | `application.yaml` | Must be < `sse-timeout-ms` |
@@ -1159,7 +1163,7 @@ These aren't hard bans — there are legitimate edge cases — but they should p
 
 Every non-E2E test must explain why E2E was not chosen via a class-level `//` comment. This keeps the testing strategy self-documenting as the suite grows. Common reasons:
 
-- **Profile-gated adapter** — only active under `integrated`/`production` profiles, never loaded in default (stubs) E2E context
+- **Property-gated adapter** — only active when `stonks.adapters.*=real`, never loaded in default (stubs) E2E context
 - **Pure algorithm** — no I/O or framework dependencies; E2E adds no value over isolated edge-case testing
 - **Infrastructure/OS concern** — exercises real subprocess spawning or OS behavior that COBOL stubs bypass
 - **Push-based/async behavior** — SSE, heartbeats, event listeners not exercisable through HTTP request-response
@@ -1187,7 +1191,7 @@ Tests that need an empty DB use inline cleanup statements:
 
 - **`@DirtiesContext`** — SQL fixtures + per-test isolation make context rebuilds unnecessary
 - **`@TestPropertySource`** — `src/test/resources/application.yaml` overrides `spring.sql.init.mode=never` globally for tests
-- **`@ActiveProfiles`** — default profile (stubs + H2) is what tests need
+- **`@ActiveProfiles`** — not needed; default properties (stubs + H2) are what tests need
 - **Repository autowiring for setup** — data is declarative, not constructed in test methods
 
 ### `@ApplicationModuleTest` Context Loading
@@ -1219,7 +1223,7 @@ When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a tr
 | Database | Purpose | Status | Connection |
 |----------|---------|--------|------------|
 | H2 (in-memory) | Development & Testing | Implemented | Auto-configured via `application.yaml` |
-| PostgreSQL | Production | Pending | `application-production.yaml` (driver not yet in `build.gradle`) |
+| PostgreSQL | Production | Pending | `StonksAdapterEnvironmentPostProcessor` sets PG datasource when `stonks.adapters.db=postgresql` (driver not yet in `build.gradle`) |
 
 **Migration Tool:** Flyway — Pending, not implemented yet
 

@@ -7,13 +7,13 @@ import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Service
 @Primary
-@Profile({"integrated", "production"})
+@ConditionalOnProperty(prefix = "stonks.adapters", name = "ai", havingValue = "real")
 @RequiredArgsConstructor
 @Slf4j
 public class ChaosEventGeneratorCompositeAdapter implements ChaosEventGeneratorPortOut {

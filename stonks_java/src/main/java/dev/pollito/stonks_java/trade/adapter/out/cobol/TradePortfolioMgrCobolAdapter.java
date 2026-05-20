@@ -7,11 +7,11 @@ import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile({"integrated", "production"})
+@ConditionalOnProperty(prefix = "stonks.adapters", name = "cobol", havingValue = "real")
 @RequiredArgsConstructor
 public class TradePortfolioMgrCobolAdapter implements TradeExecutionPortOut {
 

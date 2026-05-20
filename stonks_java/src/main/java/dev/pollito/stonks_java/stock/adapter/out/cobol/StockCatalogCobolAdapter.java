@@ -9,11 +9,11 @@ import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile({"integrated", "production"})
+@ConditionalOnProperty(prefix = "stonks.adapters", name = "cobol", havingValue = "real")
 @RequiredArgsConstructor
 public class StockCatalogCobolAdapter implements StockPortOut {
   private static final String PROGRAM_NAME = "catalog";

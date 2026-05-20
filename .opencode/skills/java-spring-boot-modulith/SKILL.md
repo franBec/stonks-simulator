@@ -21,22 +21,23 @@ Load this skill whenever working on Java/Spring Boot code in the `stonks_java/` 
 
 ## Instructions
 
-### Environment Profiles
+### Environment Configuration
 
-Three runtime profiles control dependencies:
+Each external dependency is toggled independently via `stonks.adapters.*` properties:
 
-| Profile | DB | COBOL | AI | News RSS | OTel | Use case |
-|---------|----|-------|----|----------|------|----------|
-| *(none)* | H2 (embedded) | Stubs (Java in-memory) | Stub | Stub | Disabled | Default for local dev & `./gradlew test` |
-| `integrated` | H2 (embedded) | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Disabled | All real backends, lightweight (no Docker) |
-| `production` | PostgreSQL | Real COBOL process execution | Real (OpenRouter) | Real (RSS fetch) | Enabled | Production/staging |
+| Property | Values | Default | Description |
+|----------|--------|---------|-------------|
+| `stonks.adapters.db` | `h2`, `postgresql` | `h2` | Database backend |
+| `stonks.adapters.cobol` | `stub`, `real` | `stub` | COBOL process execution |
+| `stonks.adapters.ai` | `stub`, `real` | `stub` | AI chaos event generation (OpenRouter) |
+| `stonks.adapters.news` | `stub`, `real` | `stub` | RSS news headline fetching |
+| `stonks.adapters.otel` | `true`, `false` | `false` | OpenTelemetry metrics export |
 
-- Stub adapters: `@Profile("!integrated & !production")`
-- Real backends: `@Profile({"integrated", "production"})`
-- Infra-only (PG, OTel): `@Profile("production")`
+- Stub adapters: `@ConditionalOnProperty(prefix = "stonks.adapters", name = "...", havingValue = "stub", matchIfMissing = true)`
+- Real backends: `@ConditionalOnProperty(prefix = "stonks.adapters", name = "...", havingValue = "real")`
 - `./gradlew bootRun` — H2 + stubs
-- `./gradlew bootRun --spring.profiles.active=integrated` — H2 + all real backends
-- `./gradlew bootRun --spring.profiles.active=production` — PG + real backends + OTel
+- `./gradlew bootRun --args='--stonks.adapters.cobol=real'` — H2 + real COBOL only
+- `./gradlew bootRun --args='--stonks.adapters.db=postgresql --stonks.adapters.cobol=real --stonks.adapters.ai=real --stonks.adapters.news=real --stonks.adapters.otel=true'` — PG + all real backends + OTel
 - `./gradlew test` — H2 + stubs, CI-ready
 
 ### Architecture: Hexagonal with Modulith

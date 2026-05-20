@@ -8,11 +8,15 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile("!integrated & !production")
+@ConditionalOnProperty(
+    prefix = "stonks.adapters",
+    name = "news",
+    havingValue = "stub",
+    matchIfMissing = true)
 @Slf4j
 public class NewsClientStub implements NewsClientPortOut {
 

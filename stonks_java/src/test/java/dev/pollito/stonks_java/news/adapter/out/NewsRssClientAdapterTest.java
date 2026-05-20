@@ -17,7 +17,8 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.web.client.RestClient;
 
-// Unit test (not E2E) because NewsRssClientAdapter is @Profile({"integrated", "production"})
+// Unit test (not E2E) because NewsRssClientAdapter is
+// @ConditionalOnProperty(prefix = "stonks.adapters", name = "news", havingValue = "real")
 // — never loaded under the default (H2 + stubs) profile used by E2E tests. Verifies feed
 // fetching, XML parsing, and per-feed error isolation with a mock RestClient and real
 // NewsSyndMapperImpl spy so the mapping logic is exercised.

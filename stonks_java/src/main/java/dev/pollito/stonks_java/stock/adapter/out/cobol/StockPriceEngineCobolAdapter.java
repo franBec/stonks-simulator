@@ -6,11 +6,11 @@ import dev.pollito.stonks_java.stock.adapter.out.cobol.dto.CobolPriceEngineResul
 import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
-@Profile({"integrated", "production"})
+@ConditionalOnProperty(prefix = "stonks.adapters", name = "cobol", havingValue = "real")
 @RequiredArgsConstructor
 public class StockPriceEngineCobolAdapter implements StockPriceEnginePortOut {
   private static final String PROGRAM_NAME = "price-engine";

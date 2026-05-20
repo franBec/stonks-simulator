@@ -7,5 +7,6 @@
   "cobol-lsp.cpy-manager.copybook-extensions": [
     ".cpy"
   ],
-  "java.debug.settings.onBuildFailureProceed": true
+  "java.debug.settings.onBuildFailureProceed": true,
+  "yaml.schemaStore.enable": false
 }

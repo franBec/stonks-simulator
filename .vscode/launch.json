@@ -3,7 +3,7 @@
   "configurations": [
     {
       "type": "java",
-      "name": "[local] Stonks (H2 + stubs)",
+      "name": "Stonks Java (no external deps needed)",
       "request": "launch",
       "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
       "projectName": "stonks_java",
@@ -11,36 +11,27 @@
     },
     {
       "type": "java",
-      "name": "[cobol] Stonks (H2 + real COBOL)",
+      "name": "Stonks Java (Pollito preferences for local development)",
       "request": "launch",
       "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
       "projectName": "stonks_java",
-      "env": {
-        "SPRING_PROFILES_ACTIVE": "cobol"
-      },
-      "cwd": "${workspaceFolder}/stonks_java"
-    },
-    {
-      "type": "java",
-      "name": "[production] Stonks (PG + real COBOL + OTel)",
-      "request": "launch",
-      "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
-      "projectName": "stonks_java",
-      "env": {
-        "SPRING_PROFILES_ACTIVE": "production"
-      },
+      "args": [
+        "--stonks.adapters.cobol=real",
+        "--stonks.adapters.ai=real",
+        "--stonks.adapters.news=real",
+      ],
       "cwd": "${workspaceFolder}/stonks_java"
     },
     {
       "type": "chrome",
       "request": "launch",
-      "name": "Open JaCoCo Report",
+      "name": "Stonks Java Open JaCoCo Report",
       "file": "${workspaceFolder}/stonks_java/build/reports/jacoco/test/html/index.html"
     },
     {
       "type": "node",
       "request": "launch",
-      "name": "Vite Dev Server (pnpm)",
+      "name": "Stonks Vite App",
       "runtimeExecutable": "pnpm",
       "runtimeArgs": ["run", "dev"],
       "cwd": "${workspaceFolder}/stonks_vite_app",

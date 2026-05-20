@@ -18,7 +18,8 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-// Unit test (not E2E) because StockCatalogCobolAdapter is @Profile({"cobol", "production"})
+// Unit test (not E2E) because StockCatalogCobolAdapter is
+// @ConditionalOnProperty(prefix = "stonks.adapters", name = "cobol", havingValue = "real")
 // — never loaded under the default (H2 + stubs) profile used by E2E tests. Verifies correct
 // COBOL program name, DTO mapping, and mapper integration in isolation.
 @ExtendWith(MockitoExtension.class)

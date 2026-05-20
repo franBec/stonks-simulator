@@ -8,18 +8,12 @@ spring:
       chat:
         options:
           model: openrouter/free
-  datasource:
-    url: jdbc:h2:mem:stonks;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
-    driver-class-name: org.h2.Driver
-    username: sa
-    password:
   sql:
     init:
       mode: always
       schema-locations: classpath:stonks-schema.sql
       data-locations: classpath:stonks-data.sql
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: none
     show-sql: false
@@ -30,10 +24,6 @@ spring:
     type: caffeine
     caffeine:
       spec: maximumSize=500, expireAfterWrite=60s
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
 
 management:
   endpoints:
@@ -43,9 +33,15 @@ management:
   otlp:
     metrics:
       export:
-        enabled: false
+        enabled: ${stonks.adapters.otel:false}
 
 stonks:
+  adapters:
+    db: h2
+    cobol: stub
+    ai: stub
+    news: stub
+    otel: false
   cobol:
     programs:
       trade-validator:
