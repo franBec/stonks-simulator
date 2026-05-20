@@ -35,10 +35,14 @@ public class NewsRssClientAdapter implements NewsClientPortOut {
         .flatMap(
             feedUrl -> {
               try {
-                return parseFeed(restClient.get().uri(feedUrl).retrieve().body(String.class))
-                    .stream();
+                var body = restClient.get().uri(feedUrl).retrieve().body(String.class);
+                if (body == null) {
+                  log.warn("Empty body from RSS feed: {}", feedUrl);
+                  return empty();
+                }
+                return parseFeed(body).stream();
               } catch (Exception e) {
-                log.error("Failed to fetch RSS feed: {}", feedUrl, e);
+                log.warn("Failed to fetch RSS feed: {}", feedUrl, e);
                 return empty();
               }
             })
@@ -58,7 +62,7 @@ public class NewsRssClientAdapter implements NewsClientPortOut {
               .stream()
               .toList();
     } catch (Exception e) {
-      log.error("Failed to parse RSS XML", e);
+      log.warn("Failed to parse RSS XML", e);
       return emptyList();
     }
   }

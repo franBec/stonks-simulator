@@ -1071,9 +1071,9 @@ stonks:
   news:
     rss:
       feed-urls:
-        - https://feeds.reuters.com/reuters/businessNews
         - https://feeds.bbci.co.uk/news/technology/rss.xml
         - https://techcrunch.com/feed/
+        - https://www.theguardian.com/uk/business/rss
   cache:
     type: caffeine
     caffeine:
