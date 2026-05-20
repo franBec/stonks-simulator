@@ -26,7 +26,7 @@ public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut
 
   @Override
   public BigDecimal calculate(BigDecimal currentPrice, BigDecimal volatility, String trend) {
-    log.warn("Using dev stub for StockPriceEnginePortOut — no real COBOL engine is running");
+    log.debug("Using dev stub for StockPriceEnginePortOut — no real COBOL engine is running");
 
     BigDecimal trendBias =
         switch (trend) {
