@@ -13,7 +13,7 @@ import org.springframework.stereotype.Component;
 @Aspect
 @Component
 @Slf4j
-public class LogAspect {
+public class AdapterInLogAspect {
   @Pointcut("within(@org.springframework.web.bind.annotation.RestController *)")
   public void controllerPublicMethodsPointcut() {}
 
