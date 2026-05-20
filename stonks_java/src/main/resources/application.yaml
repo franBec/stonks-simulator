@@ -58,7 +58,7 @@ stonks:
         timeout-seconds: 5
   market:
     simulation:
-      interval-ms: 2000
+      interval-ms: 5000
   broadcast:
     sse-timeout-ms: 300000
     heartbeat-rate-ms: 15000
