@@ -1,4 +1,4 @@
-package dev.pollito.stonks_java.config;
+package dev.pollito.stonks_java.config.cache;
 
 import org.springframework.cache.annotation.EnableCaching;
 import org.springframework.context.annotation.Configuration;
