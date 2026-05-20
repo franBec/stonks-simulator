@@ -73,3 +73,6 @@ stonks:
   chaos:
     enabled: true
     event-check-interval-ms: 10000
+  logging:
+    adapter-out:
+      exclude-patterns: "StockPriceEngineCobolAdapter"
