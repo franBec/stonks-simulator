@@ -7,17 +7,7 @@ import org.springframework.modulith.Modulithic;
 
 @Modulithic(
     systemName = "Stonks Simulator",
-    sharedModules = {
-      "cobol",
-      "config.cache",
-      "config.env",
-      "config.log",
-      "config.properties",
-      "config.scheduling",
-      "config.web",
-      "util",
-      "generated"
-    })
+    sharedModules = {"cobol", "config", "util", "generated"})
 @SpringBootApplication
 @ConfigurationPropertiesScan
 public class StonksJavaApplication {
