@@ -1124,6 +1124,8 @@ Tests run against H2 with COBOL stubs active by default — zero external depend
 
 **Unit tests fill gaps.** Some classes (typically out adapters that are not initialized when stubs are active) E2E tests cannot reach. Unit tests cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP. MapStruct mappers in adapter tests use `@Spy` with the generated `Impl` class rather than `@Mock`, so the real mapping logic is exercised.
 
+When using `@ExtendWith(MockitoExtension.class)`, prefer `@InjectMocks` on the class under test with `@Mock` fields for its dependencies over a manual `setUp()` method that calls `new`. This keeps test structure uniform and avoids forgetting to update the constructor call when a dependency is added or removed.
+
 **Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying that process spawning, stdin/stdout JSON, and timeout handling work. No additional integration tests are planned; the COBOL bridge is a stable concern.
 
 ### Coverage
