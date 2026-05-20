@@ -15,6 +15,7 @@
       "request": "launch",
       "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
       "projectName": "stonks_java",
+      "preLaunchTask": "gradle-compile-java",
       "args": [
         "--stonks.adapters.cobol=real",
         "--stonks.adapters.ai=real",

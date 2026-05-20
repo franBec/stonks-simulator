@@ -23,7 +23,7 @@ repositories {
 
 ext {
   set('springModulithVersion', "2.0.6")
-  set('springAiVersion', "1.1.6")
+  set('springAiVersion', "2.0.0-M6")
 }
 
 configurations {
@@ -62,6 +62,7 @@ dependencies {
   annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0'
 
   implementation 'org.springframework.ai:spring-ai-openai'
+  implementation 'org.springframework.ai:spring-ai-client-chat'
   implementation 'io.swagger.core.v3:swagger-annotations:2.2.45'
   implementation 'com.fasterxml.jackson.core:jackson-databind'
   implementation 'com.rometools:rome:2.1.0'
@@ -285,11 +286,15 @@ eclipse {
   classpath {
     file {
       whenMerged { cp ->
-        def sfClass = Class.forName('org.gradle.plugins.ide.eclipse.model.SourceFolder')
-        cp.entries.add(
-            sfClass.getDeclaredConstructor(String, String).newInstance(
-            "build/generated/sources/annotationProcessor/java/main", "bin/main"
-            ))
+        def path = "build/generated/sources/annotationProcessor/java/main"
+        def alreadyPresent = cp.entries.any { it.path == path }
+        if (!alreadyPresent) {
+          def sfClass = Class.forName('org.gradle.plugins.ide.eclipse.model.SourceFolder')
+          def sf = sfClass.getDeclaredConstructor(String, String).newInstance(path, "bin/main")
+          sf.entryAttributes.put("gradle_scope", "main")
+          sf.entryAttributes.put("gradle_used_by_scope", "main,test")
+          cp.entries.add(sf)
+        }
       }
     }
   }
@@ -301,4 +306,6 @@ tasks.named('compileJava') {
 }
 tasks.named('eclipseClasspath') {
   dependsOn 'openApiGenerate'
+  dependsOn 'generateEntities'
+  dependsOn 'compileJava'
 }

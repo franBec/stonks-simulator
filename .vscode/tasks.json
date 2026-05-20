@@ -1,0 +1,16 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "gradle-compile-java",
+      "type": "shell",
+      "command": "./gradlew compileJava",
+      "group": "build",
+      "options": {
+        "cwd": "${workspaceFolder}/stonks_java"
+      },
+      "problemMatcher": ["$gradle"],
+      "detail": "Run Gradle compilation with annotation processing to generate MapStruct mappers"
+    }
+  ]
+}

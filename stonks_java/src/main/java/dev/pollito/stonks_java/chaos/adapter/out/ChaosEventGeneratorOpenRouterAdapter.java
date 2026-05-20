@@ -5,19 +5,13 @@ import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.model.ChatModel;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.converter.BeanOutputConverter;
+import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 
 @Service
 @ConditionalOnProperty(prefix = "stonks.adapters", name = "ai", havingValue = "real")
-@RequiredArgsConstructor
 @Slf4j
 public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGeneratorPortOut {
 
@@ -26,22 +20,21 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
           + " stocks, generate a single chaotic trading event in valid JSON with NO markdown"
           + " formatting, NO code fences, NO extra text. Respond ONLY with a raw JSON object.";
 
-  private final ChatModel chatModel;
+  private final ChatClient chatClient;
+
+  public ChaosEventGeneratorOpenRouterAdapter(ChatClient.Builder builder) {
+    this.chatClient = builder.build();
+  }
 
   @Override
   public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
     try {
-      BeanOutputConverter<ChaosEvent> converter = new BeanOutputConverter<>(ChaosEvent.class);
-      return converter.convert(
-          chatModel
-              .call(
-                  new Prompt(
-                      List.of(
-                          new SystemMessage(SYSTEM_PROMPT + "\n" + converter.getFormat()),
-                          new UserMessage(buildPrompt(headlines, stocks)))))
-              .getResult()
-              .getOutput()
-              .getText());
+      return chatClient
+          .prompt()
+          .system(SYSTEM_PROMPT)
+          .user(buildPrompt(headlines, stocks))
+          .call()
+          .entity(ChaosEvent.class);
     } catch (Exception e) {
       throw new ChaosEventGenerationException("Failed to generate chaos event via AI", e);
     }
