@@ -20,6 +20,7 @@
         "--stonks.adapters.cobol=real",
         "--stonks.adapters.ai=real",
         "--stonks.adapters.news=real",
+        "--spring.profiles.active=local"
       ],
       "cwd": "${workspaceFolder}/stonks_java"
     },
