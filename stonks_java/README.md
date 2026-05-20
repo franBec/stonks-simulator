@@ -1116,13 +1116,13 @@ Tests run against H2 with COBOL stubs active by default — zero external depend
 | E2E | `@ApplicationModuleTest` + `RestTestClient` | Full HTTP flow through module boundaries |
 | Unit | `@ExtendWith(MockitoExtension.class)` | Stubbed adapter logic, edge cases not reachable via E2E |
 | Integration | Plain JUnit | COBOL executor, process spawning |
-| Architecture | `ApplicationModules.verify()` | Modulith boundary enforcement |
+| Architecture | `ApplicationModules.verify()` | Modulith boundary enforcement — `ModulithVerificationTest` is the single verification needed; do not create additional modulith verification tests |
 
 ### Test Hierarchy
 
 **E2E tests are the default.** They run against H2 with COBOL stubs active, exercising the full request-to-response path through module boundaries. If a scenario can be tested end-to-end, it should be.
 
-**Unit tests fill gaps.** Some classes (typically real COBOL adapters) are never initialized when stubs are active, so E2E cannot reach them. Unit tests with mocked ports cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP. MapStruct mappers in COBOL adapter tests use `@Spy` with the generated `Impl` class rather than `@Mock`, so the real mapping logic is exercised — only the `CobolAppPortOut` call is mocked.
+**Unit tests fill gaps.** Some classes (typically out adapters that are not initialized when stubs are active) E2E tests cannot reach. Unit tests cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP. MapStruct mappers in adapter tests use `@Spy` with the generated `Impl` class rather than `@Mock`, so the real mapping logic is exercised.
 
 **Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying that process spawning, stdin/stdout JSON, and timeout handling work. No additional integration tests are planned; the COBOL bridge is a stable concern.
 
@@ -1143,6 +1143,15 @@ Some code paths are intentionally left untested. These fall into the following c
 4. **Environment-dependent error paths** — Process timeout handling in `CobolProgramExecutor` relies on `Process.waitFor(timeout, unit)` and `Process.destroyForcibly()`. These JDK APIs behave correctly on standard Linux runtimes but may block on constrained environments (e.g., BusyBox on NixOS). The timeout logic is tested at the code level; the integration test for this specific path is omitted where the OS cannot reliably kill orphaned child processes.
 
 These gaps keep the test suite focused on business logic regressions rather than infrastructure edge cases that are better caught by the JVM or static analysis.
+
+### Red Flags — You May Be Testing Too Much
+
+Some patterns signal that a test is fighting the design rather than verifying behavior:
+
+- **Mockito `reset()`** — Resetting a mock between tests usually means the test is sharing mutable state or testing multiple scenarios in a single method.
+- **Reflection to bypass `private`** — Using `Field.setAccessible(true)` or `ReflectionTestUtils` to reach private fields/methods often indicates the class under test has too many internal responsibilities, or the test is coupling to implementation details. If you need to reach inside a class, consider whether the behavior can be exercised through its public contract instead.
+
+These aren't hard bans — there are legitimate edge cases — but they should prompt a second look at the test and the design it's testing.
 
 ### Documenting Test Rationale
 
