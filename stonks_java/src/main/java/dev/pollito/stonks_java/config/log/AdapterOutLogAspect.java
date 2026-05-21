@@ -2,6 +2,8 @@ package dev.pollito.stonks_java.config.log;
 
 import dev.pollito.stonks_java.config.properties.StonksLoggingProperties;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
@@ -34,9 +36,7 @@ public class AdapterOutLogAspect {
       return;
     }
     log.info(
-        "[{}] Args: {}",
-        joinPoint.getSignature().toShortString(),
-        Arrays.toString(joinPoint.getArgs()));
+        "[{}] Args: {}", joinPoint.getSignature().toShortString(), formatArgs(joinPoint.getArgs()));
   }
 
   @AfterReturning(pointcut = "adapterOutPublicMethodsPointcut()", returning = "result")
@@ -44,7 +44,8 @@ public class AdapterOutLogAspect {
     if (isExcluded(joinPoint)) {
       return;
     }
-    log.info("[{}] Response: {}", joinPoint.getSignature().toShortString(), result);
+    log.info(
+        "[{}] Response: {}", joinPoint.getSignature().toShortString(), truncateForLogging(result));
   }
 
   @AfterThrowing(pointcut = "adapterOutPublicMethodsPointcut()", throwing = "exception")
@@ -55,7 +56,7 @@ public class AdapterOutLogAspect {
     log.info(
         "[{}] Args: {} | Exception: {}",
         joinPoint.getSignature().toShortString(),
-        Arrays.toString(joinPoint.getArgs()),
+        formatArgs(joinPoint.getArgs()),
         exception.toString());
   }
 
@@ -63,5 +64,33 @@ public class AdapterOutLogAspect {
     String className = joinPoint.getTarget().getClass().getSimpleName();
     return stonksLoggingProperties.getAdapterOut().getExcludePatterns().stream()
         .anyMatch(className::contains);
+  }
+
+  private String formatArgs(Object[] args) {
+    return Arrays.stream(args)
+        .map(this::truncateForLogging)
+        .collect(Collectors.toList())
+        .toString();
+  }
+
+  private Object truncateForLogging(Object arg) {
+    if (arg instanceof Collection<?> collection) {
+      int limit = Math.min(collection.size(), stonksLoggingProperties.getMaxCollectionPrintSize());
+      if (collection.size() <= limit) {
+        return arg.toString();
+      }
+      return collection.stream().limit(limit).toList().toString()
+          + ", ... ("
+          + collection.size()
+          + " total)";
+    }
+    if (arg instanceof Object[] array) {
+      int limit = Math.min(array.length, stonksLoggingProperties.getMaxCollectionPrintSize());
+      if (array.length <= limit) {
+        return Arrays.toString(array);
+      }
+      return Arrays.toString(Arrays.copyOf(array, limit)) + ", ... (" + array.length + " total)";
+    }
+    return arg;
   }
 }

@@ -8,6 +8,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "stonks.logging")
 public class StonksLoggingProperties {
   private AdapterOut adapterOut = new AdapterOut();
+  private int maxCollectionPrintSize = 5;
 
   @Data
   public static class AdapterOut {

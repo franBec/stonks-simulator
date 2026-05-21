@@ -74,5 +74,6 @@ stonks:
     enabled: true
     event-check-interval-ms: 10000
   logging:
+    max-collection-print-size: 3
     adapter-out:
       exclude-patterns: "StockPriceEngineCobolAdapter"
