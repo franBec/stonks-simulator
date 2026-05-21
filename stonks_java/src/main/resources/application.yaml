@@ -73,6 +73,10 @@ stonks:
   chaos:
     enabled: true
     event-check-interval-ms: 30000
+  logging:
+    max-collection-print-size: 3
+    adapter-out:
+      exclude-patterns: "StockPriceEngineCobolAdapter"
 
 resilience4j:
   ratelimiter:
@@ -87,7 +91,3 @@ resilience4j:
         limit-for-period: 50
         limit-refresh-period: 24h
         timeout-duration: 0
-  logging:
-    max-collection-print-size: 3
-    adapter-out:
-      exclude-patterns: "StockPriceEngineCobolAdapter"
