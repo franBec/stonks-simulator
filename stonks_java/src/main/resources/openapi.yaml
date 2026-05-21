@@ -870,6 +870,13 @@ components:
           example: GMEE
           maxLength: 4
           nullable: true
+        affectedSymbols:
+          type: array
+          items:
+            type: string
+          description: Stock ticker symbols affected by the event
+          example: ["GMEE", "FOMO"]
+          nullable: true
         priceEffect:
           type: number
           format: double
