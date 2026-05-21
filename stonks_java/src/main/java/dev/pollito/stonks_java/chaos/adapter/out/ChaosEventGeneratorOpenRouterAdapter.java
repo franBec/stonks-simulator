@@ -5,6 +5,7 @@ import static java.util.stream.Collectors.toSet;
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.config.ChaosProperties;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventGenerationException;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import io.github.resilience4j.ratelimiter.RateLimiter;
@@ -107,16 +108,6 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
           throw new ChaosEventGenerationException("AI hallucinated invalid affectedSymbol: " + s);
         }
       }
-    }
-  }
-
-  static class ChaosEventGenerationException extends RuntimeException {
-    ChaosEventGenerationException(String message) {
-      super(message);
-    }
-
-    ChaosEventGenerationException(String message, Throwable cause) {
-      super(message, cause);
     }
   }
 
