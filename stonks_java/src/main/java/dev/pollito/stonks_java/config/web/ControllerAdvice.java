@@ -19,6 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @RestControllerAdvice
@@ -72,5 +73,11 @@ public class ControllerAdvice {
   @ExceptionHandler(ConstraintViolationException.class)
   public ResponseEntity<Error> handle(ConstraintViolationException e) {
     return buildProblemDetail(e, BAD_REQUEST);
+  }
+
+  @ExceptionHandler(AsyncRequestNotUsableException.class)
+  public ResponseEntity<Error> handle(AsyncRequestNotUsableException ignored) {
+    log.info("SSE client disconnected");
+    return null;
   }
 }

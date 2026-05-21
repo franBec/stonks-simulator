@@ -8,6 +8,8 @@ import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -17,8 +19,18 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
 
   private static final String SYSTEM_PROMPT =
       "You are a chaotic meme stock market generator. Given real news headlines and a list of meme"
-          + " stocks, generate a single chaotic trading event in valid JSON with NO markdown"
-          + " formatting, NO code fences, NO extra text. Respond ONLY with a raw JSON object.";
+          + " stocks, generate a single chaotic trading event. "
+          + "Respond ONLY with a raw JSON object (NO markdown, NO code fences, NO extra text) "
+          + "using this exact schema:\n"
+          + "{\n"
+          + "  \"headline\": \"<short catchy title>\",\n"
+          + "  \"symbol\": \"<stock ticker symbol>\",\n"
+          + "  \"impactPercent\": <number representing price change percentage>,\n"
+          + "  \"explanation\": \"<why this event is happening>\",\n"
+          + "  \"affectedSymbols\": [\"<symbol1>\", \"<symbol2>\", ...],\n"
+          + "  \"sourceHeadline\": \"<title of the news article that inspired this>\",\n"
+          + "  \"occurredAt\": \"<ISO-8601 timestamp>\"\n"
+          + "}";
 
   private final ChatClient chatClient;
 
@@ -27,6 +39,10 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
   }
 
   @Override
+  @Retryable(
+      retryFor = ChaosEventGenerationException.class,
+      maxAttempts = 2,
+      backoff = @Backoff(delay = 1000, multiplier = 2))
   public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
     try {
       return chatClient
@@ -47,8 +63,9 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
   }
 
   private String buildPrompt(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+    List<NewsHeadline> topHeadlines = headlines.size() > 10 ? headlines.subList(0, 10) : headlines;
     StringBuilder sb = new StringBuilder("Today's news headlines:\n");
-    for (NewsHeadline h : headlines) {
+    for (NewsHeadline h : topHeadlines) {
       sb.append("- ").append(h.title()).append(" (").append(h.source()).append(")\n");
     }
     sb.append("\nAvailable meme stocks:\n");

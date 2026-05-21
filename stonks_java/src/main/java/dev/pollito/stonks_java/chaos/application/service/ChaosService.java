@@ -1,5 +1,8 @@
 package dev.pollito.stonks_java.chaos.application.service;
 
+import static java.math.BigDecimal.valueOf;
+import static java.time.OffsetDateTime.now;
+
 import dev.pollito.stonks_java.chaos.application.port.in.ChaosPortIn;
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
@@ -8,7 +11,6 @@ import dev.pollito.stonks_java.chaos.domain.ChaosEventTriggered;
 import dev.pollito.stonks_java.chaos.domain.ChaosLevel;
 import dev.pollito.stonks_java.news.application.port.in.NewsPortIn;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
@@ -30,8 +32,17 @@ public class ChaosService implements ChaosPortIn {
 
   @Override
   public ChaosEvent triggerEvent() {
-    ChaosEvent event =
+    ChaosEvent generated =
         chaosEventGenerator.generate(newsPortIn.getHeadlines(), stockPortIn.getStocks());
+    ChaosEvent event =
+        new ChaosEvent(
+            generated.headline(),
+            generated.symbol(),
+            generated.impactPercent(),
+            generated.explanation(),
+            generated.affectedSymbols(),
+            generated.sourceHeadline(),
+            now());
 
     stockPortIn.applyImpact(event.symbol(), event.impactPercent());
     eventPublisher.publishEvent(new ChaosEventTriggered(event));
@@ -54,6 +65,6 @@ public class ChaosService implements ChaosPortIn {
   @Override
   public void setLevel(ChaosLevel level) {
     currentLevel.set(level);
-    stockPortIn.setVolatilityMultiplier(BigDecimal.valueOf(level.getVolatilityMultiplier()));
+    stockPortIn.setVolatilityMultiplier(valueOf(level.getVolatilityMultiplier()));
   }
 }

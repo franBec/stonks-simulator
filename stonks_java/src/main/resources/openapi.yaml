@@ -256,7 +256,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ChaosLevel'
+              $ref: '#/components/schemas/ChaosLevelSetRequest'
       responses:
         '200':
           description: Chaos level set
@@ -927,6 +927,14 @@ components:
       enum: [PAPER_HANDS, MODERATE, HIGH_VOLATILITY, EXTREME, MAXIMUM_OVERDRIVE]
       description: Chaos level controlling event frequency and volatility
       example: PAPER_HANDS
+    ChaosLevelSetRequest:
+      type: object
+      description: Request body for setting the chaos level
+      properties:
+        level:
+          $ref: '#/components/schemas/ChaosLevel'
+      required:
+        - level
     ChaosLevelResponse:
       x-implements:
         - dev.pollito.stonks_java.util.metadata.ResponseMetadata

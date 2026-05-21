@@ -1,8 +1,10 @@
 package dev.pollito.stonks_java.chaos.config;
 
+import static io.micrometer.observation.ObservationRegistry.NOOP;
+import static java.time.Duration.ofSeconds;
+
 import com.openai.client.okhttp.OpenAIOkHttpClient;
 import com.openai.client.okhttp.OpenAIOkHttpClientAsync;
-import io.micrometer.observation.ObservationRegistry;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.model.tool.ToolCallingManager;
 import org.springframework.ai.openai.OpenAiChatModel;
@@ -22,12 +24,21 @@ public class AiConfig {
       @Value("${spring.ai.openai.api-key}") String apiKey,
       @Value("${spring.ai.openai.chat.options.model}") String model) {
     return OpenAiChatModel.builder()
-        .openAiClient(OpenAIOkHttpClient.builder().baseUrl(baseUrl).apiKey(apiKey).build())
+        .openAiClient(
+            OpenAIOkHttpClient.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .timeout(ofSeconds(30))
+                .build())
         .openAiClientAsync(
-            OpenAIOkHttpClientAsync.builder().baseUrl(baseUrl).apiKey(apiKey).build())
+            OpenAIOkHttpClientAsync.builder()
+                .baseUrl(baseUrl)
+                .apiKey(apiKey)
+                .timeout(ofSeconds(30))
+                .build())
         .options(OpenAiChatOptions.builder().model(model).build())
         .toolCallingManager(ToolCallingManager.builder().build())
-        .observationRegistry(ObservationRegistry.NOOP)
+        .observationRegistry(NOOP)
         .build();
   }
 

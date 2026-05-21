@@ -11,6 +11,7 @@ import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
 import dev.pollito.stonks_java.generated.model.ChaosEventsResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
+import dev.pollito.stonks_java.generated.model.ChaosLevelSetRequest;
 import dev.pollito.stonks_java.util.enums.EnumUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -65,9 +66,12 @@ public class ChaosController implements ChaosApi {
   }
 
   @Override
-  public ResponseEntity<ChaosLevelResponse> setChaosLevel(String body) {
+  public ResponseEntity<ChaosLevelResponse> setChaosLevel(
+      ChaosLevelSetRequest chaosLevelSetRequest) {
     dev.pollito.stonks_java.chaos.domain.ChaosLevel level =
-        EnumUtils.fromValue(dev.pollito.stonks_java.chaos.domain.ChaosLevel.class, body);
+        EnumUtils.fromValue(
+            dev.pollito.stonks_java.chaos.domain.ChaosLevel.class,
+            chaosLevelSetRequest.getLevel().getValue());
     chaosPortIn.setLevel(level);
     return ResponseEntity.ok(
         new ChaosLevelResponse()

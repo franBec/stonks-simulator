@@ -1,9 +1,16 @@
 package dev.pollito.stonks_java.chaos;
 
 import static dev.pollito.stonks_java.RestTestClientAssertions.assertResponseMetadata;
+import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL;
+import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.HIGH;
+import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.LOW;
+import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.MEDIUM;
+import static dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE;
+import static dev.pollito.stonks_java.generated.model.ChaosLevel.HIGH_VOLATILITY;
 import static java.math.BigDecimal.valueOf;
 import static java.time.OffsetDateTime.now;
 import static java.util.List.of;
+import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -11,14 +18,12 @@ import static org.springframework.boot.test.context.SpringBootTest.WebEnvironmen
 
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.generated.model.ChaosEvent;
-import dev.pollito.stonks_java.generated.model.ChaosEventSeverity;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
-import dev.pollito.stonks_java.generated.model.ChaosEventType;
 import dev.pollito.stonks_java.generated.model.ChaosEventsResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevel;
 import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
-import java.util.UUID;
+import dev.pollito.stonks_java.generated.model.ChaosLevelSetRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -94,14 +99,14 @@ class ChaosFlowE2eTest {
             .post()
             .uri(CHAOS_LEVEL_URI)
             .contentType(MediaType.APPLICATION_JSON)
-            .body("HIGH_VOLATILITY")
+            .body(new ChaosLevelSetRequest().level(HIGH_VOLATILITY))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosLevelResponse.class);
 
     assertResponseMetadata(setResult.getResponseBody(), CHAOS_LEVEL_URI, 200);
-    assertThat(setResult.getResponseBody().getData()).isEqualTo(ChaosLevel.HIGH_VOLATILITY);
+    assertThat(setResult.getResponseBody().getData()).isEqualTo(HIGH_VOLATILITY);
 
     var getResult =
         restTestClient
@@ -112,7 +117,7 @@ class ChaosFlowE2eTest {
             .isOk()
             .returnResult(ChaosLevelResponse.class);
 
-    assertThat(getResult.getResponseBody().getData()).isEqualTo(ChaosLevel.HIGH_VOLATILITY);
+    assertThat(getResult.getResponseBody().getData()).isEqualTo(HIGH_VOLATILITY);
   }
 
   @Test
@@ -121,10 +126,7 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(
-                new ChaosEventTriggerRequest()
-                    .type(ChaosEventType.HYPE_WAVE)
-                    .severity(ChaosEventSeverity.MEDIUM))
+            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
@@ -145,10 +147,7 @@ class ChaosFlowE2eTest {
     restTestClient
         .post()
         .uri(CHAOS_EVENTS_URI)
-        .body(
-            new ChaosEventTriggerRequest()
-                .type(ChaosEventType.HYPE_WAVE)
-                .severity(ChaosEventSeverity.MEDIUM))
+        .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
         .exchange()
         .expectStatus()
         .isOk();
@@ -171,10 +170,7 @@ class ChaosFlowE2eTest {
     restTestClient
         .post()
         .uri(CHAOS_EVENTS_URI)
-        .body(
-            new ChaosEventTriggerRequest()
-                .type(ChaosEventType.HYPE_WAVE)
-                .severity(ChaosEventSeverity.MEDIUM))
+        .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
         .exchange()
         .expectStatus()
         .isOk();
@@ -196,7 +192,7 @@ class ChaosFlowE2eTest {
   void getChaosEventReturnsNotFound() {
     restTestClient
         .get()
-        .uri(CHAOS_EVENTS_URI + "/" + UUID.randomUUID())
+        .uri(CHAOS_EVENTS_URI + "/" + randomUUID())
         .exchange()
         .expectStatus()
         .isNotFound();
@@ -206,7 +202,7 @@ class ChaosFlowE2eTest {
   void cancelChaosEventReturnsNotFound() {
     restTestClient
         .delete()
-        .uri(CHAOS_EVENTS_URI + "/" + UUID.randomUUID())
+        .uri(CHAOS_EVENTS_URI + "/" + randomUUID())
         .exchange()
         .expectStatus()
         .isNotFound();
@@ -229,18 +225,14 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(
-                new ChaosEventTriggerRequest()
-                    .type(ChaosEventType.HYPE_WAVE)
-                    .severity(ChaosEventSeverity.MEDIUM))
+            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosEventTriggeredResponse.class);
 
     assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity())
-        .isEqualTo(ChaosEventSeverity.CRITICAL);
+    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(CRITICAL);
   }
 
   @Test
@@ -260,17 +252,14 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(
-                new ChaosEventTriggerRequest()
-                    .type(ChaosEventType.HYPE_WAVE)
-                    .severity(ChaosEventSeverity.MEDIUM))
+            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosEventTriggeredResponse.class);
 
     assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(ChaosEventSeverity.HIGH);
+    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(HIGH);
   }
 
   @Test
@@ -290,18 +279,14 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(
-                new ChaosEventTriggerRequest()
-                    .type(ChaosEventType.HYPE_WAVE)
-                    .severity(ChaosEventSeverity.MEDIUM))
+            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosEventTriggeredResponse.class);
 
     assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity())
-        .isEqualTo(ChaosEventSeverity.MEDIUM);
+    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(MEDIUM);
   }
 
   @Test
@@ -321,16 +306,13 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(
-                new ChaosEventTriggerRequest()
-                    .type(ChaosEventType.HYPE_WAVE)
-                    .severity(ChaosEventSeverity.MEDIUM))
+            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosEventTriggeredResponse.class);
 
     assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(ChaosEventSeverity.LOW);
+    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(LOW);
   }
 }
