@@ -119,7 +119,7 @@ These parameters have inter-dependencies — changing one may require adjusting 
 | Parameter | Default | Constraint |
 |-----------|---------|------------|
 | `stonks.market.simulation.interval-ms` | 5,000 ms | ≥ max tick duration (11 COBOL spawns × per-program timeout). |
-| `stonks.chaos.event-check-interval-ms` | 10,000 ms | ≤ smallest `aiEventIntervalMs` across chaos levels |
+| `stonks.chaos.event-check-interval-ms` | 30,000 ms | ≤ smallest `aiEventIntervalMs` across chaos levels |
 | `stonks.broadcast.sse-timeout-ms` | 300,000 ms | > `heartbeat-rate-ms` |
 | `stonks.broadcast.heartbeat-rate-ms` | 15,000 ms | < `sse-timeout-ms` |
 | News cache TTL | 60s | ≤ `aiEventIntervalMs` at aggressive chaos levels |

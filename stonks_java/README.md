@@ -826,7 +826,7 @@ sequenceDiagram
     participant BSS as BroadcastSseService
     end
 
-    Note over CES: Every ${stonks.chaos.event-check-interval-ms} (default 10s)
+    Note over CES: Every ${stonks.chaos.event-check-interval-ms} (default 30s)
     Note over CES: Check if enabled && elapsed >= level.aiEventIntervalMs
 
     alt Scheduled trigger
@@ -892,14 +892,14 @@ sequenceDiagram
 
 | Level | volatilityMultiplier | aiEventIntervalMs |
 |-------|---------------------|-------------------|
-| `PAPER_HANDS` | 1.0× | 600,000 ms (10 min) |
-| `MODERATE` | 2.0× | 120,000 ms (2 min) |
-| `HIGH_VOLATILITY` | 5.0× | 30,000 ms (30 s) |
-| `EXTREME` | 12.5× | 15,000 ms (15 s) |
-| `MAXIMUM_OVERDRIVE` | 25.0× | 10,000 ms (10 s) |
+| `PAPER_HANDS` | 1.0× | 900,000 ms (15 min) |
+| `MODERATE` | 2.0× | 300,000 ms (5 min) |
+| `HIGH_VOLATILITY` | 5.0× | 120,000 ms (2 min) |
+| `EXTREME` | 12.5× | 60,000 ms (1 min) |
+| `MAXIMUM_OVERDRIVE` | 25.0× | 30,000 ms (30 s) |
 
 - **`volatilityMultiplier`** — scales the stock's base volatility passed to the price engine. Changing chaos level immediately adjusts market volatility.
-- **`aiEventIntervalMs`** — minimum interval between AI chaos events. The `ChaosEventScheduler` checks every `stonks.chaos.event-check-interval-ms` (default 10s) and fires an event if this interval has elapsed since the last one.
+- **`aiEventIntervalMs`** — minimum interval between AI chaos events. The `ChaosEventScheduler` checks every `stonks.chaos.event-check-interval-ms` (default 30s) and fires an event if this interval has elapsed since the last one.
 - Price tick frequency is controlled by `stonks.market.simulation.interval-ms` (default 2s) and is independent of chaos level.
 
 #### Flow
@@ -1095,7 +1095,7 @@ The system has multiple scheduled processes that must coexist without conflictin
 | Parameter | Default | Source | Constraint |
 |-----------|---------|--------|------------|
 | `stonks.market.simulation.interval-ms` | 2,000 ms | `application.yaml` | Must be ≥ expected max tick duration (11 COBOL spawns × per-program timeout). With real COBOL adapters, consider ≥ 5s. |
-| `stonks.chaos.event-check-interval-ms` | 10,000 ms | `application.yaml` | Must be ≤ smallest `aiEventIntervalMs` across chaos levels, otherwise events won't fire at the expected rate |
+| `stonks.chaos.event-check-interval-ms` | 30,000 ms | `application.yaml` | Must be ≤ smallest `aiEventIntervalMs` across chaos levels, otherwise events won't fire at the expected rate |
 | `stonks.broadcast.sse-timeout-ms` | 300,000 ms (5 min) | `application.yaml` | Must be > `heartbeat-rate-ms` |
 | `stonks.broadcast.heartbeat-rate-ms` | 15,000 ms | `application.yaml` | Must be < `sse-timeout-ms` |
 | News cache TTL | 60s | `application.yaml` | Should be ≤ `aiEventIntervalMs` at aggressive chaos levels |

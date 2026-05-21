@@ -4,6 +4,8 @@ import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPor
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -33,9 +35,14 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
           + "}";
 
   private final ChatClient chatClient;
+  private final RateLimiter perMinuteRateLimiter;
+  private final RateLimiter perDayRateLimiter;
 
-  public ChaosEventGeneratorOpenRouterAdapter(ChatClient.Builder builder) {
+  public ChaosEventGeneratorOpenRouterAdapter(
+      ChatClient.Builder builder, RateLimiterRegistry registry) {
     this.chatClient = builder.build();
+    this.perMinuteRateLimiter = registry.rateLimiter("ai-chaos-per-minute");
+    this.perDayRateLimiter = registry.rateLimiter("ai-chaos-per-day");
   }
 
   @Override
@@ -44,6 +51,12 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
       maxAttempts = 2,
       backoff = @Backoff(delay = 1000, multiplier = 2))
   public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+    if (!perMinuteRateLimiter.acquirePermission()) {
+      throw new ChaosEventGenerationException("AI request rate limited (per-minute)");
+    }
+    if (!perDayRateLimiter.acquirePermission()) {
+      throw new ChaosEventGenerationException("AI request rate limited (per-day)");
+    }
     try {
       return chatClient
           .prompt()
@@ -51,12 +64,18 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
           .user(buildPrompt(headlines, stocks))
           .call()
           .entity(ChaosEvent.class);
+    } catch (ChaosEventGenerationException e) {
+      throw e;
     } catch (Exception e) {
       throw new ChaosEventGenerationException("Failed to generate chaos event via AI", e);
     }
   }
 
   static class ChaosEventGenerationException extends RuntimeException {
+    ChaosEventGenerationException(String message) {
+      super(message);
+    }
+
     ChaosEventGenerationException(String message, Throwable cause) {
       super(message, cause);
     }

@@ -69,6 +69,7 @@ dependencies {
   implementation 'com.rometools:rome:2.1.0'
   implementation 'org.springframework.boot:spring-boot-starter-cache'
   implementation 'com.github.ben-manes.caffeine:caffeine'
+  implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 
   def h2Version = '2.4.240'
   def hibernateVersion = '7.2.6.Final'
