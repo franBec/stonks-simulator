@@ -7,7 +7,7 @@ spring:
       api-key: ${OPENROUTER_API_KEY}
       chat:
         options:
-          model: openrouter/free
+          model: nvidia/nemotron-nano-9b-v2
   sql:
     init:
       mode: always

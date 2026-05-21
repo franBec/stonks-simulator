@@ -1,12 +1,17 @@
 package dev.pollito.stonks_java.chaos.adapter.out;
 
+import static java.util.stream.Collectors.toSet;
+
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
+import dev.pollito.stonks_java.chaos.config.ChaosProperties;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -37,12 +42,14 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
   private final ChatClient chatClient;
   private final RateLimiter perMinuteRateLimiter;
   private final RateLimiter perDayRateLimiter;
+  private final BigDecimal maxImpact;
 
   public ChaosEventGeneratorOpenRouterAdapter(
-      ChatClient.Builder builder, RateLimiterRegistry registry) {
+      ChatClient.Builder builder, RateLimiterRegistry registry, ChaosProperties chaosProperties) {
     this.chatClient = builder.build();
     this.perMinuteRateLimiter = registry.rateLimiter("ai-chaos-per-minute");
     this.perDayRateLimiter = registry.rateLimiter("ai-chaos-per-day");
+    this.maxImpact = BigDecimal.valueOf(chaosProperties.getMaxImpactPercent());
   }
 
   @Override
@@ -58,16 +65,48 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
       throw new ChaosEventGenerationException("AI request rate limited (per-day)");
     }
     try {
-      return chatClient
-          .prompt()
-          .system(SYSTEM_PROMPT)
-          .user(buildPrompt(headlines, stocks))
-          .call()
-          .entity(ChaosEvent.class);
+      ChaosEvent event =
+          chatClient
+              .prompt()
+              .system(SYSTEM_PROMPT)
+              .user(buildPrompt(headlines, stocks))
+              .call()
+              .entity(ChaosEvent.class);
+      validate(event, stocks);
+      return event;
     } catch (ChaosEventGenerationException e) {
       throw e;
     } catch (Exception e) {
       throw new ChaosEventGenerationException("Failed to generate chaos event via AI", e);
+    }
+  }
+
+  private void validate(ChaosEvent event, List<StockPrice> stocks) {
+    if (event.symbol() == null) {
+      throw new ChaosEventGenerationException("AI generated null symbol");
+    }
+    if (event.impactPercent() == null) {
+      throw new ChaosEventGenerationException("AI generated null impactPercent");
+    }
+
+    Set<String> validSymbols = stocks.stream().map(StockPrice::symbol).collect(toSet());
+
+    if (!validSymbols.contains(event.symbol())) {
+      log.warn("AI hallucinated invalid symbol: {}", event.symbol());
+      throw new ChaosEventGenerationException("AI hallucinated invalid symbol: " + event.symbol());
+    }
+    if (event.impactPercent().abs().compareTo(maxImpact) > 0) {
+      log.warn("AI generated absurd impact: {}", event.impactPercent());
+      throw new ChaosEventGenerationException(
+          "AI generated absurd impact: " + event.impactPercent());
+    }
+    if (event.affectedSymbols() != null) {
+      for (String s : event.affectedSymbols()) {
+        if (!validSymbols.contains(s)) {
+          log.warn("AI hallucinated invalid affectedSymbol: {}", s);
+          throw new ChaosEventGenerationException("AI hallucinated invalid affectedSymbol: " + s);
+        }
+      }
     }
   }
 

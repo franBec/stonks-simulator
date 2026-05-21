@@ -8,4 +8,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ChaosProperties {
   private boolean enabled = true;
   private long eventCheckIntervalMs = 30000;
+  private int maxImpactPercent = 50;
 }
