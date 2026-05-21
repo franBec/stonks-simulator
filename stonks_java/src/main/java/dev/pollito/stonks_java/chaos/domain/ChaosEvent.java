@@ -11,4 +11,6 @@ public record ChaosEvent(
     String explanation,
     List<String> affectedSymbols,
     String sourceHeadline,
-    OffsetDateTime occurredAt) {}
+    OffsetDateTime occurredAt,
+    ChaosEventType type,
+    ChaosEventSeverity severity) {}

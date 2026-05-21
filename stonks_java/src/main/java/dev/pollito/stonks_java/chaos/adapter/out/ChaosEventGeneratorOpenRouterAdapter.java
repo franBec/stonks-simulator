@@ -6,6 +6,8 @@ import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPor
 import dev.pollito.stonks_java.chaos.config.ChaosProperties;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.chaos.domain.ChaosEventGenerationException;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventType;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import io.github.resilience4j.ratelimiter.RateLimiter;
@@ -15,6 +17,7 @@ import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.converter.BeanOutputConverter;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.retry.annotation.Backoff;
 import org.springframework.retry.annotation.Retryable;
@@ -28,17 +31,21 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
   private static final String SYSTEM_PROMPT =
       "You are a chaotic meme stock market generator. Given real news headlines and a list of meme"
           + " stocks, generate a single chaotic trading event. "
-          + "Respond ONLY with a raw JSON object (NO markdown, NO code fences, NO extra text) "
-          + "using this exact schema:\n"
+          + "Respond ONLY with a raw JSON object (NO markdown, NO code fences, NO extra text, NO"
+          + " commentary before or after) using this exact schema:\n"
           + "{\n"
           + "  \"headline\": \"<short catchy title>\",\n"
-          + "  \"symbol\": \"<stock ticker symbol>\",\n"
+          + "  \"symbol\": \"<stock ticker symbol that exists in the provided list>\",\n"
           + "  \"impactPercent\": <number representing price change percentage>,\n"
           + "  \"explanation\": \"<why this event is happening>\",\n"
           + "  \"affectedSymbols\": [\"<symbol1>\", \"<symbol2>\", ...],\n"
           + "  \"sourceHeadline\": \"<title of the news article that inspired this>\",\n"
-          + "  \"occurredAt\": \"<ISO-8601 timestamp>\"\n"
-          + "}";
+          + "  \"occurredAt\": \"<ISO-8601 timestamp>\",\n"
+          + "  \"type\": \"<one of: HYPE_WAVE, MEME_STORM, DUMP, WHALE_ALERT, RUG_PULL, PUMP_AND_DUMP, NEWS_FLASH>\",\n"
+          + "  \"severity\": \"<one of: LOW, MEDIUM, HIGH, CRITICAL>\"\n"
+          + "}\n"
+          + "Return ONLY valid JSON starting with '{' and ending with '}'. Do not include any other"
+          + " text.";
 
   private final ChatClient chatClient;
   private final RateLimiter perMinuteRateLimiter;
@@ -58,7 +65,12 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
       retryFor = ChaosEventGenerationException.class,
       maxAttempts = 2,
       backoff = @Backoff(delay = 1000, multiplier = 2))
-  public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+  public ChaosEvent generate(
+      List<NewsHeadline> headlines,
+      List<StockPrice> stocks,
+      ChaosEventType type,
+      ChaosEventSeverity severity,
+      String targetSymbol) {
     if (!perMinuteRateLimiter.acquirePermission()) {
       throw new ChaosEventGenerationException("AI request rate limited (per-minute)");
     }
@@ -66,13 +78,18 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
       throw new ChaosEventGenerationException("AI request rate limited (per-day)");
     }
     try {
-      ChaosEvent event =
+      String rawResponse =
           chatClient
               .prompt()
               .system(SYSTEM_PROMPT)
-              .user(buildPrompt(headlines, stocks))
+              .user(buildPrompt(headlines, stocks, type, severity, targetSymbol))
               .call()
-              .entity(ChaosEvent.class);
+              .content();
+      log.debug("Raw AI response: {}", rawResponse);
+      if (rawResponse == null || rawResponse.isBlank()) {
+        throw new ChaosEventGenerationException("AI returned empty response");
+      }
+      ChaosEvent event = new BeanOutputConverter<>(ChaosEvent.class).convert(rawResponse);
       validate(event, stocks);
       return event;
     } catch (ChaosEventGenerationException e) {
@@ -111,7 +128,12 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
     }
   }
 
-  private String buildPrompt(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+  private String buildPrompt(
+      List<NewsHeadline> headlines,
+      List<StockPrice> stocks,
+      ChaosEventType type,
+      ChaosEventSeverity severity,
+      String targetSymbol) {
     List<NewsHeadline> topHeadlines = headlines.size() > 10 ? headlines.subList(0, 10) : headlines;
     StringBuilder sb = new StringBuilder("Today's news headlines:\n");
     for (NewsHeadline h : topHeadlines) {
@@ -121,7 +143,10 @@ public class ChaosEventGeneratorOpenRouterAdapter implements ChaosEventGenerator
     for (StockPrice s : stocks) {
       sb.append("- ").append(s.symbol()).append(": $").append(s.price()).append("\n");
     }
-    sb.append("\nGenerate a chaotic trading event based on this information.");
+    sb.append("\nRequested event type: ").append(type);
+    sb.append("\nRequested severity: ").append(severity);
+    sb.append("\nTarget symbol: ").append(targetSymbol != null ? targetSymbol : "any");
+    sb.append("\n\nGenerate a chaotic trading event based on this information.");
     return sb.toString();
   }
 }

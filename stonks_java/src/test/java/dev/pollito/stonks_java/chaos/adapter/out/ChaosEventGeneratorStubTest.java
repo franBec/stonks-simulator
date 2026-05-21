@@ -1,13 +1,13 @@
 package dev.pollito.stonks_java.chaos.adapter.out;
 
+import static java.time.OffsetDateTime.now;
+import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.math.BigDecimal;
-import java.time.OffsetDateTime;
-import java.util.Collections;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ class ChaosEventGeneratorStubTest {
 
   @Test
   void generateWithEmptyInputsUsesDefaults() {
-    ChaosEvent event = stub.generate(Collections.emptyList(), Collections.emptyList());
+    ChaosEvent event = stub.generate(emptyList(), emptyList(), null, null, null);
 
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
@@ -37,6 +37,8 @@ class ChaosEventGeneratorStubTest {
     assertThat(event.impactPercent()).isNotNull();
     assertThat(event.explanation()).isNotBlank();
     assertThat(event.occurredAt()).isNotNull();
+    assertThat(event.type()).isNotNull();
+    assertThat(event.severity()).isNotNull();
   }
 
   @Test
@@ -44,13 +46,11 @@ class ChaosEventGeneratorStubTest {
     ChaosEvent event =
         stub.generate(
             List.of(
-                new NewsHeadline(
-                    "Breaking News",
-                    "Source1",
-                    "tech",
-                    "https://example.com",
-                    OffsetDateTime.now())),
-            Collections.emptyList());
+                new NewsHeadline("Breaking News", "Source1", "tech", "https://example.com", now())),
+            emptyList(),
+            null,
+            null,
+            null);
 
     assertThat(event.sourceHeadline()).isEqualTo("Breaking News");
     assertThat(event.symbol()).isEqualTo("GMEE");
@@ -60,7 +60,7 @@ class ChaosEventGeneratorStubTest {
   void generateWithStocksPicksSymbolFromStocks() {
     ChaosEvent event =
         stub.generate(
-            Collections.emptyList(),
+            emptyList(),
             List.of(
                 new StockPrice(
                     "TEND",
@@ -69,7 +69,10 @@ class ChaosEventGeneratorStubTest {
                     BigDecimal.valueOf(99),
                     BigDecimal.ONE,
                     BigDecimal.valueOf(1.01),
-                    OffsetDateTime.now())));
+                    now())),
+            null,
+            null,
+            null);
 
     assertThat(event.symbol()).isEqualTo("TEND");
     assertThat(event.sourceHeadline()).isEqualTo("Market Pulse");
@@ -79,9 +82,7 @@ class ChaosEventGeneratorStubTest {
   void generateReturnsNonNullFields() {
     ChaosEvent event =
         stub.generate(
-            List.of(
-                new NewsHeadline(
-                    "Headline1", "Src1", "biz", "https://a.com", OffsetDateTime.now())),
+            List.of(new NewsHeadline("Headline1", "Src1", "biz", "https://a.com", now())),
             List.of(
                 new StockPrice(
                     "DOGE",
@@ -90,7 +91,10 @@ class ChaosEventGeneratorStubTest {
                     BigDecimal.valueOf(48),
                     BigDecimal.valueOf(2),
                     BigDecimal.valueOf(4.0),
-                    OffsetDateTime.now())));
+                    now())),
+            null,
+            null,
+            null);
 
     assertThat(event.headline()).isEqualTo("Meme Stonks Go Brrr!");
     assertThat(event.affectedSymbols()).isNotEmpty();

@@ -1,11 +1,9 @@
 package dev.pollito.stonks_java.chaos;
 
 import static dev.pollito.stonks_java.RestTestClientAssertions.assertResponseMetadata;
-import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL;
-import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.HIGH;
-import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.LOW;
-import static dev.pollito.stonks_java.generated.model.ChaosEventSeverity.MEDIUM;
-import static dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.CRITICAL;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.MEDIUM;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.HYPE_WAVE;
 import static dev.pollito.stonks_java.generated.model.ChaosLevel.HIGH_VOLATILITY;
 import static java.math.BigDecimal.valueOf;
 import static java.time.OffsetDateTime.now;
@@ -15,6 +13,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
+import static org.springframework.http.MediaType.APPLICATION_JSON;
 
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.generated.model.ChaosEvent;
@@ -33,7 +32,6 @@ import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTe
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
-import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @SpringBootTest(webEnvironment = RANDOM_PORT)
@@ -65,7 +63,7 @@ class ChaosFlowE2eTest {
 
   @BeforeEach
   void setUp() {
-    when(chaosEventGeneratorPortOut.generate(any(), any()))
+    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
         .thenReturn(
             new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
                 "Meme Stonks Go Brrr!",
@@ -74,7 +72,9 @@ class ChaosFlowE2eTest {
                 "The algo detected extreme meme energy in the market. To the moon!",
                 of("GMEE"),
                 "Market Pulse",
-                now()));
+                now(),
+                HYPE_WAVE,
+                MEDIUM));
   }
 
   @Test
@@ -98,7 +98,7 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_LEVEL_URI)
-            .contentType(MediaType.APPLICATION_JSON)
+            .contentType(APPLICATION_JSON)
             .body(new ChaosLevelSetRequest().level(HIGH_VOLATILITY))
             .exchange()
             .expectStatus()
@@ -126,7 +126,10 @@ class ChaosFlowE2eTest {
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
+            .body(
+                new ChaosEventTriggerRequest()
+                    .type(dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE)
+                    .severity(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.MEDIUM))
             .exchange()
             .expectStatus()
             .isOk()
@@ -147,7 +150,10 @@ class ChaosFlowE2eTest {
     restTestClient
         .post()
         .uri(CHAOS_EVENTS_URI)
-        .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
+        .body(
+            new ChaosEventTriggerRequest()
+                .type(dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE)
+                .severity(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.MEDIUM))
         .exchange()
         .expectStatus()
         .isOk();
@@ -170,7 +176,10 @@ class ChaosFlowE2eTest {
     restTestClient
         .post()
         .uri(CHAOS_EVENTS_URI)
-        .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
+        .body(
+            new ChaosEventTriggerRequest()
+                .type(dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE)
+                .severity(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.MEDIUM))
         .exchange()
         .expectStatus()
         .isOk();
@@ -209,8 +218,8 @@ class ChaosFlowE2eTest {
   }
 
   @Test
-  void triggerChaosEventWithCriticalSeverity() {
-    when(chaosEventGeneratorPortOut.generate(any(), any()))
+  void triggerChaosEventWithRequestSeverity() {
+    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
         .thenReturn(
             new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
                 "Meme Stonks Go Brrr!",
@@ -219,100 +228,25 @@ class ChaosFlowE2eTest {
                 "The algo detected extreme meme energy.",
                 of("GMEE"),
                 "Market Pulse",
-                now()));
+                now(),
+                HYPE_WAVE,
+                CRITICAL));
 
     var result =
         restTestClient
             .post()
             .uri(CHAOS_EVENTS_URI)
-            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
+            .body(
+                new ChaosEventTriggerRequest()
+                    .type(dev.pollito.stonks_java.generated.model.ChaosEventType.HYPE_WAVE)
+                    .severity(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL))
             .exchange()
             .expectStatus()
             .isOk()
             .returnResult(ChaosEventTriggeredResponse.class);
 
     assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(CRITICAL);
-  }
-
-  @Test
-  void triggerChaosEventWithHighSeverity() {
-    when(chaosEventGeneratorPortOut.generate(any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(15.0),
-                "The algo detected extreme meme energy.",
-                of("GMEE"),
-                "Market Pulse",
-                now()));
-
-    var result =
-        restTestClient
-            .post()
-            .uri(CHAOS_EVENTS_URI)
-            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .returnResult(ChaosEventTriggeredResponse.class);
-
-    assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(HIGH);
-  }
-
-  @Test
-  void triggerChaosEventWithMediumSeverity() {
-    when(chaosEventGeneratorPortOut.generate(any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(7.5),
-                "The algo detected extreme meme energy.",
-                of("GMEE"),
-                "Market Pulse",
-                now()));
-
-    var result =
-        restTestClient
-            .post()
-            .uri(CHAOS_EVENTS_URI)
-            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .returnResult(ChaosEventTriggeredResponse.class);
-
-    assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(MEDIUM);
-  }
-
-  @Test
-  void triggerChaosEventWithLowSeverity() {
-    when(chaosEventGeneratorPortOut.generate(any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(3.0),
-                "The algo detected extreme meme energy.",
-                of("GMEE"),
-                "Market Pulse",
-                now()));
-
-    var result =
-        restTestClient
-            .post()
-            .uri(CHAOS_EVENTS_URI)
-            .body(new ChaosEventTriggerRequest().type(HYPE_WAVE).severity(MEDIUM))
-            .exchange()
-            .expectStatus()
-            .isOk()
-            .returnResult(ChaosEventTriggeredResponse.class);
-
-    assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
-    assertThat(result.getResponseBody().getData().getSeverity()).isEqualTo(LOW);
+    assertThat(result.getResponseBody().getData().getSeverity())
+        .isEqualTo(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL);
   }
 }

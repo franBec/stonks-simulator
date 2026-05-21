@@ -6,6 +6,9 @@ import static org.springframework.http.HttpStatus.OK;
 
 import dev.pollito.stonks_java.chaos.adapter.in.rest.mapper.ChaosRestMapper;
 import dev.pollito.stonks_java.chaos.application.port.in.ChaosPortIn;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventType;
+import dev.pollito.stonks_java.chaos.domain.ChaosLevel;
 import dev.pollito.stonks_java.generated.api.ChaosApi;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
@@ -14,7 +17,6 @@ import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevelSetRequest;
 import dev.pollito.stonks_java.util.enums.EnumUtils;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RestController;
@@ -29,49 +31,48 @@ public class ChaosController implements ChaosApi {
 
   @Override
   public ResponseEntity<ChaosEventsResponse> getChaosEvents() {
-    List<dev.pollito.stonks_java.generated.model.ChaosEvent> events =
-        chaosPortIn.getHistory().stream().map(mapper::map).toList();
     return ResponseEntity.ok(
         new ChaosEventsResponse()
             .instance(request.getRequestURI())
             .status(OK.value())
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
-            .data(events));
+            .data(chaosPortIn.getHistory().stream().map(mapper::map).toList()));
   }
 
   @Override
   public ResponseEntity<ChaosEventTriggeredResponse> triggerChaosEvent(
-      ChaosEventTriggerRequest chaosEventTriggerRequest) {
-    dev.pollito.stonks_java.chaos.domain.ChaosEvent domainEvent = chaosPortIn.triggerEvent();
+      ChaosEventTriggerRequest req) {
     return ResponseEntity.ok(
         new ChaosEventTriggeredResponse()
             .instance(request.getRequestURI())
             .status(OK.value())
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
-            .data(mapper.map(domainEvent)));
+            .data(
+                mapper.map(
+                    chaosPortIn.triggerEvent(
+                        ChaosEventType.valueOf(req.getType().getValue()),
+                        ChaosEventSeverity.valueOf(req.getSeverity().getValue()),
+                        req.getTargetSymbol()))));
   }
 
   @Override
   public ResponseEntity<ChaosLevelResponse> getChaosLevel() {
-    dev.pollito.stonks_java.chaos.domain.ChaosLevel level = chaosPortIn.getCurrentLevel();
     return ResponseEntity.ok(
         new ChaosLevelResponse()
             .instance(request.getRequestURI())
             .status(OK.value())
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
-            .data(mapper.mapLevel(level)));
+            .data(mapper.mapLevel(chaosPortIn.getCurrentLevel())));
   }
 
   @Override
   public ResponseEntity<ChaosLevelResponse> setChaosLevel(
       ChaosLevelSetRequest chaosLevelSetRequest) {
-    dev.pollito.stonks_java.chaos.domain.ChaosLevel level =
-        EnumUtils.fromValue(
-            dev.pollito.stonks_java.chaos.domain.ChaosLevel.class,
-            chaosLevelSetRequest.getLevel().getValue());
+    ChaosLevel level =
+        EnumUtils.fromValue(ChaosLevel.class, chaosLevelSetRequest.getLevel().getValue());
     chaosPortIn.setLevel(level);
     return ResponseEntity.ok(
         new ChaosLevelResponse()
@@ -84,14 +85,12 @@ public class ChaosController implements ChaosApi {
 
   @Override
   public ResponseEntity<ChaosEventsResponse> getChaosHistory() {
-    List<dev.pollito.stonks_java.generated.model.ChaosEvent> events =
-        chaosPortIn.getHistory().stream().map(mapper::map).toList();
     return ResponseEntity.ok(
         new ChaosEventsResponse()
             .instance(request.getRequestURI())
             .status(OK.value())
             .timestamp(now())
             .trace(current().getSpanContext().getTraceId())
-            .data(events));
+            .data(chaosPortIn.getHistory().stream().map(mapper::map).toList()));
   }
 }

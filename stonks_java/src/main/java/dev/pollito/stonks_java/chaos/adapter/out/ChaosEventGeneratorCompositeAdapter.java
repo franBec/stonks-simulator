@@ -2,6 +2,8 @@ package dev.pollito.stonks_java.chaos.adapter.out;
 
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventType;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import java.util.List;
@@ -22,12 +24,17 @@ public class ChaosEventGeneratorCompositeAdapter implements ChaosEventGeneratorP
   private final ChaosEventGeneratorFallbackAdapter fallback;
 
   @Override
-  public ChaosEvent generate(List<NewsHeadline> headlines, List<StockPrice> stocks) {
+  public ChaosEvent generate(
+      List<NewsHeadline> headlines,
+      List<StockPrice> stocks,
+      ChaosEventType type,
+      ChaosEventSeverity severity,
+      String targetSymbol) {
     try {
-      return openRouter.generate(headlines, stocks);
+      return openRouter.generate(headlines, stocks, type, severity, targetSymbol);
     } catch (Exception e) {
       log.error("Primary chaos generator failed, using fallback", e);
-      return fallback.generate(headlines, stocks);
+      return fallback.generate(headlines, stocks, type, severity, targetSymbol);
     }
   }
 }

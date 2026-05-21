@@ -7,7 +7,9 @@ import dev.pollito.stonks_java.chaos.application.port.in.ChaosPortIn;
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.chaos.domain.ChaosEventHistory;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity;
 import dev.pollito.stonks_java.chaos.domain.ChaosEventTriggered;
+import dev.pollito.stonks_java.chaos.domain.ChaosEventType;
 import dev.pollito.stonks_java.chaos.domain.ChaosLevel;
 import dev.pollito.stonks_java.news.application.port.in.NewsPortIn;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
@@ -32,8 +34,15 @@ public class ChaosService implements ChaosPortIn {
 
   @Override
   public ChaosEvent triggerEvent() {
+    return triggerEvent(null, null, null);
+  }
+
+  @Override
+  public ChaosEvent triggerEvent(
+      ChaosEventType type, ChaosEventSeverity severity, String targetSymbol) {
     ChaosEvent generated =
-        chaosEventGenerator.generate(newsPortIn.getHeadlines(), stockPortIn.getStocks());
+        chaosEventGenerator.generate(
+            newsPortIn.getHeadlines(), stockPortIn.getStocks(), type, severity, targetSymbol);
     ChaosEvent event =
         new ChaosEvent(
             generated.headline(),
@@ -42,7 +51,9 @@ public class ChaosService implements ChaosPortIn {
             generated.explanation(),
             generated.affectedSymbols(),
             generated.sourceHeadline(),
-            now());
+            now(),
+            generated.type() != null ? generated.type() : type,
+            generated.severity() != null ? generated.severity() : severity);
 
     stockPortIn.applyImpact(event.symbol(), event.impactPercent());
     eventPublisher.publishEvent(new ChaosEventTriggered(event));

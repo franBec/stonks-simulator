@@ -7,7 +7,7 @@ spring:
       api-key: ${OPENROUTER_API_KEY}
       chat:
         options:
-          model: nvidia/nemotron-nano-9b-v2
+          model: meta-llama/llama-3.1-8b-instruct
   sql:
     init:
       mode: always

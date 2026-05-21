@@ -24,7 +24,7 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void generatesEventWithEmptyInputs() {
-    var event = adapter.generate(emptyList(), emptyList());
+    var event = adapter.generate(emptyList(), emptyList(), null, null, null);
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
     assertThat(event.symbol()).isNotBlank();
@@ -33,6 +33,8 @@ class ChaosEventGeneratorFallbackAdapterTest {
     assertThat(event.affectedSymbols()).isNotEmpty();
     assertThat(event.sourceHeadline()).isEqualTo("Market Pulse");
     assertThat(event.occurredAt()).isNotNull();
+    assertThat(event.type()).isNotNull();
+    assertThat(event.severity()).isNotNull();
   }
 
   @Test
@@ -44,7 +46,10 @@ class ChaosEventGeneratorFallbackAdapterTest {
                     "Test Headline", "Test Source", "test", "https://example.com", now())),
             List.of(
                 new dev.pollito.stonks_java.stock.domain.StockPrice(
-                    "TEST", "Test Stock", valueOf(100), valueOf(99), ONE, valueOf(1.01), now())));
+                    "TEST", "Test Stock", valueOf(100), valueOf(99), ONE, valueOf(1.01), now())),
+            null,
+            null,
+            null);
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
     assertThat(event.sourceHeadline()).isEqualTo("Test Headline");
@@ -52,13 +57,17 @@ class ChaosEventGeneratorFallbackAdapterTest {
 
   @Test
   void returnsRandomEventsOnMultipleCalls() {
-    assertThat(adapter.generate(emptyList(), emptyList())).isNotNull();
-    assertThat(adapter.generate(emptyList(), emptyList())).isNotNull();
+    assertThat(adapter.generate(emptyList(), emptyList(), null, null, null)).isNotNull();
+    assertThat(adapter.generate(emptyList(), emptyList(), null, null, null)).isNotNull();
   }
 
   @Test
   void impactPercentIsWithinReasonableRange() {
-    assertThat(adapter.generate(emptyList(), emptyList()).impactPercent().doubleValue())
+    assertThat(
+            adapter
+                .generate(emptyList(), emptyList(), null, null, null)
+                .impactPercent()
+                .doubleValue())
         .isBetween(-50.0, 51.0);
   }
 }

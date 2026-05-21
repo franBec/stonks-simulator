@@ -1,5 +1,7 @@
 package dev.pollito.stonks_java.broadcast.application.service;
 
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.MEDIUM;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.HYPE_WAVE;
 import static java.math.BigDecimal.valueOf;
 import static java.time.OffsetDateTime.now;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -160,7 +162,9 @@ class BroadcastSseServiceTest {
                 "The algo detected meme energy.",
                 List.of("GMEE"),
                 "Market Pulse",
-                now())));
+                now(),
+                HYPE_WAVE,
+                MEDIUM)));
 
     verify(mockEmitter).send(any(SseEmitter.SseEventBuilder.class));
   }

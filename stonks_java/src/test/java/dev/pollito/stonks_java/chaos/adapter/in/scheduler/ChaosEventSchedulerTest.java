@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.chaos.adapter.in.scheduler;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -40,6 +41,6 @@ class ChaosEventSchedulerTest {
     scheduler.checkAndTriggerEvent();
 
     verify(chaosPortIn).getCurrentLevel();
-    verify(chaosPortIn, never()).triggerEvent();
+    verify(chaosPortIn, never()).triggerEvent(any(), any(), any());
   }
 }
