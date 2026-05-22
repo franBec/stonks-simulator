@@ -19,12 +19,17 @@ public class TradePortfolioStateJpaAdapter implements TradePortfolioStatePortOut
     var optPos = positionRepo.findByPortfolioIdAndSymbol(portfolioId, symbol);
     return new TradePortfolioState(
         portfolio.getCashBalance().doubleValue(),
-        optPos.map(p -> p.getQuantity().intValue()).orElse(0));
+        optPos.map(p -> p.getQuantity().intValue()).orElse(0),
+        optPos.map(p -> p.getCostBasis().doubleValue()).orElse(0.0));
   }
 
   @Override
   public void applyExecution(
-      long portfolioId, String symbol, BigDecimal newCashBalance, int newQuantity) {
+      long portfolioId,
+      String symbol,
+      BigDecimal newCashBalance,
+      int newQuantity,
+      BigDecimal costBasis) {
     var portfolio = portfolioRepo.findById(portfolioId).orElseThrow();
     portfolio.setCashBalance(newCashBalance);
     portfolioRepo.save(portfolio);
@@ -36,6 +41,7 @@ public class TradePortfolioStateJpaAdapter implements TradePortfolioStatePortOut
     position.setPortfolio(portfolio);
     position.setSymbol(symbol);
     position.setQuantity((long) newQuantity);
+    position.setCostBasis(costBasis);
     positionRepo.save(position);
   }
 }

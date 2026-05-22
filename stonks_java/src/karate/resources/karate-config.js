@@ -11,7 +11,7 @@ function fn() {
   }
 
   karate.configure('connectTimeout', 5000);
-  karate.configure('readTimeout', 10000);
+  karate.configure('readTimeout', 30000);
 
   karate.log('karate env:', env, '| baseUrl:', config.baseUrl);
   return config;

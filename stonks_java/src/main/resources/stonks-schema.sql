@@ -10,8 +10,7 @@ CREATE TABLE IF NOT EXISTS position (
     portfolio_id BIGINT NOT NULL,
     symbol VARCHAR(4) NOT NULL,
     quantity INT NOT NULL DEFAULT 0,
-    -- FIXME: add cost_basis DECIMAL(12,2) NOT NULL DEFAULT 0 here to fix P&L calculations.
-    -- The JPA entity and trade execution adapter also need updating. See PortfolioJpaAdapter.
+    cost_basis DECIMAL(12,2) NOT NULL DEFAULT 0,
     FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
 );
 

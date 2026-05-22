@@ -48,8 +48,6 @@ public class PortfolioService implements PortfolioPortIn {
       PositionSummary pos, Map<String, BigDecimal> priceMap) {
     BigDecimal currentPrice = priceMap.getOrDefault(pos.symbol(), ZERO);
     BigDecimal marketValue = currentPrice.multiply(BigDecimal.valueOf(pos.quantity()));
-    // FIXME: unrealizedPnl is wrong when costBasis == 0. See PortfolioJpaAdapter FIXME comment.
-    // When fixed, this formula (marketValue - costBasis) will be correct.
     BigDecimal unrealizedPnl = marketValue.subtract(pos.costBasis());
     return new PositionSummary(
         pos.symbol(), pos.quantity(), currentPrice, marketValue, pos.costBasis(), unrealizedPnl);

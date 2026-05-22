@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.trade.application.service;
 
+import static dev.pollito.stonks_java.trade.domain.TradeAction.BUY;
 import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
@@ -65,11 +66,21 @@ public class TradeService implements TradePortIn {
     TradeExecutionResult result = tradeExecutionPortOut.executeTrade(input);
 
     if (result.status() == ACCEPTED) {
+      double newCostBasis;
+      if (trade.action() == BUY) {
+        newCostBasis = state.costBasis() + result.totalCost();
+      } else {
+        newCostBasis =
+            state.holdingQty() > 0
+                ? state.costBasis() * result.newQuantity() / state.holdingQty()
+                : 0;
+      }
       tradePortfolioStatePortOut.applyExecution(
           PORTFOLIO_ID,
           trade.symbol(),
           BigDecimal.valueOf(result.newCashBalance()),
-          result.newQuantity());
+          result.newQuantity(),
+          BigDecimal.valueOf(newCostBasis));
       tradeHistoryPortOut.recordExecution(trade, result, PORTFOLIO_ID);
       events.publishEvent(
           new TradeExecutedEvent(trade.action(), result, trade.symbol(), trade.quantity()));

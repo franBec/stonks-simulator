@@ -31,6 +31,24 @@
       "file": "${workspaceFolder}/stonks_java/build/reports/jacoco/test/html/index.html"
     },
     {
+      "type": "java",
+      "name": "Karate: Run smoke-flow.feature",
+      "request": "launch",
+      "mainClass": "com.intuit.karate.Main",
+      "args": [
+        "src/karate/resources/features/smoke-flow.feature"
+      ],
+      "projectName": "stonks_java",
+      "cwd": "${workspaceFolder}/stonks_java",
+      "vmArgs": "-Dkarate.env=local"
+    },
+        {
+      "type": "chrome",
+      "request": "launch",
+      "name": "Stonks Java Open Karate Report",
+      "file": "${workspaceFolder}/stonks_java/target/karate-reports/karate-summary.html"
+    },
+    {
       "type": "node",
       "request": "launch",
       "name": "Stonks Vite App",
