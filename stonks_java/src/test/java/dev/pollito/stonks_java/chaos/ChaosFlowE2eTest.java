@@ -1,21 +1,12 @@
 package dev.pollito.stonks_java.chaos;
 
 import static dev.pollito.stonks_java.RestTestClientAssertions.assertResponseMetadata;
-import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.CRITICAL;
-import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.MEDIUM;
-import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.HYPE_WAVE;
 import static dev.pollito.stonks_java.generated.model.ChaosLevel.HIGH_VOLATILITY;
-import static java.math.BigDecimal.valueOf;
-import static java.time.OffsetDateTime.now;
-import static java.util.List.of;
 import static java.util.UUID.randomUUID;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.when;
 import static org.springframework.boot.test.context.SpringBootTest.WebEnvironment.RANDOM_PORT;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 
-import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.generated.model.ChaosEvent;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggerRequest;
 import dev.pollito.stonks_java.generated.model.ChaosEventTriggeredResponse;
@@ -23,15 +14,10 @@ import dev.pollito.stonks_java.generated.model.ChaosEventsResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevel;
 import dev.pollito.stonks_java.generated.model.ChaosLevelResponse;
 import dev.pollito.stonks_java.generated.model.ChaosLevelSetRequest;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
 @SpringBootTest(webEnvironment = RANDOM_PORT)
@@ -43,39 +29,6 @@ class ChaosFlowE2eTest {
   private static final String CHAOS_HISTORY_URI = "/api/chaos/history";
 
   @Autowired private RestTestClient restTestClient;
-  @Autowired private ChaosEventGeneratorPortOut chaosEventGeneratorPortOut;
-
-  @TestConfiguration
-  static class MockConfig {
-    @Bean
-    static BeanPostProcessor chaosGeneratorReplacer() {
-      return new BeanPostProcessor() {
-        @Override
-        public Object postProcessAfterInitialization(Object bean, String beanName) {
-          if (bean instanceof ChaosEventGeneratorPortOut) {
-            return Mockito.mock(ChaosEventGeneratorPortOut.class);
-          }
-          return bean;
-        }
-      };
-    }
-  }
-
-  @BeforeEach
-  void setUp() {
-    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(15.0),
-                "The algo detected extreme meme energy in the market. To the moon!",
-                of("GMEE"),
-                "Market Pulse",
-                now(),
-                HYPE_WAVE,
-                MEDIUM));
-  }
 
   @Test
   void getChaosLevelReturnsDefaultLevel() {
@@ -219,19 +172,6 @@ class ChaosFlowE2eTest {
 
   @Test
   void triggerChaosEventWithRequestSeverity() {
-    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(25.0),
-                "The algo detected extreme meme energy.",
-                of("GMEE"),
-                "Market Pulse",
-                now(),
-                HYPE_WAVE,
-                CRITICAL));
-
     var result =
         restTestClient
             .post()
@@ -251,20 +191,7 @@ class ChaosFlowE2eTest {
   }
 
   @Test
-  void triggerEventFallsBackToRequestValuesWhenGeneratedTypeAndSeverityAreNull() {
-    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
-        .thenReturn(
-            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
-                "Meme Stonks Go Brrr!",
-                "GMEE",
-                valueOf(25.0),
-                "The algo detected extreme meme energy.",
-                of("GMEE"),
-                "Market Pulse",
-                now(),
-                null,
-                null));
-
+  void triggerChaosEventWithRequestTypeAndSeverity() {
     var result =
         restTestClient
             .post()
