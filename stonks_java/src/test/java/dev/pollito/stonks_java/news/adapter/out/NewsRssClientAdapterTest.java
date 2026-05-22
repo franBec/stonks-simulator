@@ -105,4 +105,15 @@ class NewsRssClientAdapterTest {
 
     assertThat(adapter.fetchHeadlines()).isEmpty();
   }
+
+  @Test
+  void returnsEmptyListWhenResponseBodyIsNull() {
+    configureFeeds(List.of("https://example.com/rss"));
+    when(restClient.get()).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.uri(anyString())).thenReturn(requestHeadersUriSpec);
+    when(requestHeadersUriSpec.retrieve()).thenReturn(responseSpec);
+    when(responseSpec.body(String.class)).thenReturn(null);
+
+    assertThat(adapter.fetchHeadlines()).isEmpty();
+  }
 }

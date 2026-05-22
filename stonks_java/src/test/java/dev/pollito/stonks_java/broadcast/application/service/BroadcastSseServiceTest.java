@@ -191,6 +191,19 @@ class BroadcastSseServiceTest {
     assertThat(getEmitters()).isEmpty();
   }
 
+  @Test
+  void sendHeartbeatToleratesFailingEmitter() throws Exception {
+    SseEmitter failingEmitter = mock(SseEmitter.class);
+    doThrow(new IOException("heartbeat failed"))
+        .when(failingEmitter)
+        .send(any(SseEmitter.SseEventBuilder.class));
+    addMockEmitter(failingEmitter);
+
+    service.sendHeartbeat();
+
+    assertThat(getEmitters()).hasSize(1);
+  }
+
   private void addMockEmitter(SseEmitter emitter) throws Exception {
     getEmitters().add(emitter);
   }

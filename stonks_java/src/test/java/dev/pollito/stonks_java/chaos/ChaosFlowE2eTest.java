@@ -249,4 +249,39 @@ class ChaosFlowE2eTest {
     assertThat(result.getResponseBody().getData().getSeverity())
         .isEqualTo(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL);
   }
+
+  @Test
+  void triggerEventFallsBackToRequestValuesWhenGeneratedTypeAndSeverityAreNull() {
+    when(chaosEventGeneratorPortOut.generate(any(), any(), any(), any(), any()))
+        .thenReturn(
+            new dev.pollito.stonks_java.chaos.domain.ChaosEvent(
+                "Meme Stonks Go Brrr!",
+                "GMEE",
+                valueOf(25.0),
+                "The algo detected extreme meme energy.",
+                of("GMEE"),
+                "Market Pulse",
+                now(),
+                null,
+                null));
+
+    var result =
+        restTestClient
+            .post()
+            .uri(CHAOS_EVENTS_URI)
+            .body(
+                new ChaosEventTriggerRequest()
+                    .type(dev.pollito.stonks_java.generated.model.ChaosEventType.DUMP)
+                    .severity(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL))
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .returnResult(ChaosEventTriggeredResponse.class);
+
+    assertResponseMetadata(result.getResponseBody(), CHAOS_EVENTS_URI, 200);
+    assertThat(result.getResponseBody().getData().getType())
+        .isEqualTo(dev.pollito.stonks_java.generated.model.ChaosEventType.DUMP);
+    assertThat(result.getResponseBody().getData().getSeverity())
+        .isEqualTo(dev.pollito.stonks_java.generated.model.ChaosEventSeverity.CRITICAL);
+  }
 }
