@@ -48,10 +48,11 @@ graph TB
 
     subgraph OPEN ["Shared OPEN Modules"]
         cobol["cobol<br/><small>CobolAppPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
-        config["config<br/><small>web filters · jackson · scheduling ·<br/>error handling · OTel tracing ·<br/>AOP logging · log masking</small>"]
         generated["generated<br/><small>OpenAPI DTOs</small>"]
         util["util<br/><small>ValuedEnum · metadata</small>"]
     end
+
+    config["config<br/><small>web filters · jackson · scheduling ·<br/>error handling · OTel tracing ·<br/>AOP logging · log masking</small>"]
 
     broadcast ---> stock
     broadcast ---> trade
@@ -67,10 +68,11 @@ graph TB
 
     style stock stroke-width:2px
     style cobol fill:#e6f3ff,stroke:#4a9eff
-    style config fill:#e6f3ff,stroke:#4a9eff
     style generated fill:#e6f3ff,stroke:#4a9eff
     style util fill:#e6f3ff,stroke:#4a9eff
 ```
+
+> **Note:** `config` is a cross-cutting shared package (not annotated `@ApplicationModule`) containing web filters, Jackson config, scheduling, error handling, OTel tracing, AOP logging, and log masking. Every module may depend on it implicitly.
 
 ### Core rule
 
@@ -265,7 +267,7 @@ Object mapping uses **MapStruct** with the Spring component model (`componentMod
 ### OpenAPI-First REST Development
 
 REST endpoints follow an **OpenAPI-first** (contract-first) approach:
-1. The API contract is defined in an OpenAPI specification under `src/main/resources/openapi/`.
+1. The API contract is defined in an OpenAPI specification at `src/main/resources/openapi.yaml`.
 2. DTOs and server interfaces are generated from that spec into the `generated` module (see [Module Architecture Graph](#module-architecture-graph)).
 3. Generated DTOs are the canonical request/response types in the adapter layer and are never modified manually. Controllers implement the generated interfaces.
 
@@ -752,7 +754,7 @@ sequenceDiagram
     CS->>CS: publishEvent(ChaosEventTriggered)
     BS->>BS: @EventListener ChaosEventTriggered
     BS->>BS: build ChaosBroadcastEvent
-    BS->>Client: event: CHAOS_EVENT<br/>data: {headline, symbol, impact, explanation}
+    BS->>Client: event: CHAOS_EVENT<br/>data: {type, severity, headline, symbol, impact, explanation}
 
     Note over BS: Dead emitter cleanup<br/>onCompletion / onTimeout / onError
 ```
@@ -763,7 +765,7 @@ sequenceDiagram
 |-------|--------|--------------|
 | `PRICE_TICK` | Stock module (every simulation tick) | `{symbol, name, price, change, changePercent, timestamp}` |
 | `TRADE_EXECUTED` | Trade module (on accepted trade) | `{result, symbol, quantity, paperTape}` |
-| `CHAOS_EVENT` | Chaos module (on triggered event) | `{headline, symbol, impact, explanation}` |
+| `CHAOS_EVENT` | Chaos module (on triggered event) | `{type, severity, headline, symbol, impact, explanation}` |
 
 ### Paper Tape
 
@@ -832,8 +834,9 @@ sequenceDiagram
     alt Scheduled trigger
         CES->>CS: triggerEvent()
     else Manual trigger
-        Client->>CC: POST /api/chaos/events
-        CC->>CS: triggerEvent()
+        Client->>CC: POST /api/chaos/events (body: {type, severity, targetSymbol})
+        Note over CC: Parse ChaosEventType, <br/>ChaosEventSeverity from request
+        CC->>CS: triggerEvent(type, severity, targetSymbol)
     end
 
     Note over CS: 1. Fetch context
@@ -843,9 +846,9 @@ sequenceDiagram
     SI-->>CS: List<StockPrice>
 
     Note over CS: 2. Generate chaos event
-    CS->>CEG: generate(headlines, stocks)
-    Note over CEG: [default] Stub → canned random +15-35% event<br/>[real AI adapter] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: Fallback catalog (15 built-in events)
-    CEG-->>CS: ChaosEvent
+    CS->>CEG: generate(headlines, stocks, type, severity, targetSymbol)
+    Note over CEG: [default] Stub → ChaosEventFallbackGenerator (19 events)<br/>[real AI adapter] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: ChaosEventFallbackGenerator (19 events)
+    CEG-->>CS: ChaosEvent {type, severity, headline, symbol, impactPercent, ...}
 
     Note over CS: 3. Apply price impact
     CS->>SI: applyImpact(event.symbol, event.impactPercent)
@@ -879,9 +882,9 @@ sequenceDiagram
 
     Note over CES: Every 10s (if interval elapsed)
     CES->>CS: triggerEvent()
-    CS->>CEGS: generate(headlines, stocks)
-    Note over CEGS: Always returns:<br/>headline: "Meme Stonks Go Brrr!"<br/>impact: random +15% to +35%<br/>symbol: random from stock list
-    CEGS-->>CS: ChaosEvent
+    CS->>CEGS: generate(headlines, stocks, null, null, null)
+    Note over CEGS: Delegates to ChaosEventFallbackGenerator<br/>Selects from 19 pre-built events<br/>Picks random type, severity, headline,<br/>impact%, symbol from stock list
+    CEGS-->>CS: ChaosEvent {type, severity, headline, symbol, impactPercent, ...}
 ```
 
 ### Chaos Level Management
@@ -1051,17 +1054,17 @@ sequenceDiagram
     CS2->>SI: getStocks()
     SI-->>CS2: List<StockPrice>
 
-    CS2->>CEG: generate(headlines, stocks)
+    CS2->>CEG: generate(headlines, stocks, type, severity, targetSymbol)<br/>Note: null params = random selection
 
     alt OpenRouter AI (real adapter)
         Note over CEG: Builds LLM prompt with headline<br/>titles + sources to inspire<br/>meme-worthy chaos event
     else Fallback catalog (real adapter)
-        Note over CEG: Randomly picks headline title<br/>as sourceHeadline, selects event<br/>from 15 hardcoded meme scenarios
+        Note over CEG: Randomly picks headline title<br/>as sourceHeadline, selects event<br/>from ChaosEventFallbackGenerator (19 events)
     else Stub (default)
-        Note over CEG: Randomly picks headline title<br/>as sourceHeadline for<br/>"Meme Stonks Go Brrr!" event
+        Note over CEG: Delegates to ChaosEventFallbackGenerator<br/>Randomly picks headline, type,<br/>severity, impact% from 19 events
     end
 
-    CEG-->>CS2: ChaosEvent (with sourceHeadline)
+    CEG-->>CS2: ChaosEvent {type, severity, headline, symbol, impactPercent, sourceHeadline}
 ```
 
 ### RSS Configuration
