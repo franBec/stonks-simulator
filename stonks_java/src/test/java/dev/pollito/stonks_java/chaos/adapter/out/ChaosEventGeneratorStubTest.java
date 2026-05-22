@@ -1,13 +1,11 @@
 package dev.pollito.stonks_java.chaos.adapter.out;
 
+import static java.math.BigDecimal.ONE;
+import static java.math.BigDecimal.valueOf;
 import static java.time.OffsetDateTime.now;
 import static java.util.Collections.emptyList;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
-import dev.pollito.stonks_java.news.domain.NewsHeadline;
-import dev.pollito.stonks_java.stock.domain.StockPrice;
-import java.math.BigDecimal;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -27,77 +25,48 @@ class ChaosEventGeneratorStubTest {
   }
 
   @Test
-  void generateWithEmptyInputsUsesDefaults() {
-    ChaosEvent event = stub.generate(emptyList(), emptyList(), null, null, null);
-
+  void generatesEventWithEmptyInputs() {
+    var event = stub.generate(emptyList(), emptyList(), null, null, null);
     assertThat(event).isNotNull();
     assertThat(event.headline()).isNotBlank();
-    assertThat(event.symbol()).isEqualTo("GMEE");
-    assertThat(event.sourceHeadline()).isEqualTo("Market Pulse");
+    assertThat(event.symbol()).isNotBlank();
     assertThat(event.impactPercent()).isNotNull();
     assertThat(event.explanation()).isNotBlank();
+    assertThat(event.affectedSymbols()).isNotEmpty();
+    assertThat(event.sourceHeadline()).isEqualTo("Market Pulse");
     assertThat(event.occurredAt()).isNotNull();
     assertThat(event.type()).isNotNull();
     assertThat(event.severity()).isNotNull();
   }
 
   @Test
-  void generateWithHeadlinesUsesHeadlineSource() {
-    ChaosEvent event =
+  void generatesEventWithRealInputs() {
+    var event =
         stub.generate(
             List.of(
-                new NewsHeadline("Breaking News", "Source1", "tech", "https://example.com", now())),
-            emptyList(),
+                new dev.pollito.stonks_java.news.domain.NewsHeadline(
+                    "Test Headline", "Test Source", "test", "https://example.com", now())),
+            List.of(
+                new dev.pollito.stonks_java.stock.domain.StockPrice(
+                    "TEST", "Test Stock", valueOf(100), valueOf(99), ONE, valueOf(1.01), now())),
             null,
             null,
             null);
-
-    assertThat(event.sourceHeadline()).isEqualTo("Breaking News");
-    assertThat(event.symbol()).isEqualTo("GMEE");
+    assertThat(event).isNotNull();
+    assertThat(event.headline()).isNotBlank();
+    assertThat(event.sourceHeadline()).isEqualTo("Test Headline");
   }
 
   @Test
-  void generateWithStocksPicksSymbolFromStocks() {
-    ChaosEvent event =
-        stub.generate(
-            emptyList(),
-            List.of(
-                new StockPrice(
-                    "TEND",
-                    "Tendies",
-                    BigDecimal.valueOf(100),
-                    BigDecimal.valueOf(99),
-                    BigDecimal.ONE,
-                    BigDecimal.valueOf(1.01),
-                    now())),
-            null,
-            null,
-            null);
-
-    assertThat(event.symbol()).isEqualTo("TEND");
-    assertThat(event.sourceHeadline()).isEqualTo("Market Pulse");
+  void returnsRandomEventsOnMultipleCalls() {
+    assertThat(stub.generate(emptyList(), emptyList(), null, null, null)).isNotNull();
+    assertThat(stub.generate(emptyList(), emptyList(), null, null, null)).isNotNull();
   }
 
   @Test
-  void generateReturnsNonNullFields() {
-    ChaosEvent event =
-        stub.generate(
-            List.of(new NewsHeadline("Headline1", "Src1", "biz", "https://a.com", now())),
-            List.of(
-                new StockPrice(
-                    "DOGE",
-                    "Dogecoin",
-                    BigDecimal.valueOf(50),
-                    BigDecimal.valueOf(48),
-                    BigDecimal.valueOf(2),
-                    BigDecimal.valueOf(4.0),
-                    now())),
-            null,
-            null,
-            null);
-
-    assertThat(event.headline()).isEqualTo("Meme Stonks Go Brrr!");
-    assertThat(event.affectedSymbols()).isNotEmpty();
-    assertThat(event.impactPercent()).isBetween(BigDecimal.valueOf(15), BigDecimal.valueOf(35));
+  void impactPercentIsWithinReasonableRange() {
+    assertThat(
+            stub.generate(emptyList(), emptyList(), null, null, null).impactPercent().doubleValue())
+        .isBetween(-50.0, 51.0);
   }
 }

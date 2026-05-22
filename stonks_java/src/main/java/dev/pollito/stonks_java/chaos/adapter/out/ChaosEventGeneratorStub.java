@@ -1,12 +1,5 @@
 package dev.pollito.stonks_java.chaos.adapter.out;
 
-import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.MEDIUM;
-import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.HYPE_WAVE;
-import static java.math.BigDecimal.valueOf;
-import static java.time.OffsetDateTime.now;
-import static java.util.List.of;
-import static java.util.concurrent.ThreadLocalRandom.current;
-
 import dev.pollito.stonks_java.chaos.application.port.out.ChaosEventGeneratorPortOut;
 import dev.pollito.stonks_java.chaos.domain.ChaosEvent;
 import dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity;
@@ -37,23 +30,6 @@ public class ChaosEventGeneratorStub implements ChaosEventGeneratorPortOut {
       ChaosEventSeverity severity,
       String targetSymbol) {
     log.warn("Using stub for ChaosEventGeneratorPortOut — returning canned chaos event");
-    String source =
-        headlines.isEmpty()
-            ? "Market Pulse"
-            : headlines.get(current().nextInt(headlines.size())).title();
-    String symbol =
-        targetSymbol != null
-            ? targetSymbol
-            : stocks.isEmpty() ? "GMEE" : stocks.get(current().nextInt(stocks.size())).symbol();
-    return new ChaosEvent(
-        "Meme Stonks Go Brrr!",
-        symbol,
-        valueOf(15.0 + current().nextDouble(20.0)),
-        "The algo detected extreme meme energy in the market. To the moon!",
-        of(symbol),
-        source,
-        now(),
-        type != null ? type : HYPE_WAVE,
-        severity != null ? severity : MEDIUM);
+    return ChaosEventFallbackGenerator.generate(headlines, stocks, type, severity, targetSymbol);
   }
 }
