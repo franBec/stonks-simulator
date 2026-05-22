@@ -14,6 +14,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+// Low coverage on ChaosEventScheduler.java is acceptable. The remaining branches
+// (reentrant guard and happy path after interval elapses) depend on private mutable
+// state (AtomicBoolean running, AtomicReference<Instant> lastEvent) that can only be
+// set via reflection, which we prefer to avoid.
 @ExtendWith(MockitoExtension.class)
 class ChaosEventSchedulerTest {
 

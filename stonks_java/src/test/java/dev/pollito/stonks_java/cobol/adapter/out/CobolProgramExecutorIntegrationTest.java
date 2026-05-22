@@ -18,6 +18,17 @@ import org.junit.jupiter.api.Test;
 // low-level infrastructure concerns of the COBOL bridge. E2E tests use COBOL stubs which bypass
 // this code path entirely. Also lives in the shared 'cobol' module, not loaded by
 // @ApplicationModuleTest.
+//
+// Missed branches in CobolProgramExecutor.java and why they are acceptable:
+//   - resolveProgramPath relative-path branch: tests always use absolute temp paths.
+//     This is a trivial Path.of + normalize utility; relative path resolution would need
+//     to be tested via a properties config change rather than a real integration concern.
+//   - Timeout branch (process.waitFor returns false): requires a process that outlives the
+//     configured timeout, which is non-deterministic in CI and would slow down the suite.
+//     The timeout behavior (destroyForcibly + exception) is logically correct.
+//   - InterruptedException catch: reliably triggering a thread interruption during
+//     subprocess I/O is fragile and highly environment-sensitive. The handler correctly
+//     re-interrupts the thread and rethrows, which is the mandated pattern.
 class CobolProgramExecutorIntegrationTest {
   public record TestRequest(String value) {}
 

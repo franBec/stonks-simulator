@@ -6,9 +6,10 @@ import static org.mockito.Mockito.verify;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import org.junit.jupiter.api.Test;
 
-// Unit test (not E2E) for StockPriceTickScheduler because its AtomicBoolean
-// guard logic (skip overlapping ticks) is an internal concurrency concern
-// not observable through HTTP responses.
+// Low coverage on StockPriceTickScheduler.java is acceptable. The remaining
+// branch (guard against overlapping ticks) depends on private mutable state
+// (AtomicBoolean running) that can only be set via reflection, which we
+// prefer to avoid.
 class StockPriceTickSchedulerTest {
 
   @Test
