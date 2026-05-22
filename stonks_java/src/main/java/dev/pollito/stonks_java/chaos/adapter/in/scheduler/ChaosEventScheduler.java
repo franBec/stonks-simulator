@@ -1,6 +1,7 @@
 package dev.pollito.stonks_java.chaos.adapter.in.scheduler;
 
 import static java.time.Duration.between;
+import static java.time.Instant.now;
 
 import dev.pollito.stonks_java.chaos.application.port.in.ChaosPortIn;
 import dev.pollito.stonks_java.chaos.config.ChaosProperties;
@@ -20,7 +21,7 @@ public class ChaosEventScheduler {
   private final ChaosPortIn chaosPortIn;
   private final ChaosProperties chaosProperties;
 
-  private final AtomicReference<Instant> lastEvent = new AtomicReference<>(Instant.now());
+  private final AtomicReference<Instant> lastEvent = new AtomicReference<>(now());
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   @Scheduled(fixedRateString = "${stonks.chaos.event-check-interval-ms:30000}")
@@ -34,7 +35,7 @@ public class ChaosEventScheduler {
         return;
       }
 
-      Instant now = Instant.now();
+      Instant now = now();
 
       if (between(lastEvent.get(), now).toMillis()
           >= chaosPortIn.getCurrentLevel().getAiEventIntervalMs()) {
