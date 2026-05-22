@@ -2,10 +2,14 @@ package dev.pollito.stonks_java.chaos.adapter.out;
 
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.CRITICAL;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.HIGH;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.LOW;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventSeverity.MEDIUM;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.DUMP;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.HYPE_WAVE;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.MEME_STORM;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.NEWS_FLASH;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.PUMP_AND_DUMP;
+import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.RUG_PULL;
 import static dev.pollito.stonks_java.chaos.domain.ChaosEventType.WHALE_ALERT;
 import static java.math.BigDecimal.valueOf;
 import static java.time.OffsetDateTime.now;
@@ -144,7 +148,39 @@ class ChaosEventFallbackGenerator {
               12.0,
               null,
               HYPE_WAVE,
-              MEDIUM));
+              MEDIUM),
+          new FallbackEvent(
+              "Meme Stock Frenzy",
+              "Retail traders piling into meme stocks. To the moon!",
+              null,
+              45.0,
+              null,
+              MEME_STORM,
+              HIGH),
+          new FallbackEvent(
+              "Dev Team Dumps Tokens",
+              "The development team just sold their entire treasury. Classic rug pull.",
+              null,
+              -50.0,
+              null,
+              RUG_PULL,
+              CRITICAL),
+          new FallbackEvent(
+              "Coordinated Buy Signal",
+              "A coordinated buy signal detected across social media. Volatility incoming.",
+              null,
+              35.0,
+              null,
+              PUMP_AND_DUMP,
+              HIGH),
+          new FallbackEvent(
+              "Minor Earnings Miss",
+              "A company slightly missed estimates. Traders barely reacting.",
+              null,
+              -3.0,
+              null,
+              NEWS_FLASH,
+              LOW));
 
   static ChaosEvent generate(
       List<NewsHeadline> headlines,
