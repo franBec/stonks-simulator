@@ -172,7 +172,7 @@ When AI is unavailable, use pre-made chaos:
 
 ## Tech Constraints
 
-- **Tech stack**: Java 21, Spring Boot 4.0.6, GnuCOBOL 3.2, React 19, Tailwind CSS v4, SQLite — fixed by project concept
+- **Tech stack**: Java 21, Spring Boot 4.0.6, GnuCOBOL 3.2, React 19, Tailwind CSS v4, PostgreSQL — fixed by project concept
 - **Environment**: Local development in my NixOS with BusyBox PC; Production environment should be a docker compose Coolify project
 - **Budget**: Free tier APIs where possible
 - **Timeline**: Portfolio piece, no timeline whatsoever
@@ -182,10 +182,10 @@ When AI is unavailable, use pre-made chaos:
 | Decision                                    | Rationale                                                                            | Outcome   |
 |---------------------------------------------|--------------------------------------------------------------------------------------|-----------|
 | Java 21 + Spring Boot 4.0.6                 | Proven LTS with virtual threads; current stable Initializr default                   | — Pending |
-| Spring Web MVC over WebFlux                 | Blocking I/O (SQLite, COBOL processes) fits MVC; SseEmitter sufficient for streaming | — Pending |
+| Spring Web MVC over WebFlux                 | Blocking I/O (PostgreSQL, COBOL processes) fits MVC; SseEmitter sufficient for streaming | — Pending |
 | React 19 + Tailwind CSS v4                  | Latest stable versions; v4 performance improvements fit retro UI needs               | — Pending |
 | GnuCOBOL + process execution instead of JNI | Simpler integration, authentic binary execution feel, easier debugging               | — Pending |
-| SQLite over traditional RDBMS               | Zero-config, embedded, fits the lightweight/portable nature                          | — Pending |
+| H2 (dev) + PostgreSQL (prod)                    | H2 for zero-config local dev; PostgreSQL for production durability                  | — Pending |
 | OpenRouter API for AI events                | Free tier available, multiple model options, Spring AI compatible                    | — Pending |
 | Retro terminal aesthetic (3270)             | Core differentiator and portfolio wow-factor                                         | — Pending |
 | Single anonymous user                       | Simpler scope, focus on trading mechanics not auth                                   | — Pending |
@@ -202,7 +202,7 @@ C4Context
         System(react, "Stonks React", "React 19 SPA with 3270 terminal aesthetic", "Web App")
         System(java, "Stonks Java", "Spring Boot 4 REST API, SSE, AI orchestration", "Backend")
         System(cobol, "Stonks COBOL", "GnuCOBOL trading engine (TRADE-VALIDATOR, PORTFOLIO-MGR, COMPLIANCE-MGR)", "Legacy Engine")
-        SystemDb(db, "SQLite", "Portfolio, trades, stock prices", "Database")
+        SystemDb(db, "PostgreSQL", "Portfolio, trades, stock prices", "Database")
     }
 
     System_Ext(openrouter, "OpenRouter API", "AI memeification of real-world news")
@@ -228,7 +228,7 @@ stonks-simulator/
 
 ## TO-DO List
 
-- [ ] Core Spring Boot backend with REST API and SQLite database
+- [ ] Core Spring Boot backend with REST API and PostgreSQL database
 - [ ] COBOL trading engine (`TRADE-VALIDATOR`, `PORTFOLIO-MGR`, `COMPLIANCE-MGR`)
 - [ ] Java ↔ COBOL process execution integration
 - [ ] Real-time stock price simulation with configurable chaos levels
