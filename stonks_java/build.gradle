@@ -123,6 +123,14 @@ jacocoTestReport {
 
               // Log
               '**/log/**',
+
+              // Config classes
+              '**/chaos/config/AiConfig.class',
+              '**/config/cache/CacheConfig.class',
+              '**/config/env/StonksAdapterEnvironmentPostProcessor.class',
+              '**/config/properties/StonksAdapterProperties.class',
+              '**/config/retry/RetryConfig.class',
+              '**/config/scheduling/SchedulingConfig.class',
               )
         }
       })
