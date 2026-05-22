@@ -26,6 +26,23 @@ ext {
   set('springAiVersion', "2.0.0-M6")
 }
 
+sourceSets {
+  main {
+    java {
+      srcDir(layout.buildDirectory.dir("generated/sources/openapi/src/main/java"))
+      srcDir(layout.buildDirectory.dir("generated/sources/hibernate"))
+    }
+  }
+  karate {
+    java {
+      srcDir 'src/karate/java'
+    }
+    // resources default to src/karate/resources; no explicit srcDir needed
+    compileClasspath += sourceSets.test.runtimeClasspath
+    runtimeClasspath += sourceSets.test.runtimeClasspath
+  }
+}
+
 configurations {
   hibernateTools
 }
@@ -56,6 +73,10 @@ dependencies {
   testCompileOnly 'org.projectlombok:lombok'
   testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
   testAnnotationProcessor 'org.projectlombok:lombok'
+
+  def karateVersion = '1.5.1'
+  karateImplementation "io.karatelabs:karate-core:${karateVersion}"
+  karateImplementation "io.karatelabs:karate-junit5:${karateVersion}"
 
   def mapstructVersion = '1.7.0.Beta1'
   implementation "org.mapstruct:mapstruct:${mapstructVersion}"
@@ -100,6 +121,8 @@ jacocoTestReport {
     xml.required = true
     html.required = true
   }
+  // Only include coverage from the standard 'test' task — karate smoke tests are external
+  executionData fileTree(layout.buildDirectory.dir("jacoco")).include("test.exec")
 
   classDirectories.setFrom(
       files(classDirectories.files.collect {
@@ -163,6 +186,11 @@ tasks.named('check') {
   dependsOn jacocoTestCoverageVerification
 }
 
+// Ensure karate smoke tests never participate in the standard build lifecycle
+tasks.named('check') {
+  dependsOn -= karateTest
+}
+
 tasks.named('test') {
   useJUnitPlatform()
   jvmArgs '-XX:+EnableDynamicAgentLoading'
@@ -176,6 +204,21 @@ tasks.named('test') {
     }
   }
   finalizedBy jacocoTestReport
+}
+
+tasks.register('karateTest', Test) {
+  description = 'Runs Karate smoke tests against a live server (localhost:8080 by default)'
+  group = 'verification'
+  testClassesDirs = sourceSets.karate.output.classesDirs
+  classpath = sourceSets.karate.runtimeClasspath
+  useJUnitPlatform()
+  systemProperty 'karate.env', System.getProperty('karate.env', 'local')
+  // Never fail the build pipeline — these are manual smoke tests
+  ignoreFailures = true
+  // Ensure Karate tests do not participate in JaCoCo coverage
+  jacoco {
+    enabled = false
+  }
 }
 
 spotless {
@@ -280,15 +323,6 @@ tasks.register('generateEntities') {
               )
           hbm2java(jdk5: true, ejb3: true)
         }
-  }
-}
-
-sourceSets {
-  main {
-    java {
-      srcDir(layout.buildDirectory.dir("generated/sources/openapi/src/main/java"))
-      srcDir(layout.buildDirectory.dir("generated/sources/hibernate"))
-    }
   }
 }
 

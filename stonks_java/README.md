@@ -1214,6 +1214,30 @@ When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a tr
 ./gradlew jacocoTestCoverageVerification    # coverage check
 ```
 
+### Karate Smoke Tests (Manual / Live Server)
+
+In addition to the automated JUnit suite, there is a separate **Karate** smoke test pack for manual sanity checks against a **live** running server (`localhost:8080` by default). These tests live in `src/karate/` and are **completely isolated** from `./gradlew test` — they do not affect JaCoCo coverage, are excluded from the `check` lifecycle, and never fail the build.
+
+They are structured as reusable helpers (`features/helpers/*.feature`) that individual scenarios `call read`, plus a master `smoke-flow.feature` that chains all 14 manual-test steps end-to-end.
+
+```bash
+# 1. Start the app in another terminal
+./gradlew bootRun
+
+# 2. Run the Karate smoke tests
+./gradlew karateTest
+
+# 3. View the pretty HTML report
+open build/karate-reports/karate-summary.html
+```
+
+To target a different environment:
+```bash
+./gradlew karateTest -Dkarate.env=staging
+```
+
+The `karate.env` property switches `baseUrl` in `karate-config.js` (default: `http://localhost:8080`).
+
 ---
 
 ## Integrations
