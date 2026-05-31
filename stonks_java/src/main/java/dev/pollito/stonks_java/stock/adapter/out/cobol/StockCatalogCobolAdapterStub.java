@@ -2,7 +2,7 @@ package dev.pollito.stonks_java.stock.adapter.out.cobol;
 
 import static java.util.List.of;
 
-import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockCatalogPortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import java.math.BigDecimal;
 import java.util.List;
@@ -17,11 +17,11 @@ import org.springframework.stereotype.Service;
     havingValue = "stub",
     matchIfMissing = true)
 @Slf4j
-public class StockCatalogCobolAdapterStub implements StockPortOut {
+public class StockCatalogCobolAdapterStub implements StockCatalogPortOut {
 
   @Override
   public List<Stock> getStocks() {
-    log.warn("Using dev stub for StockPortOut — no real COBOL engine is running");
+    log.warn("Using dev stub for StockCatalogPortOut — no real COBOL engine is running");
     return of(
         new Stock("COBL", "COBOL Corp", new BigDecimal("100.00"), new BigDecimal("0.05"), "BULL"),
         new Stock("GMEE", "GameStonks", new BigDecimal("50.00"), new BigDecimal("0.25"), "MOON"),

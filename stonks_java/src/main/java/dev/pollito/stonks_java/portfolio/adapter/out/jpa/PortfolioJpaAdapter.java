@@ -7,9 +7,9 @@ import dev.pollito.stonks_java.portfolio.domain.PortfolioSummary;
 import dev.pollito.stonks_java.portfolio.domain.PositionSummary;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
+import org.springframework.stereotype.Service;
 
-@Repository
+@Service
 @RequiredArgsConstructor
 public class PortfolioJpaAdapter implements PortfolioPortOut {
 

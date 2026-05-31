@@ -2,11 +2,9 @@
     allowedDependencies = {
       "stock",
       "stock :: domain",
-      "trade",
       "trade :: domain",
-      "trade :: in",
-      "chaos",
-      "chaos :: domain",
+      "chaosevent",
+      "chaosevent :: domain",
       "portfolio",
       "portfolio :: domain"
     })

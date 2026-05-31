@@ -30,19 +30,19 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
     log.warn("Using dev stub for TradeExecutionPortOut — no real COBOL engine is running");
 
     if (input.action() == null) {
-      return rejected("S225", "JOB ABEND S225 - INVALID ACTION");
+      return rejected("S225", "JOB ABEND S225 - INVALID ACTION", input);
     }
 
     if (!VALID_SYMBOLS.contains(input.symbol())) {
-      return rejected("S001", "JOB ABEND S001 - UNKNOWN SYMBOL " + input.symbol());
+      return rejected("S001", "JOB ABEND S001 - UNKNOWN SYMBOL " + input.symbol(), input);
     }
 
     if (input.quantity() <= 0) {
-      return rejected("S224", "JOB ABEND S224 - INVALID QTY");
+      return rejected("S224", "JOB ABEND S224 - INVALID QTY", input);
     }
 
     if (input.price() <= 0.0) {
-      return rejected("S226", "JOB ABEND S226 - INVALID PRICE");
+      return rejected("S226", "JOB ABEND S226 - INVALID PRICE", input);
     }
 
     double totalCost = input.quantity() * input.price();
@@ -51,18 +51,18 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
 
     if (input.action() == BUY) {
       if (input.cashBalance() < totalCost) {
-        return rejected("S222", "JOB ABEND S222 - INSUFF FUNDS");
+        return rejected("S222", "JOB ABEND S222 - INSUFF FUNDS", input);
       }
       newCashBalance = input.cashBalance() - totalCost;
       newQuantity = input.holdingQty() + input.quantity();
     } else if (input.action() == SELL) {
       if (input.holdingQty() < input.quantity()) {
-        return rejected("S223", "JOB ABEND S223 - INSUFF SHARES");
+        return rejected("S223", "JOB ABEND S223 - INSUFF SHARES", input);
       }
       newCashBalance = input.cashBalance() + totalCost;
       newQuantity = input.holdingQty() - input.quantity();
     } else {
-      return rejected("S225", "JOB ABEND S225 - INVALID ACTION");
+      return rejected("S225", "JOB ABEND S225 - INVALID ACTION", input);
     }
 
     return new TradeExecutionResult(
@@ -74,7 +74,8 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
         totalCost);
   }
 
-  private TradeExecutionResult rejected(String errorCode, String message) {
-    return new TradeExecutionResult(ValidationStatus.REJECTED, errorCode, message, 0.0, 0, 0.0);
+  private TradeExecutionResult rejected(String errorCode, String message, TradeExecutionInput input) {
+    return new TradeExecutionResult(
+        ValidationStatus.REJECTED, errorCode, message, input.cashBalance(), input.holdingQty(), 0.0);
   }
 }

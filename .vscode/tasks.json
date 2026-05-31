@@ -11,6 +11,19 @@
       },
       "problemMatcher": ["$gradle"],
       "detail": "Run Gradle compilation with annotation processing to generate MapStruct mappers"
+    },
+    {
+      "label": "run-smoke-tests",
+      "type": "shell",
+      "command": "./run-smoke-tests.sh",
+      "group": {
+        "kind": "test",
+        "isDefault": true
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/stonks_java"
+      },
+      "detail": "Build, start app, run Karate smoke tests, and collect all logs into a single timestamped file"
     }
   ]
 }

@@ -25,13 +25,13 @@ public class TradeHistoryJpaAdapter implements TradeHistoryPortOut {
   @Override
   public Page<TradeHistoryItem> getTradeHistory(Pageable pageable) {
     return tradeHistoryJpaRepository
-        .findByPortfolioIdOrderByExecutedAtDesc(PORTFOLIO_ID, pageable)
+        .findByPortfolioId(PORTFOLIO_ID, pageable)
         .map(tradeHistoryJpaMapper::map);
   }
 
   @Override
   public void recordExecution(Trade trade, TradeExecutionResult result, long portfolioId) {
-    var portfolio = portfolioRepo.findById(portfolioId).orElseThrow();
-    tradeHistoryJpaRepository.save(historyEntityMapper.map(trade, result, portfolio));
+    tradeHistoryJpaRepository.save(
+        historyEntityMapper.map(trade, result, portfolioRepo.findById(portfolioId).orElseThrow()));
   }
 }

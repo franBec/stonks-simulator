@@ -8,14 +8,12 @@ import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
-import dev.pollito.stonks_java.trade.application.port.out.TradeValidationPortOut;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionInput;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
-import dev.pollito.stonks_java.trade.domain.TradeValidation;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -30,7 +28,6 @@ public class TradeService implements TradePortIn {
 
   private static final long PORTFOLIO_ID = 1L;
 
-  private final TradeValidationPortOut tradeValidationPortOut;
   private final TradeExecutionPortOut tradeExecutionPortOut;
   private final TradeHistoryPortOut tradeHistoryPortOut;
   private final TradePortfolioStatePortOut tradePortfolioStatePortOut;
@@ -38,32 +35,22 @@ public class TradeService implements TradePortIn {
   private final ApplicationEventPublisher events;
 
   @Override
-  public TradeValidation validateTrade(Trade trade) {
-    return tradeValidationPortOut.validateTrade(trade);
-  }
-
-  @Override
   @Transactional
   public TradeExecutionResult executeTrade(Trade trade) {
-    double currentPrice =
-        stockPortIn.getStocks().stream()
-            .filter(s -> s.symbol().equals(trade.symbol()))
-            .findFirst()
-            .map(s -> s.price().doubleValue())
-            .orElse(0.0);
-
     TradePortfolioState state = tradePortfolioStatePortOut.getState(PORTFOLIO_ID, trade.symbol());
-
-    TradeExecutionInput input =
-        new TradeExecutionInput(
-            trade.action(),
-            trade.symbol(),
-            trade.quantity(),
-            currentPrice,
-            state.cashBalance(),
-            state.holdingQty());
-
-    TradeExecutionResult result = tradeExecutionPortOut.executeTrade(input);
+    TradeExecutionResult result =
+        tradeExecutionPortOut.executeTrade(
+            new TradeExecutionInput(
+                trade.action(),
+                trade.symbol(),
+                trade.quantity(),
+                stockPortIn.getStocks().stream()
+                    .filter(s -> s.symbol().equals(trade.symbol()))
+                    .findFirst()
+                    .map(s -> s.price().doubleValue())
+                    .orElse(0.0),
+                state.cashBalance(),
+                state.holdingQty()));
 
     if (result.status() == ACCEPTED) {
       double newCostBasis;

@@ -8,8 +8,6 @@ import dev.pollito.stonks_java.generated.api.TradesApi;
 import dev.pollito.stonks_java.generated.model.TradeExecutionRequest;
 import dev.pollito.stonks_java.generated.model.TradeExecutionResponse;
 import dev.pollito.stonks_java.generated.model.TradeHistoryResponse;
-import dev.pollito.stonks_java.generated.model.TradeValidationRequest;
-import dev.pollito.stonks_java.generated.model.TradeValidationResponse;
 import dev.pollito.stonks_java.trade.adapter.in.rest.mapper.TradeRestMapper;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,18 +22,6 @@ public class TradeController implements TradesApi {
   private final TradePortIn tradePortIn;
   private final TradeRestMapper mapper;
   private final HttpServletRequest request;
-
-  @Override
-  public ResponseEntity<TradeValidationResponse> validateTrade(
-      TradeValidationRequest tradeValidationRequest) {
-    return ResponseEntity.ok(
-        new TradeValidationResponse()
-            .instance(request.getRequestURI())
-            .status(OK.value())
-            .timestamp(now())
-            .trace(current().getSpanContext().getTraceId())
-            .data(mapper.map(tradePortIn.validateTrade(mapper.map(tradeValidationRequest)))));
-  }
 
   @Override
   public ResponseEntity<TradeExecutionResponse> executeTrade(

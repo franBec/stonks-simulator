@@ -33,7 +33,9 @@ public class ${pojo.getDeclarationName()} implements Serializable {
 
     <#if isId>
     @Id
+    <#if ["Long", "Integer", "Short", "Byte", "long", "int", "short", "byte"]?seq_contains(javaType)>
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    </#if>
     <#if property.value.columnIterator?? && property.value.columnIterator.hasNext()>
         <#assign column = property.value.columnIterator.next()>
     @Column(name = "${column.name}")

@@ -16,7 +16,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-class CobolProgramExecutor implements CobolAppPortOut {
+public class CobolProgramExecutor implements CobolAppPortOut {
   private final CobolProperties properties;
   private final ObjectMapper objectMapper;
 

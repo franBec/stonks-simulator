@@ -3,9 +3,6 @@ COBC_FLAGS = -x -I src/copybooks
 SRC = src
 BIN = bin
 
-TRADE_TESTS = test-valid-buy test-insufficient-funds test-invalid-symbol \
-              test-invalid-quantity test-invalid-action
-
 PRICE_TESTS = test-price-bull test-price-crash test-price-moon
 
 PORTFOLIO_TESTS = test-portfolio-valid-buy test-portfolio-valid-sell \
@@ -14,13 +11,10 @@ PORTFOLIO_TESTS = test-portfolio-valid-buy test-portfolio-valid-sell \
                   test-portfolio-invalid-action test-portfolio-invalid-symbol \
                   test-portfolio-zero-qty test-portfolio-zero-price
 
-all: $(BIN)/trade-validator $(BIN)/price-engine $(BIN)/catalog $(BIN)/portfolio-mgr
+all: $(BIN)/price-engine $(BIN)/catalog $(BIN)/portfolio-mgr
 
 $(BIN):
 	mkdir -p $(BIN)
-
-$(BIN)/trade-validator: $(SRC)/trade-validator.cob $(SRC)/copybooks/stkinit.cpy $(SRC)/copybooks/stkdata.cpy $(SRC)/copybooks/trdtype.cpy | $(BIN)
-	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/trade-validator.cob
 
 $(BIN)/price-engine: $(SRC)/price-engine.cob $(SRC)/copybooks/pricetyp.cpy | $(BIN)
 	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/price-engine.cob
@@ -31,33 +25,11 @@ $(BIN)/catalog: $(SRC)/catalog.cob $(SRC)/copybooks/stkinit.cpy $(SRC)/copybooks
 $(BIN)/portfolio-mgr: $(SRC)/portfolio-mgr.cob $(SRC)/copybooks/stkinit.cpy $(SRC)/copybooks/stkdata.cpy $(SRC)/copybooks/trdtype.cpy $(SRC)/copybooks/prttype.cpy | $(BIN)
 	$(COBC) $(COBC_FLAGS) -o $@ $(SRC)/portfolio-mgr.cob
 
-test-trade: $(TRADE_TESTS)
-
 test-price: $(PRICE_TESTS)
 
 test-portfolio: $(PORTFOLIO_TESTS)
 
-test: test-trade test-price test-catalog test-portfolio
-
-test-valid-buy: $(BIN)/trade-validator
-	@echo "--- Test: Valid BUY ---"
-	@cat test/valid-buy.json | $(BIN)/trade-validator
-
-test-insufficient-funds: $(BIN)/trade-validator
-	@echo "--- Test: Insufficient Funds ---"
-	@cat test/insufficient-funds.json | $(BIN)/trade-validator
-
-test-invalid-symbol: $(BIN)/trade-validator
-	@echo "--- Test: Invalid Symbol ---"
-	@cat test/invalid-symbol.json | $(BIN)/trade-validator
-
-test-invalid-quantity: $(BIN)/trade-validator
-	@echo "--- Test: Invalid Quantity ---"
-	@cat test/invalid-quantity.json | $(BIN)/trade-validator
-
-test-invalid-action: $(BIN)/trade-validator
-	@echo "--- Test: Invalid Action ---"
-	@echo '{"action":"HOLD","symbol":"GMEE","quantity":10,"price":45.00,"cashBalance":10000.00}' | $(BIN)/trade-validator
+test: test-price test-catalog test-portfolio
 
 test-price-bull: $(BIN)/price-engine
 	@echo "--- Test: Price Engine BULL ---"
@@ -113,5 +85,5 @@ clean:
 lint:
 	@./scripts/cobol-lint.sh
 
-.PHONY: all test test-trade test-price test-catalog test-portfolio lint clean \
-        $(TRADE_TESTS) $(PRICE_TESTS) $(PORTFOLIO_TESTS)
+.PHONY: all test test-price test-catalog test-portfolio lint clean \
+        $(PRICE_TESTS) $(PORTFOLIO_TESTS)

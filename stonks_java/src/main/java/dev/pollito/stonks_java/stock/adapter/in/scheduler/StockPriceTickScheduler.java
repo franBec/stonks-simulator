@@ -15,7 +15,7 @@ public class StockPriceTickScheduler {
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   @Scheduled(fixedRateString = "${stonks.market.simulation.interval-ms:5000}")
-  void tick() {
+  public void tick() {
     if (!running.compareAndSet(false, true)) {
       log.warn("Skipping price tick — previous tick still running");
       return;

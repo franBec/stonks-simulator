@@ -14,6 +14,31 @@ CREATE TABLE IF NOT EXISTS position (
     FOREIGN KEY (portfolio_id) REFERENCES portfolio(id)
 );
 
+CREATE TABLE IF NOT EXISTS stock_price (
+    symbol VARCHAR(4) PRIMARY KEY,
+    price DECIMAL(10,2) NOT NULL,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS intensity_level (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    level VARCHAR(32) NOT NULL DEFAULT 'PAPER_HANDS',
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS chaosevent_incident_log (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    headline VARCHAR(512) NOT NULL,
+    target_symbol VARCHAR(4) NOT NULL,
+    impact_percent DECIMAL(10,2) NOT NULL,
+    explanation VARCHAR(2048),
+    affected_symbols VARCHAR(2048),
+    source_headline VARCHAR(512),
+    event_type VARCHAR(32),
+    event_severity VARCHAR(16),
+    occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TABLE IF NOT EXISTS trade_history (
     id BIGINT AUTO_INCREMENT PRIMARY KEY,
     portfolio_id BIGINT NOT NULL,

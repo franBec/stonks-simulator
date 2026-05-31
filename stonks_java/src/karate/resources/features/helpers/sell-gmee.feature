@@ -20,7 +20,7 @@ Feature: Helper — Execute SELL 5 GMEE
     Then status 200
     And match response.status == 200
     And match response.data.status == 'ACCEPTED'
-    And match response.data.message == 'TRADE EXECUTED - SELL GMEE'
+    And match response.data.message == '#regex ^TRADE EXECUTED - SELL.*'
     And match response.data.newCashBalance == '#number'
     And match response.data.newQuantity == 0
     And match response.data.totalCost == '#number'

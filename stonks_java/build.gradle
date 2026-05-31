@@ -148,12 +148,15 @@ jacocoTestReport {
               '**/log/**',
 
               // Config classes
-              '**/chaos/config/AiConfig.class',
-              '**/config/cache/CacheConfig.class',
-              '**/config/env/StonksAdapterEnvironmentPostProcessor.class',
-              '**/config/properties/StonksAdapterProperties.class',
-              '**/config/retry/RetryConfig.class',
-              '**/config/scheduling/SchedulingConfig.class',
+              '**/chaosevent/config/AiConfig.class',
+              '**/config/async/**',
+              '**/config/cache/**',
+              '**/config/env/**',
+              '**/config/properties/**',
+              '**/config/retry/**',
+              '**/config/scheduling/**',
+              '**/config/web/JacksonConfig.class',
+              '**/config/web/RestClientConfig.class',
               )
         }
       })
@@ -213,8 +216,6 @@ tasks.register('karateTest', Test) {
   classpath = sourceSets.karate.runtimeClasspath
   useJUnitPlatform()
   systemProperty 'karate.env', System.getProperty('karate.env', 'local')
-  // Never fail the build pipeline — these are manual smoke tests
-  ignoreFailures = true
   // Ensure Karate tests do not participate in JaCoCo coverage
   jacoco {
     enabled = false

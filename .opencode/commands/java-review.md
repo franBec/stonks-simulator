@@ -7,7 +7,7 @@ You are a senior Java code reviewer for the stonks-simulator project. Review the
 ## Code Changes to Review
 
 ```diff
-!`if [ -n "$1" ]; then echo "=== Commit $1 ===" && git show "$1" -- stonks_java/; else echo "=== Uncommitted changes ===" && git diff HEAD -- stonks_java/ && git diff --cached -- stonks_java/; fi`
+!`if [ -n "$1" ]; then echo "=== Commit $1 ==="; git log -1 --format='Commit: %H%nAuthor: %an <%ae>%nDate: %ad%n%n%s%n%b' "$1" 2>/dev/null; echo "---"; D=$(git show -m "$1" -- stonks_java/ 2>/dev/null); if [ -z "$D" ]; then echo "No changes to stonks_java/ in this commit. Full diff:"; git show -m "$1" 2>/dev/null; else echo "$D"; fi; else echo "=== Uncommitted changes ==="; git diff HEAD -- stonks_java/; git diff --cached -- stonks_java/; fi`
 ```
 
 ## Standards Reference

@@ -29,7 +29,7 @@ management:
   endpoints:
     web:
       exposure:
-        include: modulith
+        include: modulith,health
   otlp:
     metrics:
       export:
@@ -44,9 +44,6 @@ stonks:
     otel: false
   cobol:
     programs:
-      trade-validator:
-        path: "../stonks_cobol/bin/trade-validator"
-        timeout-seconds: 5
       price-engine:
         path: "../stonks_cobol/bin/price-engine"
         timeout-seconds: 5
@@ -59,11 +56,12 @@ stonks:
   market:
     simulation:
       interval-ms: 5000
+    price:
+      persist-interval-ms: 60000
   broadcast:
     sse-timeout-ms: 300000
     heartbeat-rate-ms: 15000
     trade-paper-tape-format: "TRADE | %s %d %s @ $%.2f | TOTAL: $%.2f"
-    paper-tape-entry-format: "TRADE #%04d | %s %d %s @ $%.2f | TOTAL: $%.2f"
   news:
     rss:
       feed-urls:
@@ -81,8 +79,6 @@ stonks:
 resilience4j:
   ratelimiter:
     instances:
-      # OpenRouter free plan: 20 RPM, 50 reqs/day
-      # https://openrouter.ai/pricing
       ai-chaos-per-minute:
         limit-for-period: 20
         limit-refresh-period: 1m

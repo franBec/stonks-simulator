@@ -6,7 +6,7 @@ Feature: Helper — Set chaos level to MODERATE
     * url baseUrl
 
   Scenario: Set level
-    Given path 'api/chaos/level'
+    Given path 'api/intensity-level'
     And request { level: 'MODERATE' }
     When method post
     Then status 200

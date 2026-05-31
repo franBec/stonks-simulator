@@ -12,7 +12,7 @@ Each external dependency is toggled independently via `stonks.adapters.*` proper
 |----------|--------|---------|-------------|
 | `stonks.adapters.db` | `h2`, `postgresql` | `h2` | Database backend |
 | `stonks.adapters.cobol` | `stub`, `real` | `stub` | COBOL process execution |
-| `stonks.adapters.ai` | `stub`, `real` | `stub` | AI chaos event generation (OpenRouter) |
+| `stonks.adapters.ai` | `stub`, `real` | `stub` | AI chaotic event generation (OpenRouter) |
 | `stonks.adapters.news` | `stub`, `real` | `stub` | RSS news headline fetching |
 | `stonks.adapters.otel` | `true`, `false` | `false` | OpenTelemetry metrics export |
 
@@ -40,11 +40,12 @@ Each external dependency is toggled independently via `stonks.adapters.*` proper
 graph TB
     broadcast["broadcast<br/><small>SSE streaming · paper tape · event hub</small>"]
     stock["stock<br/><small>catalog · price engine · REST · orchestration</small>"]
-    trade["trade<br/><small>validation · execution · history</small>"]
-    chaos["chaos<br/><small>event generation · level management · AI integration</small>"]
+    trade["trade<br/><small>execution · history</small>"]
+    chaosevent["chaosevent<br/><small>event generation · AI · incident log</small>"]
+    intensity["intensity<br/><small>level management · volatility control</small>"]
     news["news<br/><small>RSS headline fetching · caching</small>"]
     portfolio["portfolio<br/><small>cash · positions · P&L</small>"]
-    db[("DB<br/><small>portfolio · position<br/>trade_history</small>")]
+    db[("DB<br/><small>portfolio · position<br/>trade_history · stock_price<br/>intensity_level · chaosevent_incident_log</small>")]
 
     subgraph OPEN ["Shared OPEN Modules"]
         cobol["cobol<br/><small>CobolAppPortOut · CobolProgramExecutor<br/>COBOL process bridge</small>"]
@@ -56,15 +57,20 @@ graph TB
 
     broadcast ---> stock
     broadcast ---> trade
-    broadcast ---> chaos
+    broadcast ---> chaosevent
+    broadcast ---> portfolio
 
     trade ---> stock
-    chaos ---> news
-    chaos ---> stock
+    chaosevent ---> news
+    chaosevent ---> stock
+    chaosevent ---> intensity
+    intensity ---> stock
     portfolio ---> stock
 
     portfolio -.->|reads/writes| db
     trade -.->|reads/writes| db
+    intensity -.->|reads/writes| db
+    chaosevent -.->|reads/writes| db
 
     style stock stroke-width:2px
     style cobol fill:#e6f3ff,stroke:#4a9eff
@@ -123,13 +129,13 @@ All classes follow the formula: `{Module}{Concept}{Layer}[Technology]`
 | `[Technology]` | Implementation detail (optional) | `Cobol`, `Jpa`, `Rest` |
 
 **Ports** — interfaces defining module boundaries. The `[Technology]` suffix is **never** used on ports — ports are technology-agnostic contracts and should not expose which adapter implements them:
-`StockPortIn`, `StockPriceEnginePortOut`, `TradeValidationPortOut`, `TradeExecutionPortOut`, `TradeHistoryPortOut`, `PortfolioPortOut`
+`StockPortIn`, `StockCatalogPortOut`, `StockPricePortOut`, `StockPriceEnginePortOut`, `TradeExecutionPortOut`, `TradeHistoryPortOut`, `PortfolioPortOut`
 
 **Adapters** — technology-specific implementations of ports:
-`StockCatalogCobolAdapter`, `StockPriceEngineCobolAdapterStub`, `TradeHistoryJpaAdapter`, `PortfolioJpaAdapter`
+`StockCatalogCobolAdapter`, `StockPriceEngineCobolAdapterStub`, `StockPriceJpaAdapter`, `TradeHistoryJpaAdapter`, `PortfolioJpaAdapter`
 
 **Repositories & Mappers** — persistence and mapping layer:
-`PortfolioPositionJpaRepository`, `TradePortfolioJpaRepository`, `TradeValidatorCobolMapper`
+`PortfolioPositionJpaRepository`, `TradePortfolioJpaRepository`
 
 **Controllers & Services** — REST endpoints and application logic:
 `StockController`, `TradeService`, `PortfolioService`
@@ -271,844 +277,631 @@ REST endpoints follow an **OpenAPI-first** (contract-first) approach:
 2. DTOs and server interfaces are generated from that spec into the `generated` module (see [Module Architecture Graph](#module-architecture-graph)).
 3. Generated DTOs are the canonical request/response types in the adapter layer and are never modified manually. Controllers implement the generated interfaces.
 
-**Exceptions:** Endpoints whose primary purpose is streaming or real-time communication (e.g., `GET /stream`, `GET /api/trades/paper-tape`) are defined directly as controller methods rather than via OpenAPI, because their response semantics (`SseEmitter`, formatted text lines) do not map cleanly to the OpenAPI 3.x request/response model. Exceptions are kept to a minimum and noted inline in the controller.
+**Exceptions:** Endpoints whose primary purpose is streaming or real-time communication (e.g., `GET /stream`) are defined directly as controller methods rather than via OpenAPI, because their response semantics (`SseEmitter`) do not map cleanly to the OpenAPI 3.x request/response model. Exceptions are kept to a minimum and noted inline in the controller.
 
 ---
 
 ## End to End Flows
 
-**Diagram convention:** Cross-module calls (service in module A calling into module B) always point at a **port interface** (`StockPortIn`, `TradePortIn`, `NewsPortIn`) — the module boundary contract. Within-module outbound calls (service → its own adapter) use the **adapter implementation** name, which also distinguishes Real vs Stub scenarios. Event-driven flows (SSE via `ApplicationEventPublisher`) use the **service class** as the publisher.
+This section presents a comprehensive Graphviz diagram covering all request/response flows, module boundaries, adapter selection (real vs. stub), and external integrations in a single view. Render it with a Graphviz viewer (e.g., [`dot -Tpng -o flows.png request-flows-paths-monochrome.dot`](docs/request-flows-paths-monochrome.dot)) or paste into an online renderer.
 
-### Trade Validation
+```dot
+digraph stonks_request_flows {
+  rankdir=LR;
+  splines=ortho;
+  compound=true;
+  label="stonks_java — Request/Response Flow Paths";
+  labelloc=t;
+  labeljust=l;
+  fontname="Consolas";
+  fontcolor="#c9d1d9";
+  bgcolor="#0d1117";
+  pad=0.5;
+  nodesep=0.5;
+  ranksep=1.0;
+  newrank=true;
 
-`POST /api/trades/validate` validates a trade request (symbol, action, quantity) against business rules — checking symbol existence, action validity, and fund sufficiency. In production, the `TradeService` delegates to `TradeValidationPortOut` which calls the COBOL `trade-validator` program. In dev, the stub adapter performs the same checks in-memory.
+  // ── Color palette ──
+  // Neutral=#30363d  Text=#8b949e      White=#c9d1d9
+  // Gold=#bc8c00     Green=#1a7f37     Purple=#6e40c9   Red=#bd2c00
 
-#### Real Scenario (COBOL)
+  node [fontname="Consolas", fontcolor="#c9d1d9"];
 
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "trade: Adapter In"
-    participant TC as TradeController
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "trade: Adapter Out"
-    participant CTA as TradeValidatorCobolAdapter
-    end
-    box "cobol: Adapter Out"
-    participant CPE as CobolProgramExecutor
-    end
-    participant COBOL as trade-validator (COBOL)
+  // ═══════════════════════════════════════════════
+  //  ACTORS / EXTERNAL
+  // ═══════════════════════════════════════════════
+  node [shape=box, style="filled,rounded", penwidth=2, fontsize=10, fillcolor="#1c2128", color="#c9d1d9"];
+  client [label="HTTP Client\n(Browser / curl)"];
 
-    Client->>TC: POST /api/trades/validate
-    TC->>TC: map(request → Trade)
-    TC->>TS: validateTrade(trade)
-    TS->>CTA: validate(trade)
-    CTA->>CTA: map(Trade → CobolTradeValidationRequest)
-    CTA->>CPE: execute("trade-validator", req, CobolTradeValidationResult.class)
-    CPE->>COBOL: spawn process, write JSON to stdin
-    COBOL-->>CPE: stdout JSON
-    CPE-->>CTA: CobolTradeValidationResult
-    CTA->>CTA: map(CobolTradeValidationResult → TradeValidation)
-    CTA-->>TS: TradeValidation
-    TS-->>TC: TradeValidation
-    TC->>TC: map(TradeValidation → TradeValidationResult)
-    TC-->>Client: 200 TradeValidationResponse
+  node [shape=cylinder, style=filled, penwidth=2, fontsize=10, fillcolor="#161b22", color="#30363d"];
+  db [label="H2 / PostgreSQL"];
+
+  node [shape=box, style="filled,rounded", penwidth=2, fontsize=10, fillcolor="#161b22", color="#bd2c00"];
+  cobol_backend [label="COBOL Backend\n(z/OS)"];
+
+  node [shape=box, style="filled,rounded", penwidth=2, fontsize=10, fillcolor="#161b22", color="#6e40c9"];
+  ai_api [label="OpenRouter AI\n(LLM API)"];
+
+  node [shape=box, style="filled,rounded", penwidth=2, fontsize=10, fillcolor="#161b22", color="#1a7f37"];
+  rss_feed [label="RSS News\nFeed(s)"];
+
+  // ═══════════════════════════════════════════════
+  //  STOCK MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_stock {
+    label="stock module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    stock_ctrl [label="StockController\nGET /api/stocks"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    stock_port_in [label="StockPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    stock_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>StockService</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">simulate() · getStocks()</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">applyImpact()</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    stock_cat_port [label="StockCatalog\nPortOut"];
+    stock_eng_port [label="StockPriceEngine\nPortOut"];
+    stock_price_port [label="StockPrice\nPortOut"];
+
+    // Real adapters (cobol=real) → connect to CobolAppPortOut
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    stock_cat_real [label="StockCatalogCobolAdapter\n→ CobolAppPortOut.execute()"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    stock_eng_real [label="StockPriceEngineCobolAdapter\n→ CobolAppPortOut.execute()"];
+
+    // Stub adapters (cobol=stub) → standalone, no COBOL call
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#bc8c00", margin="0.1,0.04"];
+    stock_cat_stub [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="2">
+        <TR><TD>StockCatalogCobolAdapterStub</TD></TR>
+        <TR><TD><FONT POINT-SIZE="7" COLOR="#bc8c00">returns hardcoded stocks</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    stock_eng_stub [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="2">
+        <TR><TD>StockPriceEngineCobolAdapterStub</TD></TR>
+        <TR><TD><FONT POINT-SIZE="7" COLOR="#bc8c00">random walk simulation</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    stock_jpa [label="StockPriceJpaAdapter"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    stock_sched [label="StockPriceTickScheduler\n(scheduled: 5s)"];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  NEWS MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_news {
+    label="news module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    news_port_in [label="NewsPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    news_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>NewsService</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">getHeadlines() [cached 60s]</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    news_client_port [label="NewsClient\nPortOut"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    news_rss [label="NewsRssClientAdapter\n→ RSS feed HTTP"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#bc8c00", margin="0.1,0.04"];
+    news_stub [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="2">
+        <TR><TD>NewsClientStub</TD></TR>
+        <TR><TD><FONT POINT-SIZE="7" COLOR="#bc8c00">4 canned headlines</FONT></TD></TR>
+      </TABLE>
+    >];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  INTENSITY MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_intensity {
+    label="intensity module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    intensity_ctrl [label="IntensityController\nGET+POST /api/intensity-level"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    intensity_port_in [label="IntensityPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    intensity_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>IntensityService</B></FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    intensity_level_port [label="IntensityLevel\nPortOut"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    intensity_jpa [label="IntensityLevelJpaAdapter"];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  PORTFOLIO MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_portfolio {
+    label="portfolio module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    portfolio_ctrl [label="PortfolioController\nGET /api/portfolio"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    portfolio_port_in [label="PortfolioPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    portfolio_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>PortfolioService</B></FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    portfolio_port_out [label="Portfolio\nPortOut"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    portfolio_jpa [label="PortfolioJpaAdapter"];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  TRADE MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_trade {
+    label="trade module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    trade_ctrl [label="TradeController\nGET+POST /api/trades"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    trade_port_in [label="TradePortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    trade_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>TradeService</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">executeTrade()</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">getTradeHistory()</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    trade_exec_port [label="TradeExecution\nPortOut"];
+    trade_hist_port [label="TradeHistory\nPortOut"];
+    trade_state_port [label="TradePortfolioState\nPortOut"];
+
+    // Real adapters
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    trade_cobol_real [label="TradePortfolioMgrCobolAdapter\n→ CobolAppPortOut.execute()"];
+
+    // Stub adapters
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#bc8c00", margin="0.1,0.04"];
+    trade_cobol_stub [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="2">
+        <TR><TD>TradePortfolioMgrCobolAdapterStub</TD></TR>
+        <TR><TD><FONT POINT-SIZE="7" COLOR="#bc8c00">in-memory validation</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    trade_hist_jpa [label="TradeHistoryJpaAdapter"];
+    trade_state_jpa [label="TradePortfolioStateJpaAdapter"];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  CHAOSEVENT MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_chaos {
+    label="chaosevent module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    chaos_ctrl [label="ChaoseventController\nGET+POST /api/chaotic-events"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_port_in [label="ChaoseventPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    chaos_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>ChaoseventService</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">triggerEvent()</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">getHistory()</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=7, fillcolor="#0d1117", color="#30363d", margin="0.08,0.03"];
+    chaos_gen_port [label="ChaoticEventGenerator\nPortOut"];
+    chaos_inc_port [label="ChaoticIncident\nPortOut"];
+
+    // Real path: Composite → OpenRouter (+ Fallback safety net)
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_composite [label="ChaoticEventGenerator\nCompositeAdapter\n(@Primary, ai=real)"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_openrouter [label="OpenRouterAdapter\n→ OpenRouter LLM API"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_fallback [label="FallbackAdapter\n(template fallback)"];
+
+    // Stub path: standalone, no AI call
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#bc8c00", margin="0.1,0.04"];
+    chaos_stub [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="1" CELLPADDING="2">
+        <TR><TD>ChaoticEventGeneratorStub</TD></TR>
+        <TR><TD><FONT POINT-SIZE="7" COLOR="#bc8c00">template-based events</FONT></TD></TR>
+      </TABLE>
+    >];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_jpa [label="ChaoticIncidentJpaAdapter"];
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    chaos_sched [label="ChaoseventScheduler\n(scheduled: 30s)"];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  BROADCAST MODULE
+  // ═══════════════════════════════════════════════
+  subgraph cluster_broadcast {
+    label="broadcast module";
+    fontcolor="#8b949e";
+    fontsize=11;
+    style=filled;
+    color="#30363d";
+    fillcolor="#0d1117";
+    penwidth=2;
+    margin=20;
+
+    node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
+    broadcast_ctrl [label="BroadcastController\nGET /api/stream (SSE)"];
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
+    broadcast_port_in [label="BroadcastPortIn"];
+
+    node [shape=box, style="filled,rounded", penwidth=4, fontsize=9, fillcolor="#0d1117", color="#30363d", margin="0.2,0.1"];
+    broadcast_svc [label=<
+      <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
+        <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>BroadcastSseService</B></FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">createEmitter()</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← StockPriceUpdatedEvent</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← TradeExecutedEvent</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← ChaoticEventTriggered</FONT></TD></TR>
+      </TABLE>
+    >];
+  }
+
+  // ═══════════════════════════════════════════════
+  //  SHARED / OPEN MODULES
+  // ═══════════════════════════════════════════════
+  subgraph cluster_cobol {
+    label="cobol (shared open module)";
+    fontcolor="#8b949e";
+    fontsize=10;
+    style=dashed;
+    color="#30363d";
+    bgcolor="#0d1117";
+
+    node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d4194", color="#30363d", margin="0.1,0.04"];
+    cobol_port_out [label="CobolAppPortOut"];
+    cobol_exec [label="CobolProgramExecutor"];
+  }
+
+  //  ── EDGE STYLE REFERENCE ──
+  //  HTTP request   → solid, thick, white
+  //  Internal       → solid, thin, gray (all delegation, port out, adapter, JPA)
+  //  Stub adapter   → solid, thin, gold
+  //  Domain event   → dashed, green
+  //  SSE            → dotted, purple
+  //  DB query       → dotted, gray
+  //  COBOL          → solid, thin, red
+  //  AI LLM API     → dashed, purple
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 1: GET /api/stocks
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> stock_ctrl [label="1. GET /api/stocks", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  stock_ctrl -> stock_port_in;
+  stock_port_in -> stock_svc;
+
+  // Service → PortOuts
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  stock_svc -> stock_cat_port [label="@PostConstruct"];
+  stock_svc -> stock_eng_port [label="simulate()"];
+
+  // StockCatalogPortOut fans out to real + stub
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  stock_cat_port -> stock_cat_real [label="cobol=real"];
+  edge [style=solid, penwidth=1.5, color="#bc8c00"];
+  stock_cat_port -> stock_cat_stub [label="cobol=stub"];
+
+  // Real path: adapter → CobolAppPortOut.execute() → CobolProgramExecutor → COBOL
+  edge [style=solid, penwidth=1.5, color="#bd2c00"];
+  stock_cat_real -> cobol_port_out [label="execute('catalog')"];
+
+  // StockPriceEnginePortOut fans out
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  stock_eng_port -> stock_eng_real [label="cobol=real"];
+  edge [style=solid, penwidth=1.5, color="#bc8c00"];
+  stock_eng_port -> stock_eng_stub [label="cobol=stub"];
+
+  edge [style=solid, penwidth=1.5, color="#bd2c00"];
+  stock_eng_real -> cobol_port_out [label="execute('price-engine')"];
+
+  // StockPricePortOut → JPA (only one impl, no stub)
+  edge [style=dashed, penwidth=1.5, color="#8b949e"];
+  stock_svc -> stock_price_port [label="load/save"];
+  stock_price_port -> stock_jpa;
+
+  edge [style=dotted, penwidth=1.5, color="#8b949e"];
+  stock_jpa -> db;
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 2: Stock price tick (scheduled)
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=1.5, color="#8b949e", fontsize=8, fontcolor="#8b949e"];
+  stock_sched -> stock_port_in [label="2. simulate()", weight=5];
+
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  stock_svc -> broadcast_svc [label="StockPriceUpdatedEvent", constraint=false];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 3: POST /api/trades
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> trade_ctrl [label="3. POST /api/trades", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  trade_ctrl -> trade_port_in;
+  trade_port_in -> trade_svc;
+
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  trade_svc -> trade_exec_port;
+  trade_svc -> trade_hist_port;
+  trade_svc -> trade_state_port;
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  trade_svc -> stock_port_in [label="getStocks()", constraint=false];
+
+  // TradeExecutionPortOut fans out to real + stub
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  trade_exec_port -> trade_cobol_real [label="cobol=real"];
+  edge [style=solid, penwidth=1.5, color="#bc8c00"];
+  trade_exec_port -> trade_cobol_stub [label="cobol=stub"];
+
+  edge [style=solid, penwidth=1.5, color="#bd2c00"];
+  trade_cobol_real -> cobol_port_out [label="execute('portfolio-mgr')"];
+
+  edge [style=dashed, penwidth=1.5, color="#8b949e"];
+  trade_state_port -> trade_state_jpa;
+  trade_hist_port -> trade_hist_jpa;
+
+  edge [style=dotted, penwidth=1.5, color="#8b949e"];
+  trade_hist_jpa -> db;
+  trade_state_jpa -> db;
+
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  trade_svc -> broadcast_svc [label="TradeExecutedEvent", constraint=false];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 4: POST /api/chaotic-events
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> chaos_ctrl [label="4. POST /api/chaotic-events", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_ctrl -> chaos_port_in;
+  chaos_port_in -> chaos_svc;
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_svc -> stock_port_in [label="getStocks()", constraint=false];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_svc -> news_port_in [label="getHeadlines()", constraint=false];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  news_port_in -> news_svc;
+
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  news_svc -> news_client_port;
+
+  // NewsClientPortOut fans out
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  news_client_port -> news_rss [label="news=real"];
+  edge [style=solid, penwidth=1.5, color="#bc8c00"];
+  news_client_port -> news_stub [label="news=stub"];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  news_rss -> rss_feed [style=dashed, color="#1a7f37"];
+
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  chaos_svc -> chaos_gen_port;
+  chaos_svc -> chaos_inc_port;
+
+  // ChaoticEventGeneratorPortOut fans out
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_gen_port -> chaos_composite [label="ai=real"];
+  edge [style=solid, penwidth=1.5, color="#bc8c00"];
+  chaos_gen_port -> chaos_stub [label="ai=stub"];
+
+  edge [style=solid, penwidth=1, color="#8b949e"];
+  chaos_composite -> chaos_openrouter;
+  chaos_composite -> chaos_fallback;
+
+  chaos_openrouter -> ai_api [label="LLM call", style=dashed, color="#6e40c9"];
+
+  edge [style=dashed, penwidth=1.5, color="#8b949e"];
+  chaos_inc_port -> chaos_jpa;
+
+  edge [style=dotted, penwidth=1.5, color="#8b949e"];
+  chaos_jpa -> db;
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_sched -> chaos_port_in [label="trigger()"];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  chaos_svc -> stock_port_in [label="applyImpact()", constraint=false];
+
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  chaos_svc -> broadcast_svc [label="ChaoticEventTriggered", constraint=false];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 5: GET /api/portfolio
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> portfolio_ctrl [label="5. GET /api/portfolio", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  portfolio_ctrl -> portfolio_port_in;
+  portfolio_port_in -> portfolio_svc;
+
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  portfolio_svc -> portfolio_port_out;
+
+  edge [style=dashed, penwidth=1.5, color="#8b949e"];
+  portfolio_port_out -> portfolio_jpa;
+
+  edge [style=dotted, penwidth=1.5, color="#8b949e"];
+  portfolio_jpa -> db;
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  portfolio_svc -> stock_port_in [label="getStocks()", constraint=false];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 6: GET /api/intensity-level
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> intensity_ctrl [label="6. GET intensity", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  intensity_ctrl -> intensity_port_in;
+  intensity_port_in -> intensity_svc;
+
+  edge [style=dashed, penwidth=1, color="#8b949e"];
+  intensity_svc -> intensity_level_port;
+
+  edge [style=dashed, penwidth=1.5, color="#8b949e"];
+  intensity_level_port -> intensity_jpa;
+
+  edge [style=dotted, penwidth=1.5, color="#8b949e"];
+  intensity_jpa -> db;
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 7: SSE stream
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=2.5, color="#c9d1d9", fontsize=8, fontcolor="#c9d1d9"];
+  client -> broadcast_ctrl [label="7. GET /api/stream (SSE)", weight=5];
+
+  edge [style=solid, penwidth=1.5, color="#8b949e"];
+  broadcast_ctrl -> broadcast_port_in;
+  broadcast_port_in -> broadcast_svc;
+
+  edge [style=dotted, penwidth=2, color="#6e40c9"];
+  broadcast_svc -> client [label="SSE: price ticks, trades, chaos"];
+
+  // ═══════════════════════════════════════════════
+  //  CobolAppPortOut → CobolProgramExecutor → COBOL Backend
+  // ═══════════════════════════════════════════════
+  edge [style=solid, penwidth=1, color="#bd2c00"];
+  cobol_port_out -> cobol_exec [label="implements"];
+  cobol_exec -> cobol_backend [label="IPC / socket call"];
+
+  // ═══════════════════════════════════════════════
+  //  LEGEND
+  // ═══════════════════════════════════════════════
+  subgraph cluster_legend {
+    label="Legend";
+    fontcolor="#8b949e";
+    fontsize=10;
+    style=dashed;
+    color="#30363d";
+    bgcolor="#0d1117";
+
+    node [shape=plaintext, fontsize=8, fontcolor="#c9d1d9", fillcolor="transparent"];
+    legend_http [label="White thick   → HTTP request/response"];
+    legend_gray [label="Gray           → All internal calls"];
+    legend_gold [label="Gold           → Stub adapter (active when property=stub)"];
+    legend_db  [label="Dotted         → Database query"];
+    legend_evt [label="Green dashed   → Domain event (ApplicationEventPublisher)"];
+    legend_sse [label="Purple dotted  → SSE stream"];
+    legend_cobol [label="Red            → COBOL backend"];
+    legend_ai   [label="Purple dashed  → AI / external API"];
+    legend_note [label="All module borders and nodes are neutral gray.\nColor is reserved for entry/exit, stubs, events, SSE, and externals."];
+  }
+
+  // Layout constraints
+  { rank=same; client; }
+  { rank=same; stock_ctrl; trade_ctrl; chaos_ctrl; portfolio_ctrl; intensity_ctrl; broadcast_ctrl; }
+  { rank=same; stock_svc; trade_svc; chaos_svc; portfolio_svc; intensity_svc; broadcast_svc; news_svc; }
+  { rank=same; stock_jpa; trade_hist_jpa; trade_state_jpa; portfolio_jpa; intensity_jpa; chaos_jpa; }
+  { rank=same; db; cobol_backend; ai_api; rss_feed; }
+}
 ```
-
-#### Dev Stub Scenario (no COBOL)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "trade: Adapter In"
-    participant TC as TradeController
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "trade: Adapter Out"
-    participant TVS as TradeValidatorCobolAdapterStub
-    end
-
-    Client->>TC: POST /api/trades/validate
-    TC->>TC: map(request → Trade)
-    TC->>TS: validateTrade(trade)
-    TS->>TVS: validateTrade(trade)
-    Note over TVS: In-memory symbol lookup,<br/>funds check, validation logic
-    TVS-->>TS: TradeValidation
-    TS-->>TC: TradeValidation
-    TC->>TC: map(TradeValidation → TradeValidationResult)
-    TC-->>Client: 200 TradeValidationResponse
-```
-
-### Get Market Stocks
-
-`GET /api/market/stocks` returns current stock prices. At startup, `StockService` loads the full stock catalog from the `StockPortOut` adapter (COBOL `catalog` program or hardcoded stub) and populates an in-memory price map. Subsequent requests read from this map — no COBOL call per request.
-
-#### Real Scenario (COBOL catalog load at startup, then projection-based reads)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "stock: Adapter In"
-    participant SC as StockController
-    end
-    box "stock: Application"
-    participant SS as StockService
-    end
-    box "stock: Adapter Out"
-    participant CCA as StockCatalogCobolAdapter
-    end
-    box "cobol: Adapter Out"
-    participant CPE as CobolProgramExecutor
-    end
-    participant COBOL as catalog (COBOL)
-
-    Note over SS: @PostConstruct init()
-    SS->>CCA: getStocks()
-    CCA->>CPE: execute("catalog", null, CobolCatalogStock[].class)
-    CPE->>COBOL: spawn process
-    COBOL-->>CPE: stdout JSON array
-    CPE-->>CCA: CobolCatalogStock[]
-    CCA->>CCA: map(CobolCatalogStock → Stock)
-    CCA-->>SS: stock list
-    Note over SS: populate price map
-
-    Note over Client,SC: Later request
-    Client->>SC: GET /api/market/stocks
-    SC->>SS: getStocks()
-    Note over SS: read price snapshot
-    SS-->>SC: stock prices
-    SC->>SC: map(StockPrice → StockPrice)
-    SC-->>Client: 200 StocksResponse
-```
-
-#### Dev Stub Scenario (no COBOL)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "stock: Adapter In"
-    participant SC as StockController
-    end
-    box "stock: Application"
-    participant SS as StockService
-    end
-    box "stock: Adapter Out"
-    participant CPS as StockCatalogCobolAdapterStub
-    end
-
-    Note over SS: @PostConstruct init()
-    SS->>CPS: getStocks()
-    CPS-->>SS: stock list (10 hardcoded meme stocks)
-    Note over SS: populate price map
-
-    Note over Client,SC: Later request
-    Client->>SC: GET /api/market/stocks
-    SC->>SS: getStocks()
-    Note over SS: read price snapshot
-    SS-->>SC: stock prices
-    SC->>SC: map(StockPrice → StockPrice)
-    SC-->>Client: 200 StocksResponse
-```
-
-### Price Simulation (Scheduled, Event-Driven)
-
-The `StockService` (in `stock`) orchestrates each tick: it reads the stock catalog (cached at startup), scales volatility by the current chaos level's `volatilityMultiplier`, delegates to `StockPriceEnginePortOut` (implemented by `StockPriceEngineCobolAdapter`), and publishes `StockPriceUpdatedEvent`. If the price engine fails for any stock, that stock is skipped for the tick and a warning is logged — the tick continues for remaining stocks.
-
-The volatility multiplier is pushed to `StockService` by `ChaosService.setLevel()` via `StockPortIn.setVolatilityMultiplier()`, so chaos level changes take effect immediately on the next tick.
-
-The `StockPriceTickScheduler` uses an `AtomicBoolean` guard to skip overlapping ticks when the previous tick is still running, preventing queue buildup with slow COBOL calls.
-
-A `ReentrantLock` guards both `simulate()` and `applyImpact()` to prevent race conditions when a chaos event modifies prices mid-tick.
-
-#### Real Scenario (COBOL)
-
-```mermaid
-sequenceDiagram
-    box "stock: Adapter In"
-    participant Sched as StockPriceTickScheduler
-    end
-    box "stock: Application"
-    participant SS as StockService
-    end
-    box "stock: Adapter Out"
-    participant PEA as StockPriceEngineCobolAdapter
-    end
-    box "cobol: Adapter Out"
-    participant CPE as CobolProgramExecutor
-    end
-    participant COBOL as price-engine (COBOL)
-
-    Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
-    Note over Sched: Skip if previous tick still running
-    Sched->>SS: simulate()
-    Note over SS: Acquire simulationLock
-    Note over SS: Read cached catalog<br/>(loaded at @PostConstruct)
-    loop For each stock
-        SS->>SS: effectiveVolatility = stock.volatility × volatilityMultiplier
-        SS->>PEA: calculate(currentPrice, effectiveVolatility, trend)
-        PEA->>CPE: execute("price-engine", request, CobolPriceEngineResult.class)
-        CPE->>COBOL: spawn process, write JSON to stdin
-        COBOL-->>CPE: stdout JSON {newPrice}
-        CPE-->>PEA: CobolPriceEngineResult
-        PEA-->>SS: newPrice (BigDecimal)
-        SS->>SS: publishEvent(StockPriceUpdatedEvent)
-    end
-    Note over SS: Release simulationLock
-```
-
-#### Dev Stub Scenario (no COBOL)
-
-```mermaid
-sequenceDiagram
-    box "stock: Adapter In"
-    participant Sched as StockPriceTickScheduler
-    end
-    box "stock: Application"
-    participant SS as StockService
-    end
-    box "stock: Adapter Out"
-    participant PES as StockPriceEngineCobolAdapterStub
-    end
-
-    Note over Sched: Every ${stonks.market.simulation.interval-ms} (default 2s)
-    Note over Sched: Skip if previous tick still running
-    Sched->>SS: simulate()
-    Note over SS: Acquire simulationLock
-    Note over SS: Read cached catalog<br/>(loaded at @PostConstruct)
-    loop For each stock
-        SS->>SS: effectiveVolatility = stock.volatility × volatilityMultiplier
-        SS->>PES: calculate(currentPrice, effectiveVolatility, trend)
-        Note over PES: Random walk with trend bias,<br/>circuit breaker, price bounds
-        PES-->>SS: newPrice (BigDecimal)
-        SS->>SS: publishEvent(StockPriceUpdatedEvent)
-    end
-    Note over SS: Release simulationLock
-```
-
-### Trade Execution
-
-`POST /api/trades` executes a BUY/SELL trade atomically:
-1. Service enriches the request with the current market price via `StockPortIn`
-2. Service reads portfolio state (cash balance + position) from DB via `TradePortfolioStatePortOut`
-3. Service builds a `TradeExecutionInput` and delegates to `TradeExecutionPortOut` (COBOL or stub)
-4. If the result is `ACCEPTED`, service persists updated portfolio via `TradePortfolioStatePortOut.applyExecution()` and records history via `TradeHistoryPortOut.recordExecution()`
-5. Returns `TradeExecutionResult` with the new portfolio state
-
-#### Real Scenario (COBOL)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "trade: Adapter In"
-    participant TC as TradeController
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "stock: Application"
-    participant SS as StockPortIn
-    end
-    box "trade: Adapter Out (JPA)"
-    participant TPSJA as TradePortfolioStateJpaAdapter
-    participant THJA as TradeHistoryJpaAdapter
-    end
-    box "trade: Adapter Out"
-    participant TPMCA as TradePortfolioMgrCobolAdapter
-    end
-    box "cobol: Adapter Out"
-    participant CPE as CobolProgramExecutor
-    end
-    participant COBOL as portfolio-mgr (COBOL)
-    participant DB as H2
-
-    Client->>TC: POST /api/trades (action, symbol, qty)
-    TC->>TC: map(TradeExecutionRequest → Trade)
-    TC->>TS: executeTrade(trade)
-
-    Note over TS: Enrich with market price
-    TS->>SS: getStocks()
-    SS-->>TS: stock prices
-    TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
-
-    Note over TS: Read portfolio state from DB
-    TS->>TPSJA: getState(portfolioId, symbol)
-    TPSJA->>DB: SELECT cash_balance, position quantity
-    DB-->>TPSJA: portfolio row + position
-    TPSJA-->>TS: TradePortfolioState(cashBalance, holdingQty)
-
-    Note over TS: Build enriched input, delegate to COBOL
-    TS->>TS: TradeExecutionInput(action, symbol, qty, price, cashBalance, holdingQty)
-    TS->>TPMCA: executeTrade(input)
-    TPMCA->>TPMCA: map(TradeExecutionInput → CobolPortfolioMgrRequest)
-    TPMCA->>CPE: execute("portfolio-mgr", req, CobolPortfolioMgrResult.class)
-    CPE->>COBOL: spawn process, write JSON to stdin
-    COBOL-->>CPE: stdout JSON
-    CPE-->>TPMCA: CobolPortfolioMgrResult
-    TPMCA->>TPMCA: map(CobolPortfolioMgrResult → TradeExecutionResult)
-    TPMCA-->>TS: TradeExecutionResult
-
-    alt ACCEPTED
-        TS->>TPSJA: applyExecution(portfolioId, symbol, newCashBalance, newQuantity)
-        TPSJA->>DB: UPDATE cash_balance, MERGE position
-        DB-->>TPSJA: updated
-        TPSJA-->>TS: void
-        TS->>THJA: recordExecution(trade, result, portfolioId)
-        THJA->>THJA: map(trade, result → TradeHistory entity)
-        THJA->>DB: INSERT trade_history
-        DB-->>THJA: inserted
-        THJA-->>TS: void
-    end
-
-    TS-->>TC: TradeExecutionResult
-    TC->>TC: map(TradeExecutionResult → TradeExecutionResponse)
-    TC-->>Client: 200 TradeExecutionResponse
-```
-
-#### Dev Stub Scenario (no COBOL)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "trade: Adapter In"
-    participant TC as TradeController
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "stock: Application"
-    participant SS as StockPortIn
-    end
-    box "trade: Adapter Out (JPA)"
-    participant TPSJA as TradePortfolioStateJpaAdapter
-    participant THJA as TradeHistoryJpaAdapter
-    end
-    box "trade: Adapter Out"
-    participant TPMCAS as TradePortfolioMgrCobolAdapterStub
-    end
-    participant DB as H2
-
-    Client->>TC: POST /api/trades (action, symbol, qty)
-    TC->>TC: map(TradeExecutionRequest → Trade)
-    TC->>TS: executeTrade(trade)
-
-    Note over TS: Enrich with market price
-    TS->>SS: getStocks()
-    SS-->>TS: stock prices
-    TS->>TS: Trade(action, symbol, qty, currentPrice, 0)
-
-    Note over TS: Read portfolio state from DB
-    TS->>TPSJA: getState(portfolioId, symbol)
-    TPSJA->>DB: SELECT cash_balance, position quantity
-    DB-->>TPSJA: portfolio row + position
-    TPSJA-->>TS: TradePortfolioState(cashBalance, holdingQty)
-
-    Note over TS: Build enriched input, delegate to stub
-    TS->>TS: TradeExecutionInput(action, symbol, qty, price, cashBalance, holdingQty)
-    TS->>TPMCAS: executeTrade(input)
-    Note over TPMCAS: Pure Java validation + computation<br/>Validates S001, S222-S226<br/>Computes newCashBalance,<br/>newQuantity, totalCost
-    TPMCAS-->>TS: TradeExecutionResult
-
-    alt ACCEPTED
-        TS->>TPSJA: applyExecution(portfolioId, symbol, newCashBalance, newQuantity)
-        TPSJA->>DB: UPDATE cash_balance, MERGE position
-        DB-->>TPSJA: updated
-        TPSJA-->>TS: void
-        TS->>THJA: recordExecution(trade, result, portfolioId)
-        THJA->>DB: INSERT trade_history
-        DB-->>THJA: inserted
-        THJA-->>TS: void
-    end
-
-    TS-->>TC: TradeExecutionResult
-    TC->>TC: map(TradeExecutionResult → TradeExecutionResponse)
-    TC-->>Client: 200 TradeExecutionResponse
-```
-
-### Get Portfolio
-
-`GET /api/portfolio` reads the portfolio + positions from the DB, fetches current stock prices from the `stock` module, and computes unrealized P&L per position and total.
-
-#### Real & Dev Stub (no COBOL involved — pure DB + stock module)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "portfolio: Adapter In"
-    participant PC as PortfolioController
-    end
-    box "portfolio: Application"
-    participant PS as PortfolioService
-    end
-    box "portfolio: Adapter Out"
-    participant PJA as PortfolioJpaAdapter
-    end
-    box "stock: Application"
-    participant SS as StockPortIn
-    end
-    participant DB as H2
-
-    Client->>PC: GET /api/portfolio
-    PC->>PS: getPortfolio()
-    PS->>PJA: getPortfolio()
-    PJA->>DB: SELECT portfolio
-    DB-->>PJA: cashBalance
-    PJA->>DB: SELECT positions
-    DB-->>PJA: positions list
-    PJA-->>PS: PortfolioSummary(cash, positions)
-
-    Note over PS: For each position,<br/>look up current market price
-    PS->>SS: getStocks()
-    SS-->>PS: stock prices map
-
-    Note over PS: Compute per-position:<br/>marketValue = qty * currentPrice<br/>unrealizedPnl = marketValue - costBasis
-
-    PS-->>PC: PortfolioSummary with P&L
-    PC->>PC: map → PortfolioResponse
-    PC-->>Client: 200 PortfolioResponse
-```
-
-### Get Trade History
-
-`GET /api/trades/history` returns paginated trade history from the DB via `TradeHistoryJpaAdapter`.
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "trade: Adapter In"
-    participant TC as TradeController
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "trade: Adapter Out (JPA)"
-    participant THJA as TradeHistoryJpaAdapter
-    participant THR as TradeHistoryJpaRepository
-    end
-    participant DB as H2
-
-    Client->>TC: GET /api/trades/history?page=0&size=20
-    TC->>TS: getTradeHistory(page, size)
-    TS->>THJA: getTradeHistory(pageable)
-    THJA->>THR: findByPortfolioIdOrderByExecutedAtDesc(1L, Pageable)
-    THR->>DB: SELECT ... ORDER BY executed_at DESC
-    DB-->>THR: trade history entities
-    THR-->>THJA: entities
-    THJA->>THJA: map entities → domain records
-    THJA-->>TS: trade history page
-    TS-->>TC: trade history page
-    TC->>TC: map domain → response
-    TC-->>Client: 200 TradeHistoryResponse
-```
-
-### SSE Streaming (Real-Time Broadcast)
-
-`GET /stream` opens a Server-Sent Events connection that pushes real-time market events to clients. The `BroadcastSseService` maintains a thread-safe list of connected emitters and listens to Spring application events from the `stock`, `trade`, and `chaos` modules.
-
-#### Event Flow
-
-```mermaid
-sequenceDiagram
-    participant Client as SSE Client
-    box "broadcast: Adapter In"
-    participant BC as BroadcastController
-    end
-    box "broadcast: Application"
-    participant BS as BroadcastSseService
-    end
-    box "stock: Application"
-    participant SS as StockService
-    end
-    box "trade: Application"
-    participant TS as TradeService
-    end
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-
-    Client->>BC: GET /stream
-    BC->>BS: createEmitter()
-    BS->>BS: new SseEmitter (300s timeout)
-    BS-->>BC: SseEmitter
-    BC-->>Client: event: connected
-
-    Note over BS: @Scheduled heartbeat every 15s
-
-    Note over SS: Price tick simulation
-    SS->>SS: publishEvent(StockPriceUpdatedEvent)
-    BS->>BS: @EventListener StockPriceUpdatedEvent
-    BS->>BS: build PriceTickBroadcastEvent
-    BS->>Client: event: PRICE_TICK<br/>data: {symbol, price, change, changePercent}
-
-    Note over TS: Trade execution
-    TS->>TS: publishEvent(TradeExecutedEvent)
-    BS->>BS: @EventListener TradeExecutedEvent
-    BS->>BS: build TradeExecutedBroadcastEvent
-    BS->>Client: event: TRADE_EXECUTED<br/>data: {result, symbol, quantity, paperTape}
-
-    Note over CS: Chaos event triggered
-    CS->>CS: publishEvent(ChaosEventTriggered)
-    BS->>BS: @EventListener ChaosEventTriggered
-    BS->>BS: build ChaosBroadcastEvent
-    BS->>Client: event: CHAOS_EVENT<br/>data: {type, severity, headline, symbol, impact, explanation}
-
-    Note over BS: Dead emitter cleanup<br/>onCompletion / onTimeout / onError
-```
-
-#### SSE Event Types
-
-| Event | Source | Data Payload |
-|-------|--------|--------------|
-| `PRICE_TICK` | Stock module (every simulation tick) | `{symbol, name, price, change, changePercent, timestamp}` |
-| `TRADE_EXECUTED` | Trade module (on accepted trade) | `{result, symbol, quantity, paperTape}` |
-| `CHAOS_EVENT` | Chaos module (on triggered event) | `{type, severity, headline, symbol, impact, explanation}` |
-
-### Paper Tape
-
-`GET /api/trades/paper-tape` returns trade history in a retro 3270-terminal-style formatted view. The `BroadcastSseService` fetches trade history from `TradePortIn`, formats each entry as a paper tape line, and returns paginated results.
-
-#### Flow
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "broadcast: Adapter In"
-    participant BC as BroadcastController
-    end
-    box "broadcast: Application"
-    participant BS as BroadcastSseService
-    end
-    box "trade: Application"
-    participant TI as TradePortIn
-    end
-
-    Client->>BC: GET /api/trades/paper-tape?page=0&size=20
-    BC->>BS: getPaperTape(pageable)
-    BS->>TI: getTradeHistory(pageable)
-    TI-->>BS: TradeHistoryItem page
-    loop For each trade
-        BS->>BS: format: "TRADE #0042 &#124; BUY 10 GMEE @ $47.85 &#124; TOTAL: $478.50"
-        BS->>BS: build PaperTapeEntry(seq, formattedLine, executedAt)
-    end
-    BS-->>BC: Page<PaperTapeEntry>
-    BC->>BC: map(PaperTapeEntry → PaperTapeResponseData)
-    BC-->>Client: 200 PaperTapeResponse
-```
-
-### Chaos Event Generation
-
-The chaos module injects AI-generated madness into the market. Events are triggered either by the `ChaosEventScheduler` (based on the current chaos level's `aiEventIntervalMs`) or manually via `POST /api/chaos/events`. Each event transforms real-world news headlines into a memeified price impact on a target stock, adjusts the stock price, and broadcasts the event via SSE.
-
-#### Flow (Scheduled + Manual)
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "chaos: Adapter In"
-    participant CES as ChaosEventScheduler
-    participant CC as ChaosController
-    end
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-    box "news: Application"
-    participant NI as NewsPortIn
-    end
-    box "stock: Application"
-    participant SI as StockPortIn
-    end
-    box "chaos: Adapter Out"
-    participant CEG as ChaosEventGenerator
-    end
-    box "broadcast: Application"
-    participant BSS as BroadcastSseService
-    end
-
-    Note over CES: Every ${stonks.chaos.event-check-interval-ms} (default 30s)
-    Note over CES: Check if enabled && elapsed >= level.aiEventIntervalMs
-
-    alt Scheduled trigger
-        CES->>CS: triggerEvent()
-    else Manual trigger
-        Client->>CC: POST /api/chaos/events (body: {type, severity, targetSymbol})
-        Note over CC: Parse ChaosEventType, <br/>ChaosEventSeverity from request
-        CC->>CS: triggerEvent(type, severity, targetSymbol)
-    end
-
-    Note over CS: 1. Fetch context
-    CS->>NI: getHeadlines()
-    NI-->>CS: List<NewsHeadline> (RSS feeds, cached 60s)
-    CS->>SI: getStocks()
-    SI-->>CS: List<StockPrice>
-
-    Note over CS: 2. Generate chaos event
-    CS->>CEG: generate(headlines, stocks, type, severity, targetSymbol)
-    Note over CEG: [default] Stub → ChaosEventFallbackGenerator (19 events)<br/>[real AI adapter] CompositeAdapter:<br/>  1. OpenRouter AI via Spring AI ChatModel<br/>  2. On failure: ChaosEventFallbackGenerator (19 events)
-    CEG-->>CS: ChaosEvent {type, severity, headline, symbol, impactPercent, ...}
-
-    Note over CS: 3. Apply price impact
-    CS->>SI: applyImpact(event.symbol, event.impactPercent)
-    Note over SI: newPrice = currentPrice × (1 + impactPercent/100)<br/>publishEvent(StockPriceUpdatedEvent)
-    SI-->>CS: void
-
-    Note over CS: 4. Publish event & store history
-    CS->>CS: publishEvent(ChaosEventTriggered)
-    CS->>CS: history.add(event) [bounded to 100]
-    BSS->>BSS: @EventListener ChaosEventTriggered
-    BSS->>BSS: build ChaosBroadcastEvent
-    BSS-->>BSS: SSE broadcast to clients
-    CS-->>CC: ChaosEvent
-    CC->>CC: map → ChaosEventTriggeredResponse
-    CC-->>Client: 200 ChaosEventTriggeredResponse
-```
-
-#### Dev Stub Scenario (no AI)
-
-```mermaid
-sequenceDiagram
-    box "chaos: Adapter In"
-    participant CES as ChaosEventScheduler
-    end
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-    box "chaos: Adapter Out"
-    participant CEGS as ChaosEventGeneratorStub
-    end
-
-    Note over CES: Every 10s (if interval elapsed)
-    CES->>CS: triggerEvent()
-    CS->>CEGS: generate(headlines, stocks, null, null, null)
-    Note over CEGS: Delegates to ChaosEventFallbackGenerator<br/>Selects from 19 pre-built events<br/>Picks random type, severity, headline,<br/>impact%, symbol from stock list
-    CEGS-->>CS: ChaosEvent {type, severity, headline, symbol, impactPercent, ...}
-```
-
-### Chaos Level Management
-
-`GET /api/chaos/level` returns the current chaos level (default `PAPER_HANDS`). `POST /api/chaos/level` changes it. The level controls how frequently chaos events are generated and modulates market volatility.
-
-#### Chaos Levels
-
-| Level | volatilityMultiplier | aiEventIntervalMs |
-|-------|---------------------|-------------------|
-| `PAPER_HANDS` | 1.0× | 900,000 ms (15 min) |
-| `MODERATE` | 2.0× | 300,000 ms (5 min) |
-| `HIGH_VOLATILITY` | 5.0× | 120,000 ms (2 min) |
-| `EXTREME` | 12.5× | 60,000 ms (1 min) |
-| `MAXIMUM_OVERDRIVE` | 25.0× | 30,000 ms (30 s) |
-
-- **`volatilityMultiplier`** — scales the stock's base volatility passed to the price engine. Changing chaos level immediately adjusts market volatility.
-- **`aiEventIntervalMs`** — minimum interval between AI chaos events. The `ChaosEventScheduler` checks every `stonks.chaos.event-check-interval-ms` (default 30s) and fires an event if this interval has elapsed since the last one.
-- Price tick frequency is controlled by `stonks.market.simulation.interval-ms` (default 2s) and is independent of chaos level.
-
-#### Flow
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "chaos: Adapter In"
-    participant CC as ChaosController
-    end
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-    box "stock: Application"
-    participant SS as StockPortIn
-    end
-
-    Client->>CC: GET /api/chaos/level
-    CC->>CS: getCurrentLevel()
-    Note over CS: AtomicReference<ChaosLevel>, defaults to PAPER_HANDS
-    CS-->>CC: ChaosLevel
-    CC-->>Client: 200 ChaosLevelResponse
-
-    Client->>CC: POST /api/chaos/level (body: "EXTREME")
-    CC->>CC: EnumUtils.fromValue(ChaosLevel.class, body)
-    CC->>CS: setLevel(EXTREME)
-    CS->>CS: currentLevel.set(EXTREME)
-    CS->>SS: setVolatilityMultiplier(12.5)
-    Note over CS,SS: Market volatility immediately scales<br/>by 12.5× on next tick
-    CC-->>Client: 200 ChaosLevelResponse
-```
-
-### Chaos Event History
-
-`GET /api/chaos/events` and `GET /api/chaos/history` return the in-memory history of triggered chaos events. The history is bounded to 100 entries (FIFO eviction).
-
-#### Flow
-
-```mermaid
-sequenceDiagram
-    participant Client as HTTP Client
-    box "chaos: Adapter In"
-    participant CC as ChaosController
-    end
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-
-    Client->>CC: GET /api/chaos/events
-    CC->>CS: getHistory()
-    CS->>CS: history.getAll() → List.copyOf (immutable snapshot)
-    CS-->>CC: List<ChaosEvent>
-    CC-->>Client: 200 ChaosEventsResponse
-```
-
-### News Headline Fetching
-
-The news module is a leaf module (`@ApplicationModule(allowedDependencies = {})`) that fetches and caches headlines from RSS feeds. It exposes `NewsPortIn` to other modules — primarily consumed by `ChaosService` during event generation.
-
-The flow is triggered when `ChaosService.triggerEvent()` calls `newsPortIn.getHeadlines()`. Headlines are cached for 60 seconds via Caffeine (`@Cacheable(value = "headlines", unless = "#result.isEmpty()")`). Subsequent calls within the TTL return cached data without a fresh fetch.
-
-#### Real Scenario (RSS)
-
-```mermaid
-sequenceDiagram
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-    box "news: Application"
-    participant NS as NewsService
-    end
-    box "news: Adapter Out"
-    participant NRCA as NewsRssClientAdapter
-    participant NSM as NewsSyndMapper
-    end
-    participant RSS as News RSS Feeds
-
-    Note over CS: triggerEvent() needs headlines
-    CS->>NS: getHeadlines()
-
-    Note over NS: @Cacheable("headlines")<br/>Cache miss → fetch
-    NS->>NRCA: fetchHeadlines()
-    loop For each feed URL (Reuters, BBC Tech, TechCrunch)
-        NRCA->>RSS: GET (RestClient)
-        RSS-->>NRCA: RSS XML
-        NRCA->>NRCA: parseFeed() — SyndFeedInput
-        NRCA->>NSM: map(SyndEntry → NewsHeadline)
-        NSM-->>NRCA: NewsHeadline
-    end
-
-    Note over NRCA: Per-feed error isolation<br/>Failed feeds return empty,<br/>others unaffected
-
-    NRCA-->>NS: List<NewsHeadline> (merged, per-feed dedup)
-    Note over NS: Deduplicate by title (case-insensitive)<br/>LinkedHashMap preserves insertion order
-    Note over NS: Cache result for 60s
-
-    NS-->>CS: List<NewsHeadline>
-
-    Note over CS,NS: Subsequent calls within 60s TTL
-    CS->>NS: getHeadlines()
-    Note over NS: @Cacheable → cache hit<br/>Returns cached headlines<br/>No RSS fetch
-    NS-->>CS: List<NewsHeadline> (cached)
-```
-
-#### Dev Stub Scenario (no RSS)
-
-```mermaid
-sequenceDiagram
-    box "chaos: Application"
-    participant CS as ChaosService
-    end
-    box "news: Application"
-    participant NS as NewsService
-    end
-    box "news: Adapter Out"
-    participant NCS as NewsClientStub
-    end
-
-    CS->>NS: getHeadlines()
-    NS->>NCS: fetchHeadlines()
-    Note over NCS: AtomicInteger counter cycles<br/>through 3 batches of 2 headlines
-    Note over NCS: Batch 0: "Fed Holds..." + "Tech Stocks..."<br/>Batch 1: "Oil Prices..." + "Bitcoin $100K..."<br/>Batch 2: "Housing Market..." + "Retail Sales..."
-    NCS-->>NS: List<NewsHeadline> (rotating batch)
-    NS-->>CS: List<NewsHeadline>
-```
-
-### News as Chaos Context
-
-The headlines fetched by the news module are passed as context to the chaos event generator. This flow shows how raw news headlines become part of an AI-generated or catalog-based chaos event. The details of generation differ by profile, but the headline-handoff is identical.
-
-```mermaid
-sequenceDiagram
-    box "chaos: Application"
-    participant CS2 as ChaosService
-    end
-    box "news: Application"
-    participant NS2 as NewsService
-    end
-    box "stock: Application"
-    participant SI as StockPortIn
-    end
-    box "chaos: Adapter Out"
-    participant CEG as ChaosEventGeneratorPortOut
-    end
-
-    CS2->>NS2: getHeadlines()
-    NS2-->>CS2: List<NewsHeadline> (cached or fresh)
-
-    CS2->>SI: getStocks()
-    SI-->>CS2: List<StockPrice>
-
-    CS2->>CEG: generate(headlines, stocks, type, severity, targetSymbol)<br/>Note: null params = random selection
-
-    alt OpenRouter AI (real adapter)
-        Note over CEG: Builds LLM prompt with headline<br/>titles + sources to inspire<br/>meme-worthy chaos event
-    else Fallback catalog (real adapter)
-        Note over CEG: Randomly picks headline title<br/>as sourceHeadline, selects event<br/>from ChaosEventFallbackGenerator (19 events)
-    else Stub (default)
-        Note over CEG: Delegates to ChaosEventFallbackGenerator<br/>Randomly picks headline, type,<br/>severity, impact% from 19 events
-    end
-
-    CEG-->>CS2: ChaosEvent {type, severity, headline, symbol, impactPercent, sourceHeadline}
-```
-
-### RSS Configuration
-
-```yaml
-stonks:
-  news:
-    rss:
-      feed-urls:
-        - https://feeds.bbci.co.uk/news/technology/rss.xml
-        - https://techcrunch.com/feed/
-        - https://www.theguardian.com/uk/business/rss
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=500, expireAfterWrite=60s
-```
-
-| Property | Value | Description |
-|----------|-------|-------------|
-| RSS Feed URLs | Reuters Business, BBC Tech, TechCrunch | Fetched in parallel via `RestClient`, per-feed error isolation |
-| Cache Provider | Caffeine | In-memory, concurrent, high-performance |
-| Cache TTL | 60s (`expireAfterWrite`) | Stale headlines acceptable for chaos event generation |
-| Max Cache Size | 500 entries | Safety ceiling (unlikely to be hit) |
-| Empty Result | Not cached (`unless = "#result.isEmpty()"`) | Avoids caching transient network failures |
-
-### Scheduling Constraints
-
-The system has multiple scheduled processes that must coexist without conflicting. The key timing parameters and their constraints:
-
-| Parameter | Default | Source | Constraint |
-|-----------|---------|--------|------------|
-| `stonks.market.simulation.interval-ms` | 2,000 ms | `application.yaml` | Must be ≥ expected max tick duration (11 COBOL spawns × per-program timeout). With real COBOL adapters, consider ≥ 5s. |
-| `stonks.chaos.event-check-interval-ms` | 30,000 ms | `application.yaml` | Must be ≤ smallest `aiEventIntervalMs` across chaos levels, otherwise events won't fire at the expected rate |
-| `stonks.broadcast.sse-timeout-ms` | 300,000 ms (5 min) | `application.yaml` | Must be > `heartbeat-rate-ms` |
-| `stonks.broadcast.heartbeat-rate-ms` | 15,000 ms | `application.yaml` | Must be < `sse-timeout-ms` |
-| News cache TTL | 60s | `application.yaml` | Should be ≤ `aiEventIntervalMs` at aggressive chaos levels |
-| COBOL program timeout | 5s per program | `application.yaml` | Must be < `simulation.interval-ms` for any single program; total per-tick timeout is 1+N programs × 5s |
-
-**Race condition protection:** `StockService.simulate()` and `StockService.applyImpact()` share a `ReentrantLock` to prevent concurrent modifications to price state when chaos events and price ticks overlap.
-
-**Overlapping tick protection:** `StockPriceTickScheduler` uses an `AtomicBoolean` guard — if a tick is still running when the next one is scheduled, the new tick is skipped with a warning log. This prevents queue buildup when COBOL calls are slow.
-
-**Per-stock resilience:** If the price engine fails for a single stock (COBOL timeout, error), that stock is skipped for the tick. Remaining stocks continue normally. The failed stock retains its previous price until the next successful tick.
 
 ---
 
@@ -1116,24 +909,53 @@ The system has multiple scheduled processes that must coexist without conflictin
 
 Tests run against H2 with COBOL stubs active by default — zero external dependencies.
 
-### Strategy
+### Folder Structure (test-type-first)
 
-| Layer | Tool | Purpose |
-|-------|------|---------|
-| E2E | `@ApplicationModuleTest` + `RestTestClient` | Full HTTP flow through module boundaries |
-| Unit | `@ExtendWith(MockitoExtension.class)` | Stubbed adapter logic, edge cases not reachable via E2E |
-| Integration | Plain JUnit | COBOL executor, process spawning |
-| Architecture | `ApplicationModules.verify()` | Modulith boundary enforcement — `ModulithVerificationTest` is the single verification needed; do not create additional modulith verification tests |
+Tests are organized by **type**, not by production package depth. The folder name signals intent so individual comments can stay focused on behavior.
+
+```
+src/test/java/dev/pollito/stonks_java/
+├── architecture/   # Structural / smoke tests
+├── e2e/            # Full application (@SpringBootTest + HTTP)
+├── module/         # Module-isolated (@ApplicationModuleTest + HTTP or port-in)
+├── integration/    # Partial context, real DB / subprocess
+├── adapter_contract/  # Mocked contract tests for @ConditionalOnProperty adapters
+├── unit/           # Pure JUnit / Mockito — zero Spring context
+├── edge_case/      # Scenarios hard to trigger through HTTP
+└── testsupport/    # Shared helpers (e.g. RestTestClientAssertions)
+```
+
+### Naming Conventions
+
+| Suffix | Meaning | Example |
+|--------|---------|---------|
+| `*E2eTest` | Full app `@SpringBootTest` + HTTP | `BroadcastE2eTest` |
+| `*ModuleTest` | `@ApplicationModuleTest` + HTTP or port-in | `PortfolioModuleTest` |
+| `*IntegrationTest` | Partial context, real DB/subprocess | `CobolProgramExecutorIntegrationTest` |
+| `*MockTest` | Mocked contract for disabled adapters | `TradePortfolioMgrCobolAdapterMockTest` |
+| `*Test` | Pure unit, utility, or edge case | `EnumUtilsTest`, `ControllerAdviceTest` |
+
+### `@ApplicationModuleTest` vs `@SpringBootTest`
+
+Use `@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES)` when the module under test only needs its own beans plus directly-injected dependencies. Use `@SpringBootTest` only when the test needs the **full application context** — e.g. `broadcast` listens to cross-module Spring events from `stock` and `chaosevent`, which are not direct bean dependencies and won't be loaded by `DIRECT_DEPENDENCIES`.
+
+When `@ApplicationModuleTest` is used from outside the module's package (e.g. flat `module/` folder), declare the target module explicitly:
+
+```java
+@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT, module = "trade")
+```
 
 ### Test Hierarchy
 
-**E2E tests are the default.** They run against H2 with COBOL stubs active, exercising the full request-to-response path through module boundaries. If a scenario can be tested end-to-end, it should be.
+**Module and E2E tests are the default.** They exercise the full request-to-response path. If a scenario can be tested through HTTP, it should be.
 
-**Unit tests fill gaps.** Some classes (typically out adapters that are not initialized when stubs are active) E2E tests cannot reach. Unit tests cover those unreachable paths and complex edge-case logic that would be awkward to assert through HTTP. MapStruct mappers in adapter tests use `@Spy` with the generated `Impl` class rather than `@Mock`, so the real mapping logic is exercised.
+**`adapter_contract/` tests are second-class.** They verify adapter wiring and mapping for beans gated by `@ConditionalOnProperty` (e.g. `stonks.adapters.cobol=real`) that are never loaded in the default test profile. These are isolated mock tests — not first-class behavioral tests. They exist because the real adapters can't be reached from E2E, not because they're preferable to it.
 
-When using `@ExtendWith(MockitoExtension.class)`, prefer `@InjectMocks` on the class under test with `@Mock` fields for its dependencies over a manual `setUp()` method that calls `new`. This keeps test structure uniform and avoids forgetting to update the constructor call when a dependency is added or removed.
+**`unit/` and `edge_case/` tests fill genuine gaps.** Some logic is unreachable from E2E because stubs don't exercise certain branches (e.g. deduplication, edge-case exception handlers) or because the behavior is push-based (SSE) rather than request-response. Class-level comments explain **what behavior is under test** and **why that behavior can't be reached from a higher layer** — they never repeat "this is not an E2E test."
 
-**Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying that process spawning, stdin/stdout JSON, and timeout handling work. No additional integration tests are planned; the COBOL bridge is a stable concern.
+**MapStruct mappers in adapter tests use `@Spy` with the generated `*Impl` class** rather than `@Mock`, so real mapping logic is exercised even in mocked adapter tests.
+
+**Integration tests are minimal.** There is exactly one test for `CobolProgramExecutor` — verifying process spawning, stdin/stdout JSON, and timeout handling. No additional integration tests are planned; the COBOL bridge is a stable concern.
 
 ### Coverage
 
@@ -1141,37 +963,26 @@ Coverage thresholds are a suggestion, not a hard rule. Adjust them up or down as
 
 ### Acceptable Gaps
 
-Some code paths are intentionally left untested. These fall into the following categories:
+Some code paths are intentionally left untested:
 
-1. **Preconditions validated at a higher layer** — A branch in a stub adapter (e.g., null action or negative quantity) may be unreachable from E2E tests because the REST layer rejects the request with `@Valid` / `@Min` before it reaches the adapter. Testing these paths through the stub directly would duplicate the validation contract.
+1. **Preconditions validated at a higher layer** — A branch in a stub adapter (e.g. null action) may be unreachable from E2E because the REST layer rejects it with `@Valid` before it reaches the adapter. Testing these paths through the stub directly would duplicate the validation contract.
 
 2. **Safety guards** — Branches that exist as defensive checks against programming errors. They are never expected to trigger in normal operation. Testing them would require artificially corrupting internal state.
 
 3. **MapStruct-generated null guards** — Generated mapper implementations contain null checks on every parameter. These branches would only fire if a null value propagates past compile-time type safety, indicating a bug upstream. Testing each null guard individually adds noise without signal.
 
-4. **Environment-dependent error paths** — Process timeout handling in `CobolProgramExecutor` relies on `Process.waitFor(timeout, unit)` and `Process.destroyForcibly()`. These JDK APIs behave correctly on standard Linux runtimes but may block on constrained environments (e.g., BusyBox on NixOS). The timeout logic is tested at the code level; the integration test for this specific path is omitted where the OS cannot reliably kill orphaned child processes.
+4. **Environment-dependent error paths** — Process timeout handling in `CobolProgramExecutor` relies on `Process.waitFor(timeout, unit)` and `Process.destroyForcibly()`. These JDK APIs behave correctly on standard Linux runtimes but may block on constrained environments (e.g. BusyBox on NixOS). The timeout logic is tested at the code level; the integration test for this specific path is omitted where the OS cannot reliably kill orphaned child processes.
 
 These gaps keep the test suite focused on business logic regressions rather than infrastructure edge cases that are better caught by the JVM or static analysis.
 
 ### Red Flags — You May Be Testing Too Much
 
-Some patterns signal that a test is fighting the design rather than verifying behavior:
-
 - **Mockito `reset()`** — Resetting a mock between tests usually means the test is sharing mutable state or testing multiple scenarios in a single method.
 - **Reflection to bypass `private`** — Using `Field.setAccessible(true)` or `ReflectionTestUtils` to reach private fields/methods often indicates the class under test has too many internal responsibilities, or the test is coupling to implementation details. If you need to reach inside a class, consider whether the behavior can be exercised through its public contract instead.
+- **Pure unit tests for trivial behavior** — If a test mocks every dependency and only verifies that `A.f()` calls `B.g()`, it's probably not adding value over an integration or module test.
+- **Tests for scenarios that can never happen** — If a code path is unreachable from any real execution (not just "hard to trigger" but actually impossible), the test is documenting dead code, not verifying behavior.
 
 These aren't hard bans — there are legitimate edge cases — but they should prompt a second look at the test and the design it's testing.
-
-### Documenting Test Rationale
-
-Every non-E2E test must explain why E2E was not chosen via a class-level `//` comment. This keeps the testing strategy self-documenting as the suite grows. Common reasons:
-
-- **Property-gated adapter** — only active when `stonks.adapters.*=real`, never loaded in default (stubs) E2E context
-- **Pure algorithm** — no I/O or framework dependencies; E2E adds no value over isolated edge-case testing
-- **Infrastructure/OS concern** — exercises real subprocess spawning or OS behavior that COBOL stubs bypass
-- **Push-based/async behavior** — SSE, heartbeats, event listeners not exercisable through HTTP request-response
-- **Structural check** — compile/verify-time architecture enforcement, not behavioral
-- **Pure utility / design constraint** — zero-dependency static method or single-assertion guard
 
 ### E2E Test Data
 
@@ -1181,8 +992,11 @@ Each test declares its data needs via `@Sql` referencing reusable SQL fixtures i
 sql/
 ├── portfolio.sql                       # baseline portfolio ($10k cash)
 ├── portfolio-with-position.sql         # portfolio + GMEE position (qty 10)
+├── portfolio-with-multiple-positions.sql  # portfolio + GMEE (10) + DOGE (50)
 ├── portfolio-with-limited-position.sql # portfolio + GMEE position (qty 3)
-└── portfolio-with-history.sql          # portfolio + 2 trade history entries
+├── portfolio-with-history.sql          # portfolio + 2 trade history entries
+├── intensity-level.sql                 # intensity_level table
+└── chaosevent-incident-log.sql         # chaosevent_incident_log table
 ```
 
 Tests that need an empty DB use inline cleanup statements:
@@ -1197,23 +1011,11 @@ Tests that need an empty DB use inline cleanup statements:
 - **`@ActiveProfiles`** — not needed; default properties (stubs + H2) are what tests need
 - **Repository autowiring for setup** — data is declarative, not constructed in test methods
 
-### `@ApplicationModuleTest` Context Loading
-
-`@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES)` loads **only** the module being tested and its **direct** dependencies — not transitive ones. This means:
-
-```
-broadcast → trade → stock
-```
-
-When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a transitive dependency) is **not** loaded, causing `NoSuchBeanDefinitionException` for any beans from `stock` that `trade` requires.
-
-**Rule of thumb:** Use `@SpringBootTest` instead of `@ApplicationModuleTest` for modules at the top of the dependency graph that transitively depend on multiple other modules. The `ModulithVerificationTest` still validates module boundaries separately.
-
 ### Running Tests
 
 ```bash
-./gradlew test                          # all tests
-./gradlew test --tests TradeHistoryE2eTest  # single class
+./gradlew test                              # all tests
+./gradlew test --tests TradeModuleTest      # single class
 ./gradlew jacocoTestCoverageVerification    # coverage check
 ```
 
@@ -1221,7 +1023,7 @@ When testing `broadcast`, only `broadcast` and `trade` are loaded. `stock` (a tr
 
 In addition to the automated JUnit suite, there is a separate **Karate** smoke test pack for manual sanity checks against a **live** running server (`localhost:8080` by default). These tests live in `src/karate/` and are **completely isolated** from `./gradlew test` — they do not affect JaCoCo coverage, are excluded from the `check` lifecycle, and never fail the build.
 
-They are structured as reusable helpers (`features/helpers/*.feature`) that individual scenarios `call read`, plus a master `smoke-flow.feature` that chains all 14 manual-test steps end-to-end.
+They are structured as reusable helpers (`features/helpers/*.feature`) that individual scenarios `call read`, plus a master `smoke-flow.feature` that chains all manual-test steps end-to-end.
 
 ```bash
 # 1. Start the app in another terminal
@@ -1271,9 +1073,9 @@ The `karate.env` property switches `baseUrl` in `karate-config.js` (default: `ht
 
 | Integration | Purpose | Status |
 |-------------|---------|--------|
-| COBOL Programs | Trade validation, price engine, portfolio management, catalog | Implemented via `CobolProgramExecutor` (stdin/stdout JSON) |
-| OpenRouter (AI) | AI-powered chaos event generation via Spring AI `ChatModel` | Implemented via `spring-ai-openai` |
-| RSS News Feeds | Real-world headline fetching for chaos event context | Implemented via ROME (Reuters, BBC Tech, TechCrunch) |
+| COBOL Programs | Price engine, portfolio management, catalog | Implemented via `CobolProgramExecutor` (stdin/stdout JSON) |
+| OpenRouter (AI) | AI-powered chaotic event generation via Spring AI `ChatModel` | Implemented via `spring-ai-openai` |
+| RSS News Feeds | Real-world headline fetching for chaotic event context | Implemented via ROME (BBC Tech, TechCrunch, Guardian Business) |
 
 ### CI/CD & Deployment
 

@@ -3,24 +3,32 @@ package dev.pollito.stonks_java.stock.application.service;
 import static java.math.BigDecimal.ONE;
 import static java.math.BigDecimal.ZERO;
 import static java.math.RoundingMode.HALF_UP;
-import static java.time.OffsetDateTime.now;
+import static java.time.Duration.between;
+import static java.time.Instant.now;
+import static java.util.stream.Collectors.toMap;
 
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
-import dev.pollito.stonks_java.stock.application.port.out.StockPortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockCatalogPortOut;
 import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
+import dev.pollito.stonks_java.stock.application.port.out.StockPricePortOut;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
+import dev.pollito.stonks_java.stock.domain.StockPriceSnapshot;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import jakarta.annotation.PostConstruct;
+import jakarta.annotation.PreDestroy;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.time.OffsetDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 
@@ -30,26 +38,30 @@ import org.springframework.stereotype.Service;
 public class StockService implements StockPortIn {
 
   private final StockPriceEnginePortOut priceEnginePortOut;
-  private final StockPortOut stockPortOut;
+  private final StockCatalogPortOut stockCatalogPortOut;
+  private final StockPricePortOut stockPricePortOut;
   private final ApplicationEventPublisher events;
 
-  private final ConcurrentHashMap<String, BigDecimal> currentPrices = new ConcurrentHashMap<>();
+  @Value("${stonks.market.price.persist-interval-ms:60000}")
+  private long persistIntervalMs;
+
   private final ConcurrentHashMap<String, StockPrice> prices = new ConcurrentHashMap<>();
   private final AtomicReference<BigDecimal> volatilityMultiplier =
       new AtomicReference<>(BigDecimal.ONE);
   private final ReentrantLock simulationLock = new ReentrantLock();
+  private final AtomicReference<Instant> lastPersistAt = new AtomicReference<>(Instant.EPOCH);
   private volatile List<Stock> catalog;
 
   @PostConstruct
   public void initialize() {
-    catalog = stockPortOut.getStocks();
-    OffsetDateTime now = now();
+    catalog = stockCatalogPortOut.getStocks();
+    StockPriceSnapshot persisted = stockPricePortOut.loadCurrentPrices();
+    OffsetDateTime now = OffsetDateTime.now();
     for (Stock stock : catalog) {
-      currentPrices.put(stock.symbol(), stock.basePrice());
+      BigDecimal price = persisted.prices().getOrDefault(stock.symbol(), stock.basePrice());
       prices.put(
           stock.symbol(),
-          new StockPrice(
-              stock.symbol(), stock.name(), stock.basePrice(), stock.basePrice(), ZERO, ZERO, now));
+          new StockPrice(stock.symbol(), stock.name(), price, price, ZERO, ZERO, now));
     }
   }
 
@@ -57,36 +69,25 @@ public class StockService implements StockPortIn {
   public void simulate() {
     simulationLock.lock();
     try {
-      List<Stock> stocks = catalog;
-      OffsetDateTime now = now();
-      BigDecimal multiplier = volatilityMultiplier.get();
-      for (Stock stock : stocks) {
-        BigDecimal currentPrice = currentPrices.get(stock.symbol());
-        if (currentPrice == null) continue;
+      for (Stock stock : catalog) {
+        StockPrice previous = prices.get(stock.symbol());
+        if (previous == null) continue;
+        BigDecimal currentPrice = previous.price();
 
-        BigDecimal effectiveVolatility = stock.volatility().multiply(multiplier);
-        BigDecimal newPrice;
-        try {
-          newPrice = priceEnginePortOut.calculate(currentPrice, effectiveVolatility, stock.trend());
-        } catch (Exception e) {
-          log.warn("Price engine failed for {}, skipping tick: {}", stock.symbol(), e.getMessage());
-          continue;
-        }
-        currentPrices.put(stock.symbol(), newPrice);
-
-        BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
-        BigDecimal changePercent =
-            currentPrice.compareTo(ZERO) > 0
-                ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
-                : ZERO;
+        BigDecimal newPrice =
+            priceEnginePortOut.calculate(
+                currentPrice,
+                stock.volatility().multiply(volatilityMultiplier.get()),
+                stock.trend());
 
         StockPrice stockPrice =
-            new StockPrice(
-                stock.symbol(), stock.name(), newPrice, currentPrice, change, changePercent, now);
+            buildStockPrice(
+                stock.symbol(), stock.name(), newPrice, currentPrice, OffsetDateTime.now());
         prices.put(stock.symbol(), stockPrice);
 
         events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
       }
+      tryPersistPrices();
     } finally {
       simulationLock.unlock();
     }
@@ -96,33 +97,39 @@ public class StockService implements StockPortIn {
   public void applyImpact(String symbol, BigDecimal impactPercent) {
     simulationLock.lock();
     try {
-      BigDecimal currentPrice = currentPrices.get(symbol);
-      if (currentPrice == null) return;
+      StockPrice existing = prices.get(symbol);
+      if (existing == null) return;
+      BigDecimal currentPrice = existing.price();
 
       BigDecimal newPrice =
           currentPrice
               .multiply(ONE.add(impactPercent.divide(new BigDecimal("100"), 10, HALF_UP)))
               .setScale(2, HALF_UP);
-      currentPrices.put(symbol, newPrice);
-
-      StockPrice stockPrice = prices.get(symbol);
-      if (stockPrice == null) return;
-
-      BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
-      BigDecimal changePercent =
-          currentPrice.compareTo(ZERO) > 0
-              ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
-              : ZERO;
 
       StockPrice updated =
-          new StockPrice(
-              symbol, stockPrice.name(), newPrice, currentPrice, change, changePercent, now());
+          buildStockPrice(symbol, existing.name(), newPrice, currentPrice, OffsetDateTime.now());
       prices.put(symbol, updated);
 
       events.publishEvent(new StockPriceUpdatedEvent(updated));
+
+      tryPersistPrices();
     } finally {
       simulationLock.unlock();
     }
+  }
+
+  private void tryPersistPrices() {
+    Instant now = now();
+    if (between(lastPersistAt.get(), now).toMillis() >= persistIntervalMs) {
+      stockPricePortOut.saveCurrentPrices(currentPricesSnapshot());
+      lastPersistAt.set(now);
+    }
+  }
+
+  @PreDestroy
+  public void persistOnShutdown() {
+    log.info("Persisting current prices before shutdown");
+    stockPricePortOut.flushPriceSnapshot(currentPricesSnapshot());
   }
 
   @Override
@@ -133,5 +140,24 @@ public class StockService implements StockPortIn {
   @Override
   public void setVolatilityMultiplier(BigDecimal multiplier) {
     volatilityMultiplier.set(multiplier);
+  }
+
+  private StockPrice buildStockPrice(
+      String symbol,
+      String name,
+      BigDecimal newPrice,
+      BigDecimal currentPrice,
+      OffsetDateTime now) {
+    BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
+    BigDecimal changePercent =
+        currentPrice.compareTo(ZERO) > 0
+            ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
+            : ZERO;
+    return new StockPrice(symbol, name, newPrice, currentPrice, change, changePercent, now);
+  }
+
+  private StockPriceSnapshot currentPricesSnapshot() {
+    return new StockPriceSnapshot(
+        prices.entrySet().stream().collect(toMap(Entry::getKey, e -> e.getValue().price())));
   }
 }

@@ -1,7 +1,6 @@
 package dev.pollito.stonks_java.karate;
 
 import com.intuit.karate.junit5.Karate;
-import org.junit.jupiter.api.Test;
 
 /**
  * JUnit 5 runner for Karate smoke tests.
@@ -13,9 +12,9 @@ import org.junit.jupiter.api.Test;
  * ./gradlew karateTest
  * }</pre>
  *
- * <p>They are intended for manual smoke testing against a <b>live</b> server running on
- * {@code localhost:8080}. They do not start an embedded Spring context and do not affect
- * JaCoCo coverage reports.
+ * <p>They are intended for manual smoke testing against a <b>live</b> server running on {@code
+ * localhost:8080}. They do not start an embedded Spring context and do not affect JaCoCo coverage
+ * reports.
  */
 class KarateSmokeTestRunner {
 

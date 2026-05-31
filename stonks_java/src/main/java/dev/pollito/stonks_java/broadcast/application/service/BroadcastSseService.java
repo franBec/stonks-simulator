@@ -9,16 +9,13 @@ import dev.pollito.stonks_java.broadcast.application.port.in.BroadcastPortIn;
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
-import dev.pollito.stonks_java.broadcast.domain.PaperTapeEntry;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
-import dev.pollito.stonks_java.chaos.domain.ChaosEventTriggered;
+import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
-import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
-import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,8 +24,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -38,7 +33,6 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Slf4j
 public class BroadcastSseService implements BroadcastPortIn {
 
-  private final TradePortIn tradePortIn;
   private final BroadcastProperties broadcastProperties;
 
   private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
@@ -88,24 +82,6 @@ public class BroadcastSseService implements BroadcastPortIn {
     emitters.removeAll(deadEmitters);
   }
 
-  @Override
-  public Page<PaperTapeEntry> getPaperTape(Pageable pageable) {
-    Page<TradeHistoryItem> history = tradePortIn.getTradeHistory(pageable);
-    return history.map(
-        item -> {
-          String formattedLine =
-              format(
-                  broadcastProperties.getPaperTapeEntryFormat(),
-                  item.id(),
-                  item.action(),
-                  item.quantity(),
-                  item.symbol(),
-                  item.price(),
-                  item.totalCost());
-          return new PaperTapeEntry(item.id(), formattedLine, item.executedAt());
-        });
-  }
-
   @EventListener
   void onStockPriceUpdated(StockPriceUpdatedEvent event) {
     broadcast(new PriceTickBroadcastEvent(event.stockPrice()));
@@ -119,13 +95,13 @@ public class BroadcastSseService implements BroadcastPortIn {
   }
 
   @EventListener
-  void onChaosEventTriggered(ChaosEventTriggered event) {
+  void onChaoticEventTriggered(ChaoticEventTriggered event) {
     broadcast(
         new ChaosBroadcastEvent(
-            event.chaosEvent().headline(),
-            event.chaosEvent().symbol(),
-            event.chaosEvent().impactPercent().doubleValue(),
-            event.chaosEvent().explanation()));
+            event.chaoticEvent().headline(),
+            event.chaoticEvent().symbol(),
+            event.chaoticEvent().impactPercent().doubleValue(),
+            event.chaoticEvent().explanation()));
   }
 
   @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
@@ -171,12 +147,13 @@ public class BroadcastSseService implements BroadcastPortIn {
 
   private String formatTradePaperTape(
       TradeExecutionResult result, String symbol, int quantity, TradeAction action) {
+    double unitPrice = quantity > 0 ? result.totalCost() / quantity : 0;
     return format(
         broadcastProperties.getTradePaperTapeFormat(),
         action.getValue(),
         quantity,
         symbol,
-        result.totalCost(),
+        unitPrice,
         result.totalCost());
   }
 }

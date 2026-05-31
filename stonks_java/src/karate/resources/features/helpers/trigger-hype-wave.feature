@@ -6,7 +6,7 @@ Feature: Helper — Trigger HYPE_WAVE on GMEE
     * url baseUrl
 
   Scenario: Trigger event
-    Given path 'api/chaos/events'
+    Given path 'api/chaotic-events'
     And request
       """
       {
