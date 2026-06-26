@@ -349,7 +349,7 @@ digraph stonks_request_flows {
       <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="2">
         <TR><TD><FONT POINT-SIZE="11" COLOR="#8b949e"><B>StockService</B></FONT></TD></TR>
         <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">simulate() · getStocks()</FONT></TD></TR>
-        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">applyImpact()</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← ApplyStockImpact (event)</FONT></TD></TR>
       </TABLE>
     >];
 
@@ -804,8 +804,8 @@ digraph stonks_request_flows {
   edge [style=solid, penwidth=1.5, color="#8b949e"];
   chaos_sched -> chaos_port_in [label="trigger()"];
 
-  edge [style=solid, penwidth=1.5, color="#8b949e"];
-  chaos_svc -> stock_port_in [label="applyImpact()", constraint=false];
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  chaos_svc -> stock_svc [label="ApplyStockImpact", constraint=false];
 
   edge [style=dashed, penwidth=1.5, color="#1a7f37"];
   chaos_svc -> broadcast_svc [label="ChaoticEventTriggered", constraint=false];

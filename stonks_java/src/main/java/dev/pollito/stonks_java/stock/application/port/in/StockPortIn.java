@@ -7,8 +7,6 @@ import java.util.List;
 public interface StockPortIn {
   void simulate();
 
-  void applyImpact(String symbol, BigDecimal impactPercent);
-
   List<StockPrice> getStocks();
 
   void setVolatilityMultiplier(BigDecimal multiplier);

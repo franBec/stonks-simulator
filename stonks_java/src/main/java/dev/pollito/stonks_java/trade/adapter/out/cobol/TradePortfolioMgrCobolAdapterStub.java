@@ -74,8 +74,14 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
         totalCost);
   }
 
-  private TradeExecutionResult rejected(String errorCode, String message, TradeExecutionInput input) {
+  private TradeExecutionResult rejected(
+      String errorCode, String message, TradeExecutionInput input) {
     return new TradeExecutionResult(
-        ValidationStatus.REJECTED, errorCode, message, input.cashBalance(), input.holdingQty(), 0.0);
+        ValidationStatus.REJECTED,
+        errorCode,
+        message,
+        input.cashBalance(),
+        input.holdingQty(),
+        0.0);
   }
 }

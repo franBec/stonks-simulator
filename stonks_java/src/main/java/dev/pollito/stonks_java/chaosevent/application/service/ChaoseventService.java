@@ -12,6 +12,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
 import dev.pollito.stonks_java.news.application.port.in.NewsPortIn;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
+import dev.pollito.stonks_java.stock.domain.ApplyStockImpact;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -58,7 +59,7 @@ public class ChaoseventService implements ChaoseventPortIn {
             generated.type() != null ? generated.type() : type,
             generated.severity() != null ? generated.severity() : severity);
 
-    stockPortIn.applyImpact(event.symbol(), event.impactPercent());
+    eventPublisher.publishEvent(new ApplyStockImpact(event.symbol(), event.impactPercent()));
     eventPublisher.publishEvent(new ChaoticEventTriggered(event));
 
     history.add(event);

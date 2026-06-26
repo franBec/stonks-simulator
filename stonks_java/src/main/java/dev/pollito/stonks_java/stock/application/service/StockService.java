@@ -11,6 +11,7 @@ import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import dev.pollito.stonks_java.stock.application.port.out.StockCatalogPortOut;
 import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
 import dev.pollito.stonks_java.stock.application.port.out.StockPricePortOut;
+import dev.pollito.stonks_java.stock.domain.ApplyStockImpact;
 import dev.pollito.stonks_java.stock.domain.Stock;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import dev.pollito.stonks_java.stock.domain.StockPriceSnapshot;
@@ -30,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -93,8 +95,12 @@ public class StockService implements StockPortIn {
     }
   }
 
-  @Override
-  public void applyImpact(String symbol, BigDecimal impactPercent) {
+  @EventListener
+  void onApplyStockImpact(ApplyStockImpact event) {
+    applyImpact(event.symbol(), event.impactPercent());
+  }
+
+  private void applyImpact(String symbol, BigDecimal impactPercent) {
     simulationLock.lock();
     try {
       StockPrice existing = prices.get(symbol);
