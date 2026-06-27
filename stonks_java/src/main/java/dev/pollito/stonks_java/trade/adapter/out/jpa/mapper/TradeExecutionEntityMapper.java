@@ -1,7 +1,6 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa.mapper;
 
-import dev.pollito.stonks_java.generated.entity.Portfolio;
-import dev.pollito.stonks_java.generated.entity.TradeHistory;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryEntity;
 import dev.pollito.stonks_java.trade.domain.Trade;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
 import java.math.BigDecimal;
@@ -22,8 +21,8 @@ public interface TradeExecutionEntityMapper {
   @Mapping(target = "totalCost", source = "result.totalCost")
   @Mapping(target = "cashBalanceAfter", source = "result.newCashBalance")
   @Mapping(target = "executedAt", expression = "java(java.time.LocalDateTime.now())")
-  @Mapping(target = "portfolio", source = "portfolio")
-  TradeHistory map(Trade trade, TradeExecutionResult result, Portfolio portfolio);
+  @Mapping(target = "portfolioId", source = "portfolioId")
+  TradeHistoryEntity map(Trade trade, TradeExecutionResult result, Long portfolioId);
 
   default BigDecimal map(double value) {
     return BigDecimal.valueOf(value);

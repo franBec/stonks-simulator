@@ -26,7 +26,11 @@ import org.springframework.modulith.test.ApplicationModuleTest;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-@ApplicationModuleTest(mode = DIRECT_DEPENDENCIES, webEnvironment = RANDOM_PORT, module = "trade")
+@ApplicationModuleTest(
+    mode = DIRECT_DEPENDENCIES,
+    webEnvironment = RANDOM_PORT,
+    module = "trade",
+    extraIncludes = "portfolio")
 @AutoConfigureRestTestClient
 class TradeModuleTest {
 
@@ -42,9 +46,9 @@ class TradeModuleTest {
   private static Stream<Arguments> executionScenarios() {
     return Stream.of(
         Arguments.of(domainRequest(BUY, "GMEE", 10), ACCEPTED, null, 10, 9500.0, 500.0),
-        Arguments.of(domainRequest(BUY, "GMEE", 1000), REJECTED, "S222", 0, 0.0, 0.0),
-        Arguments.of(domainRequest(BUY, "FAKE", 10), REJECTED, "S001", 0, 0.0, 0.0),
-        Arguments.of(domainRequest(BUY, "GMEE", 0), REJECTED, "S224", 0, 0.0, 0.0));
+        Arguments.of(domainRequest(BUY, "GMEE", 1000), REJECTED, "S222", 0, 10000.0, 0.0),
+        Arguments.of(domainRequest(BUY, "FAKE", 10), REJECTED, "S001", 0, 10000.0, 0.0),
+        Arguments.of(domainRequest(BUY, "GMEE", 0), REJECTED, "S224", 0, 10000.0, 0.0));
   }
 
   @ParameterizedTest
@@ -122,8 +126,8 @@ class TradeModuleTest {
     assertThat(data).isNotNull();
     assertThat(data.getStatus()).isEqualTo(REJECTED);
     assertThat(data.getErrorCode()).isEqualTo("S223");
-    assertThat(data.getNewQuantity()).isZero();
-    assertThat(data.getNewCashBalance()).isZero();
+    assertThat(data.getNewQuantity()).isEqualTo(3);
+    assertThat(data.getNewCashBalance()).isEqualTo(10000.0);
     assertThat(data.getTotalCost()).isZero();
   }
 

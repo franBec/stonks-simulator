@@ -5,7 +5,7 @@ import static java.util.Collections.reverse;
 import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.mapper.ChaoticIncidentJpaMapper;
 import dev.pollito.stonks_java.chaosevent.application.port.out.ChaoticIncidentPortOut;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEvent;
-import dev.pollito.stonks_java.generated.entity.ChaoseventIncidentLog;
+import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +24,7 @@ public class ChaoticIncidentJpaAdapter implements ChaoticIncidentPortOut {
 
   @Override
   public List<ChaoticEvent> loadHistory() {
-    List<ChaoseventIncidentLog> entities = repo.findTop100ByOrderByOccurredAtDesc();
+    List<ChaoseventIncidentLogEntity> entities = repo.findTop100ByOrderByOccurredAtDesc();
     if (entities.isEmpty()) return List.of();
     reverse(entities);
     return entities.stream().map(mapper::toDomain).toList();

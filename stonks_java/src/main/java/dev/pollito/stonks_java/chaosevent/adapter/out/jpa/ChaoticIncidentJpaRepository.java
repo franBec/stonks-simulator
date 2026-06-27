@@ -1,9 +1,9 @@
 package dev.pollito.stonks_java.chaosevent.adapter.out.jpa;
 
-import dev.pollito.stonks_java.generated.entity.ChaoseventIncidentLog;
+import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import java.util.List;
 import org.springframework.data.repository.CrudRepository;
 
-public interface ChaoticIncidentJpaRepository extends CrudRepository<ChaoseventIncidentLog, Long> {
-  List<ChaoseventIncidentLog> findTop100ByOrderByOccurredAtDesc();
+public interface ChaoticIncidentJpaRepository extends CrudRepository<ChaoseventIncidentLogEntity, Long> {
+  List<ChaoseventIncidentLogEntity> findTop100ByOrderByOccurredAtDesc();
 }

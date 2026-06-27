@@ -28,7 +28,7 @@ class PortfolioModuleTest {
   @Autowired private RestTestClient restTestClient;
 
   @Test
-  @Sql("/sql/portfolio.sql")
+  @Sql("/sql/portfolio-init.sql")
   void initialPortfolio() {
     var result =
         restTestClient

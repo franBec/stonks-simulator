@@ -1,10 +1,10 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa;
 
-import dev.pollito.stonks_java.generated.entity.TradeHistory;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TradeHistoryJpaRepository extends JpaRepository<TradeHistory, Long> {
-  Page<TradeHistory> findByPortfolioId(Long portfolioId, Pageable pageable);
+public interface TradeHistoryJpaRepository extends JpaRepository<TradeHistoryEntity, Long> {
+  Page<TradeHistoryEntity> findByPortfolioId(Long portfolioId, Pageable pageable);
 }

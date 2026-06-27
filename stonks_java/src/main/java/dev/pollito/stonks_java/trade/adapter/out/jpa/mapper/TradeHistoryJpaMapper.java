@@ -1,6 +1,6 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa.mapper;
 
-import dev.pollito.stonks_java.generated.entity.TradeHistory;
+import dev.pollito.stonks_java.trade.adapter.out.jpa.TradeHistoryEntity;
 import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
@@ -11,7 +11,7 @@ import org.mapstruct.MappingConstants;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface TradeHistoryJpaMapper {
 
-  TradeHistoryItem map(TradeHistory entity);
+  TradeHistoryItem map(TradeHistoryEntity entity);
 
   default OffsetDateTime map(LocalDateTime localDateTime) {
     return localDateTime == null ? null : localDateTime.atOffset(ZoneOffset.UTC);

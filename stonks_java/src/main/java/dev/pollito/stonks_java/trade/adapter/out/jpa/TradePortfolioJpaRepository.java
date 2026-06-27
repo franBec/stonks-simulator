@@ -1,6 +1,6 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa;
 
-import dev.pollito.stonks_java.generated.entity.Portfolio;
+import dev.pollito.stonks_java.portfolio.adapter.out.jpa.PortfolioEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface TradePortfolioJpaRepository extends JpaRepository<Portfolio, Long> {}
+public interface TradePortfolioJpaRepository extends JpaRepository<PortfolioEntity, Long> {}

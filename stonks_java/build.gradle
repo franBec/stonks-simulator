@@ -30,7 +30,6 @@ sourceSets {
   main {
     java {
       srcDir(layout.buildDirectory.dir("generated/sources/openapi/src/main/java"))
-      srcDir(layout.buildDirectory.dir("generated/sources/hibernate"))
     }
   }
   karate {
@@ -41,10 +40,6 @@ sourceSets {
     compileClasspath += sourceSets.test.runtimeClasspath
     runtimeClasspath += sourceSets.test.runtimeClasspath
   }
-}
-
-configurations {
-  hibernateTools
 }
 
 dependencies {
@@ -93,15 +88,11 @@ dependencies {
   implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.2.0'
 
   def h2Version = '2.4.240'
-  def hibernateVersion = '7.2.6.Final'
 
   implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
   developmentOnly "com.h2database:h2:${h2Version}"
   testRuntimeOnly "com.h2database:h2:${h2Version}"
   testImplementation 'org.springframework.boot:spring-boot-starter-data-jpa-test'
-  hibernateTools "com.h2database:h2:${h2Version}"
-  hibernateTools "org.hibernate.tool:hibernate-tools-ant:${hibernateVersion}"
-  hibernateTools "org.hibernate.orm:hibernate-core:${hibernateVersion}"
 }
 
 dependencyManagement {
@@ -261,72 +252,6 @@ openApiGenerate {
   ]
 }
 
-tasks.register('generateEntities') {
-  group = 'build'
-  description = 'Reverse engineers stonks-schema.sql into JPA Entities'
-  def outputDir = layout.buildDirectory.dir("generated/sources/hibernate")
-  def sqlFile = layout.projectDirectory.file("src/main/resources/stonks-schema.sql")
-  def revengFile = layout.projectDirectory.file("src/main/resources/hibernate.reveng.xml")
-  def basePropsFile = layout.projectDirectory.file("src/main/resources/hibernate-tools.properties")
-  def templateDir = layout.projectDirectory.dir("src/main/resources/templates/hibernate")
-  inputs.file(sqlFile)
-  inputs.file(revengFile)
-  inputs.file(basePropsFile).optional()
-  inputs.dir(templateDir).optional()
-  outputs.dir(outputDir)
-  doLast {
-    def tempPropsFile = layout.buildDirectory.file("tmp/hibernate-tools.properties").get().asFile
-    tempPropsFile.parentFile.mkdirs()
-    def h2DbDir = layout.buildDirectory.dir("tmp").get().asFile
-    h2DbDir.mkdirs()
-    h2DbDir.listFiles()?.findAll { it.name.startsWith("stonks-h2") }?.each { it.delete() }
-    def h2DbPath = layout.buildDirectory.file("tmp/stonks-h2").get().asFile.absolutePath.replace('\\', '/')
-    def sqlPath = sqlFile.asFile.absolutePath.replace('\\', '/')
-    def h2Loader = new URLClassLoader(
-        configurations.hibernateTools.collect { it.toURI().toURL() } as URL[],
-        ClassLoader.systemClassLoader
-        )
-    def jdbcProps = new java.util.Properties()
-    jdbcProps.setProperty('user', 'sa')
-    jdbcProps.setProperty('password', '')
-    def h2Driver = h2Loader.loadClass('org.h2.Driver').getDeclaredConstructor().newInstance()
-    def initConn = h2Driver.connect("jdbc:h2:file:${h2DbPath};INIT=RUNSCRIPT FROM '${sqlPath}'", jdbcProps)
-    initConn.close()
-    h2Loader.close()
-    def props = new Properties()
-    if (basePropsFile.asFile.exists()) {
-      basePropsFile.asFile.withInputStream { props.load(it) }
-    }
-    props.setProperty('hibernate.connection.driver_class', 'org.h2.Driver')
-    props.setProperty('hibernate.connection.url', "jdbc:h2:file:${h2DbPath}")
-    props.setProperty('hibernate.connection.username', 'sa')
-    props.setProperty('hibernate.connection.password', '')
-    props.setProperty('hibernate.connection.provider_class', 'org.hibernate.engine.jdbc.connections.internal.DriverManagerConnectionProvider')
-    props.setProperty('hibernate.dialect', 'org.hibernate.dialect.H2Dialect')
-    tempPropsFile.withOutputStream { props.store(it, null) }
-    def destDir = outputDir.get().asFile
-    destDir.mkdirs()
-    ant.taskdef(
-        name: 'hibernatetool',
-        classname: 'org.hibernate.tool.ant.HibernateToolTask',
-        classpath: configurations.hibernateTools.asPath
-        )
-    ant.hibernatetool(
-        destdir: destDir,
-        templatepath: templateDir.asFile
-        ) {
-          jdbcconfiguration(
-              propertyfile: tempPropsFile,
-              revengfile: revengFile.asFile,
-              packagename: "${project.group}.${project.name}.generated.entity",
-              detectmanytomany: true,
-              detectoptimisticlock: true
-              )
-          hbm2java(jdk5: true, ejb3: true)
-        }
-  }
-}
-
 eclipse {
   classpath {
     file {
@@ -347,10 +272,8 @@ eclipse {
 
 tasks.named('compileJava') {
   dependsOn 'openApiGenerate'
-  dependsOn 'generateEntities'
 }
 tasks.named('eclipseClasspath') {
   dependsOn 'openApiGenerate'
-  dependsOn 'generateEntities'
   dependsOn 'compileJava'
 }

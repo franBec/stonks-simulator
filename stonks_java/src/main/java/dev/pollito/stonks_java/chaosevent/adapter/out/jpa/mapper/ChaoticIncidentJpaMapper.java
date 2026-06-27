@@ -7,7 +7,7 @@ import static java.time.ZoneOffset.UTC;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEvent;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventSeverity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
-import dev.pollito.stonks_java.generated.entity.ChaoseventIncidentLog;
+import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -24,7 +24,7 @@ public interface ChaoticIncidentJpaMapper {
       expression = "java(parseAffectedSymbols(entity.getAffectedSymbols()))")
   @Mapping(target = "type", expression = "java(parseEventType(entity.getEventType()))")
   @Mapping(target = "severity", expression = "java(parseEventSeverity(entity.getEventSeverity()))")
-  ChaoticEvent toDomain(ChaoseventIncidentLog entity);
+  ChaoticEvent toDomain(ChaoseventIncidentLogEntity entity);
 
   @Mapping(
       target = "headline",
@@ -45,7 +45,7 @@ public interface ChaoticIncidentJpaMapper {
   @Mapping(target = "eventType", expression = "java(eventTypeToString(event.type()))")
   @Mapping(target = "eventSeverity", expression = "java(eventSeverityToString(event.severity()))")
   @Mapping(target = "id", ignore = true)
-  ChaoseventIncidentLog toEntity(ChaoticEvent event);
+  ChaoseventIncidentLogEntity toEntity(ChaoticEvent event);
 
   default OffsetDateTime map(LocalDateTime source) {
     return source == null ? null : source.atOffset(UTC);
