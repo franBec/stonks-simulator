@@ -60,6 +60,30 @@ paths:
         Returns a paginated list of past trades for the current portfolio.
         Ordered by execution time descending by default.
       x-spring-paginated: true
+      parameters:
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          description: Zero-based page number
+        - name: size
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+          description: Number of items per page
+        - name: sort
+          in: query
+          required: false
+          schema:
+            type: string
+            default: executedAt,desc
+          description: Sort field and direction (e.g. executedAt,asc)
       responses:
         '200':
           description: Paginated trade history
