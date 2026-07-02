@@ -84,14 +84,12 @@ export function StockTicker() {
   const [dir, setDir] = useState<SortDir>("asc")
 
   const handleSort = (column: SortColumn) => {
-    setSort((prev) => {
-      if (prev === column) {
-        setDir((d) => (d === "asc" ? "desc" : "asc"))
-        return column
-      }
+    if (column === sort) {
+      setDir((prev) => (prev === "asc" ? "desc" : "asc"))
+    } else {
       setDir("asc")
-      return column
-    })
+      setSort(column)
+    }
   }
 
   const sorted = useMemo(() => {

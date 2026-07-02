@@ -3,7 +3,6 @@ import { useStonksStream } from "@/api/useStonksStream"
 import { Scanlines } from "@/components/retro/Scanlines"
 import { StockTicker } from "@/components/retro/StockTicker"
 import { StockChart } from "@/components/retro/StockChart"
-import { IntensityIndicator } from "@/components/retro/IntensityIndicator"
 import { ChaosFeed } from "@/components/retro/ChaosFeed"
 
 export function DashboardPage() {
@@ -37,7 +36,6 @@ export function DashboardPage() {
               current SSE connection and open a fresh stream.
             </span>
           </span>
-          <IntensityIndicator />
         </div>
       </header>
 

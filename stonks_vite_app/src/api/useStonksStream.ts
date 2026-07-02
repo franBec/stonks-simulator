@@ -12,6 +12,16 @@ export interface PricePoint {
 export type PriceHistory = Record<string, PricePoint[]>
 
 const MAX_POINTS = 240
+const RECENT_WINDOW = 60
+
+function decimateHistory(points: PricePoint[]): PricePoint[] {
+  if (points.length <= MAX_POINTS) return points
+  const recent = points.slice(-RECENT_WINDOW)
+  const older = points.slice(0, points.length - RECENT_WINDOW)
+  const budget = MAX_POINTS - RECENT_WINDOW
+  const step = Math.ceil(older.length / budget)
+  return [...older.filter((_, i) => i % step === 0), ...recent]
+}
 
 const API_BASE = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8080"
 const STREAM_URL = `${API_BASE}/api/stream`
@@ -40,10 +50,8 @@ export function useStonksStream() {
             timestamp: new Date(timestamp).getTime(),
             price: Number(price),
           })
-          if (pts.length > MAX_POINTS) {
-            pts.splice(0, pts.length - MAX_POINTS)
-          }
-          historyRef.current.set(symbol, pts)
+          const decimated = decimateHistory(pts)
+          historyRef.current.set(symbol, decimated)
           setPriceHistory(Object.fromEntries(historyRef.current))
         } catch {
           // ignore malformed event data
