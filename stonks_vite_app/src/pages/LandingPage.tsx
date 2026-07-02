@@ -86,10 +86,6 @@ export function LandingPage() {
             >
               [ ENTER ]
             </Button>
-            <p className="mt-3 text-xs text-muted-foreground">
-              or press <kbd className="border border-green-500/20 px-1">ENTER</kbd> to
-              start
-            </p>
             <p className="mt-12 text-[10px] text-muted-foreground/50">
               made with React + Vite + Java Spring Boot + COBOL{" "}
               by{" "}
