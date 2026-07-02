@@ -2,12 +2,13 @@ import { Link } from "react-router-dom"
 import { useStonksStream } from "@/api/useStonksStream"
 import { Scanlines } from "@/components/retro/Scanlines"
 import { StockTicker } from "@/components/retro/StockTicker"
+import { StockChart } from "@/components/retro/StockChart"
 import { PortfolioSidebar } from "@/components/retro/PortfolioSidebar"
 import { IntensityIndicator } from "@/components/retro/IntensityIndicator"
 import { ChaosFeed } from "@/components/retro/ChaosFeed"
 
 export function DashboardPage() {
-  useStonksStream()
+  const { priceHistory } = useStonksStream()
 
   return (
     <div className="min-h-svh p-4 font-mono">
@@ -34,6 +35,7 @@ export function DashboardPage() {
 
         <main className="min-w-0 space-y-4">
           <StockTicker />
+          <StockChart priceHistory={priceHistory} />
           <ChaosFeed />
         </main>
       </div>
