@@ -28,6 +28,9 @@ public class StockPriceEntity {
   @Column(name = "price", nullable = false, precision = 10, scale = 2)
   private BigDecimal price;
 
-  @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "updated_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime updatedAt;
 }

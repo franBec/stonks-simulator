@@ -7,6 +7,7 @@
       "request": "launch",
       "mainClass": "dev.pollito.stonks_java.StonksJavaApplication",
       "projectName": "stonks_java",
+      "preLaunchTask": "gradle-compile-java",
       "cwd": "${workspaceFolder}/stonks_java"
     },
     {

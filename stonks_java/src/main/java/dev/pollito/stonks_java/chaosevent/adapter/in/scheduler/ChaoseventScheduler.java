@@ -41,8 +41,7 @@ public class ChaoseventScheduler {
     cancelCurrent();
     long intervalMs = intensityPortIn.getCurrentLevel().getAiEventIntervalMs();
     scheduledFuture =
-        taskScheduler.scheduleAtFixedRate(
-            this::triggerIfEnabled, Duration.ofMillis(intervalMs));
+        taskScheduler.scheduleAtFixedRate(this::triggerIfEnabled, Duration.ofMillis(intervalMs));
     log.debug("Chaos event trigger scheduled every {}ms", intervalMs);
   }
 

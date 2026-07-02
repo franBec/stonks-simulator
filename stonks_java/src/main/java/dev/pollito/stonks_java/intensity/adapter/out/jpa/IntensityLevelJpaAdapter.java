@@ -3,7 +3,6 @@ package dev.pollito.stonks_java.intensity.adapter.out.jpa;
 import static java.time.LocalDateTime.now;
 import static java.time.ZoneOffset.UTC;
 
-import dev.pollito.stonks_java.intensity.adapter.out.jpa.IntensityLevelEntity;
 import dev.pollito.stonks_java.intensity.application.port.out.IntensityLevelPortOut;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;

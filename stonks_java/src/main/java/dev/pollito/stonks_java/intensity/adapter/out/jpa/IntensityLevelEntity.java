@@ -30,6 +30,9 @@ public class IntensityLevelEntity {
   @Column(name = "level", nullable = false, length = 32)
   private String level;
 
-  @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "updated_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime updatedAt;
 }

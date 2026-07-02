@@ -65,8 +65,15 @@ public class StockService implements StockPortIn {
       prices.put(
           stock.symbol(),
           new StockPrice(
-              stock.symbol(), stock.name(), price, price, ZERO, ZERO,
-              stock.trend(), stock.volatility(), now));
+              stock.symbol(),
+              stock.name(),
+              price,
+              price,
+              ZERO,
+              ZERO,
+              stock.trend(),
+              stock.volatility(),
+              now));
     }
   }
 
@@ -87,8 +94,13 @@ public class StockService implements StockPortIn {
 
         StockPrice stockPrice =
             buildStockPrice(
-                stock.symbol(), stock.name(), newPrice, currentPrice,
-                stock.trend(), stock.volatility(), OffsetDateTime.now());
+                stock.symbol(),
+                stock.name(),
+                newPrice,
+                currentPrice,
+                stock.trend(),
+                stock.volatility(),
+                OffsetDateTime.now());
         prices.put(stock.symbol(), stockPrice);
 
         events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
@@ -118,8 +130,13 @@ public class StockService implements StockPortIn {
 
       StockPrice updated =
           buildStockPrice(
-              symbol, existing.name(), newPrice, currentPrice,
-              existing.trend(), existing.volatility(), OffsetDateTime.now());
+              symbol,
+              existing.name(),
+              newPrice,
+              currentPrice,
+              existing.trend(),
+              existing.volatility(),
+              OffsetDateTime.now());
       prices.put(symbol, updated);
 
       events.publishEvent(new StockPriceUpdatedEvent(updated));

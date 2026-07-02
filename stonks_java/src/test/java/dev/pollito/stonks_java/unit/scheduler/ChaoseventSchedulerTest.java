@@ -36,19 +36,16 @@ class ChaoseventSchedulerTest {
 
     scheduler.init();
 
-    verify(taskScheduler)
-        .scheduleAtFixedRate(any(Runnable.class), eq(Duration.ofMillis(900_000L)));
+    verify(taskScheduler).scheduleAtFixedRate(any(Runnable.class), eq(Duration.ofMillis(900_000L)));
   }
 
   @Test
   void onIntensityLevelChangedReschedules() {
     when(intensityPortIn.getCurrentLevel()).thenReturn(IntensityLevel.MAXIMUM_OVERDRIVE);
 
-    scheduler.onIntensityLevelChanged(
-        new IntensityLevelChanged(IntensityLevel.MAXIMUM_OVERDRIVE));
+    scheduler.onIntensityLevelChanged(new IntensityLevelChanged(IntensityLevel.MAXIMUM_OVERDRIVE));
 
-    verify(taskScheduler)
-        .scheduleAtFixedRate(any(Runnable.class), eq(Duration.ofMillis(30_000L)));
+    verify(taskScheduler).scheduleAtFixedRate(any(Runnable.class), eq(Duration.ofMillis(30_000L)));
   }
 
   @Test

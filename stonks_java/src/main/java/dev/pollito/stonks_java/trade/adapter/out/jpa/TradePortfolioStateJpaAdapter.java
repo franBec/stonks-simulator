@@ -1,6 +1,5 @@
 package dev.pollito.stonks_java.trade.adapter.out.jpa;
 
-import dev.pollito.stonks_java.portfolio.adapter.out.jpa.PortfolioEntity;
 import dev.pollito.stonks_java.portfolio.adapter.out.jpa.PositionEntity;
 import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
 import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
@@ -37,9 +36,7 @@ public class TradePortfolioStateJpaAdapter implements TradePortfolioStatePortOut
     portfolioRepo.save(portfolio);
 
     var position =
-        positionRepo
-            .findByPortfolioIdAndSymbol(portfolioId, symbol)
-            .orElseGet(PositionEntity::new);
+        positionRepo.findByPortfolioIdAndSymbol(portfolioId, symbol).orElseGet(PositionEntity::new);
     position.setPortfolio(portfolio);
     position.setSymbol(symbol);
     position.setQuantity((long) newQuantity);

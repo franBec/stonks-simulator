@@ -52,6 +52,9 @@ public class ChaoseventIncidentLogEntity {
   @Column(name = "event_severity", length = 16)
   private String eventSeverity;
 
-  @Column(name = "occurred_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "occurred_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime occurredAt;
 }

@@ -31,9 +31,15 @@ public class PortfolioEntity {
   @Column(name = "cash_balance", nullable = false, precision = 12, scale = 2)
   private BigDecimal cashBalance;
 
-  @Column(name = "created_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "created_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime createdAt;
 
-  @Column(name = "updated_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "updated_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime updatedAt;
 }

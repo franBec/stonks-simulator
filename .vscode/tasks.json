@@ -4,13 +4,13 @@
     {
       "label": "gradle-compile-java",
       "type": "shell",
-      "command": "./gradlew compileJava",
+      "command": "./gradlew compileJava && mkdir -p bin/main && cp -r build/classes/java/main/. bin/main/ && cp -r build/resources/main/. bin/main/ 2>/dev/null; true",
       "group": "build",
       "options": {
         "cwd": "${workspaceFolder}/stonks_java"
       },
       "problemMatcher": ["$gradle"],
-      "detail": "Run Gradle compilation with annotation processing to generate MapStruct mappers"
+      "detail": "Run Gradle compilation with annotation processing, then sync to IDE build output (bin/main/)"
     },
     {
       "label": "run-smoke-tests",

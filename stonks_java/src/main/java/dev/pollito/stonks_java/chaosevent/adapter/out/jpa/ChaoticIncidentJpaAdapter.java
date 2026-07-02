@@ -5,7 +5,6 @@ import static java.util.Collections.reverse;
 import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.mapper.ChaoticIncidentJpaMapper;
 import dev.pollito.stonks_java.chaosevent.application.port.out.ChaoticIncidentPortOut;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEvent;
-import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

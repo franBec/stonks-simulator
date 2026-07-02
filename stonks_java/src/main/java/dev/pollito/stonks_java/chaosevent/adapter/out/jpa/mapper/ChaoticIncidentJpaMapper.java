@@ -4,10 +4,10 @@ import static dev.pollito.stonks_java.util.strings.Truncate.value;
 import static java.lang.String.join;
 import static java.time.ZoneOffset.UTC;
 
+import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEvent;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventSeverity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
-import dev.pollito.stonks_java.chaosevent.adapter.out.jpa.ChaoseventIncidentLogEntity;
 import java.time.LocalDateTime;
 import java.time.OffsetDateTime;
 import java.util.List;

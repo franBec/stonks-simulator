@@ -49,6 +49,9 @@ public class TradeHistoryEntity {
   @Column(name = "cash_balance_after", nullable = false, precision = 12, scale = 2)
   private BigDecimal cashBalanceAfter;
 
-  @Column(name = "executed_at", nullable = false, columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
+  @Column(
+      name = "executed_at",
+      nullable = false,
+      columnDefinition = "TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP")
   private LocalDateTime executedAt;
 }
