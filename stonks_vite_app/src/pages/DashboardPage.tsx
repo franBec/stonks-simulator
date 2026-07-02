@@ -7,7 +7,7 @@ import { IntensityIndicator } from "@/components/retro/IntensityIndicator"
 import { ChaosFeed } from "@/components/retro/ChaosFeed"
 
 export function DashboardPage() {
-  const { priceHistory } = useStonksStream()
+  const { priceHistory, reconnect } = useStonksStream()
 
   return (
     <div className="min-h-svh p-4 font-mono">
@@ -24,7 +24,21 @@ export function DashboardPage() {
             COBOL-powered meme stock trading // v1.0.0
           </p>
         </div>
-        <IntensityIndicator />
+        <div className="flex items-center gap-3">
+          <span className="group relative inline-block">
+            <button
+              onClick={reconnect}
+              className="cursor-pointer select-none rounded border border-green-500/30 px-3 py-1.5 font-mono text-xs text-green-400 transition-colors hover:border-green-400/60 hover:bg-green-500/10 hover:text-green-300 active:translate-y-px"
+            >
+              RECONNECT
+            </button>
+            <span className="pointer-events-none absolute top-full left-1/2 z-50 mt-1 hidden w-64 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover:block">
+              If prices stop updating, click RECONNECT to close the
+              current SSE connection and open a fresh stream.
+            </span>
+          </span>
+          <IntensityIndicator />
+        </div>
       </header>
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">

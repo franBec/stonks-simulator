@@ -21,62 +21,76 @@ export function useStonksStream() {
   const esRef = useRef<EventSource | null>(null)
   const historyRef = useRef<Map<string, PricePoint[]>>(new Map())
   const [priceHistory, setPriceHistory] = useState<PriceHistory>({})
+  const connectRef = useRef<() => void>(() => {})
 
   useEffect(() => {
-    let es = new EventSource(STREAM_URL)
+    function connect(): EventSource {
+      const es = new EventSource(STREAM_URL)
 
-    es.addEventListener("PRICE_TICK", (event: MessageEvent) => {
-      queryClient.invalidateQueries({
-        queryKey: getGetStocksQueryKey(),
-      })
-
-      try {
-        const data = JSON.parse(event.data)
-        const { symbol, price, timestamp } = data
-        const pts = historyRef.current.get(symbol) ?? []
-        pts.push({
-          timestamp: new Date(timestamp).getTime(),
-          price: Number(price),
+      es.addEventListener("PRICE_TICK", (event: MessageEvent) => {
+        queryClient.invalidateQueries({
+          queryKey: getGetStocksQueryKey(),
         })
-        if (pts.length > MAX_POINTS) {
-          pts.splice(0, pts.length - MAX_POINTS)
+
+        try {
+          const data = JSON.parse(event.data)
+          const { symbol, price, timestamp } = data
+          const pts = historyRef.current.get(symbol) ?? []
+          pts.push({
+            timestamp: new Date(timestamp).getTime(),
+            price: Number(price),
+          })
+          if (pts.length > MAX_POINTS) {
+            pts.splice(0, pts.length - MAX_POINTS)
+          }
+          historyRef.current.set(symbol, pts)
+          setPriceHistory(Object.fromEntries(historyRef.current))
+        } catch {
+          // ignore malformed event data
         }
-        historyRef.current.set(symbol, pts)
-        setPriceHistory(Object.fromEntries(historyRef.current))
-      } catch {
-        // ignore malformed event data
+      })
+
+      es.addEventListener("TRADE_EXECUTED", () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetPortfolioQueryKey(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: ["/trades"],
+        })
+      })
+
+      es.addEventListener("CHAOS_EVENT", () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetChaoticEventsQueryKey(),
+        })
+      })
+
+      es.onerror = () => {
+        es.close()
+        esRef.current = null
+        setTimeout(() => {
+          esRef.current = connect()
+        }, 3000)
       }
-    })
 
-    es.addEventListener("TRADE_EXECUTED", () => {
-      queryClient.invalidateQueries({
-        queryKey: getGetPortfolioQueryKey(),
-      })
-      queryClient.invalidateQueries({
-        queryKey: ["/trades"],
-      })
-    })
-
-    es.addEventListener("CHAOS_EVENT", () => {
-      queryClient.invalidateQueries({
-        queryKey: getGetChaoticEventsQueryKey(),
-      })
-    })
-
-    es.onerror = () => {
-      es.close()
-      setTimeout(() => {
-        es = new EventSource(STREAM_URL)
-        esRef.current = es
-      }, 3000)
+      return es
     }
 
-    esRef.current = es
+    connectRef.current = () => {
+      esRef.current?.close()
+      esRef.current = connect()
+    }
+
+    esRef.current = connect()
 
     return () => {
-      es.close()
+      esRef.current?.close()
     }
   }, [queryClient])
 
-  return { esRef, priceHistory }
+  function reconnect() {
+    connectRef.current()
+  }
+
+  return { esRef, priceHistory, reconnect }
 }
