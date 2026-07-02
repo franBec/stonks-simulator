@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 public record CobolCatalogStock(
     @JsonProperty("symbol") String symbol,
     @JsonProperty("name") String name,
+    @JsonProperty("description") String description,
     @JsonProperty("basePrice") BigDecimal basePrice,
     @JsonProperty("volatility") BigDecimal volatility,
     @JsonProperty("trend") String trend) {}

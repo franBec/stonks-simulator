@@ -67,6 +67,7 @@ public class StockService implements StockPortIn {
           new StockPrice(
               stock.symbol(),
               stock.name(),
+              stock.description(),
               price,
               price,
               ZERO,
@@ -96,6 +97,7 @@ public class StockService implements StockPortIn {
             buildStockPrice(
                 stock.symbol(),
                 stock.name(),
+                stock.description(),
                 newPrice,
                 currentPrice,
                 stock.trend(),
@@ -132,6 +134,7 @@ public class StockService implements StockPortIn {
           buildStockPrice(
               symbol,
               existing.name(),
+              existing.description(),
               newPrice,
               currentPrice,
               existing.trend(),
@@ -174,6 +177,7 @@ public class StockService implements StockPortIn {
   private StockPrice buildStockPrice(
       String symbol,
       String name,
+      String description,
       BigDecimal newPrice,
       BigDecimal currentPrice,
       Trend trend,
@@ -185,7 +189,7 @@ public class StockService implements StockPortIn {
             ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
             : ZERO;
     return new StockPrice(
-        symbol, name, newPrice, currentPrice, change, changePercent, trend, volatility, now);
+        symbol, name, description, newPrice, currentPrice, change, changePercent, trend, volatility, now);
   }
 
   private StockPriceSnapshot currentPricesSnapshot() {

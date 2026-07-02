@@ -103,6 +103,7 @@ class BroadcastModuleTest {
     return new StockPrice(
         "GMEE",
         "GME Engine",
+        "To the moon!",
         BigDecimal.valueOf(150.25),
         BigDecimal.valueOf(145.00),
         BigDecimal.valueOf(5.25),

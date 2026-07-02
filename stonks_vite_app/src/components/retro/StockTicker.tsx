@@ -166,7 +166,14 @@ export function StockTicker() {
               className="border-b border-green-500/5 transition-colors hover:bg-green-500/5"
             >
               <td className="px-4 py-2 font-bold text-foreground">{s.symbol}</td>
-              <td className="px-4 py-2 text-muted-foreground">{s.name}</td>
+              <td className="px-4 py-2 text-muted-foreground">
+                <span className="group relative cursor-help">
+                  {s.name}
+                  <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden w-52 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover:block">
+                    {s.description}
+                  </span>
+                </span>
+              </td>
               <td className="px-4 py-2">
                 <TrendCell trend={s.trend} />
               </td>

@@ -437,6 +437,11 @@ components:
           type: string
           description: Full stock name
           example: GameStonks
+        description:
+          type: string
+          description: Meme lore / flavor text for the stock
+          example: To the moon!
+          maxLength: 50
         price:
           type: number
           format: double
@@ -473,6 +478,7 @@ components:
       required:
         - symbol
         - name
+        - description
         - price
         - change
         - changePercent

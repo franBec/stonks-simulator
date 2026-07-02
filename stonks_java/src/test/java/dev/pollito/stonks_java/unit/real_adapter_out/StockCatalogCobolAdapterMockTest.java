@@ -31,7 +31,7 @@ class StockCatalogCobolAdapterMockTest {
   @Test
   void getStocks() {
     CobolCatalogStock cobolStock =
-        new CobolCatalogStock("GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), "BULL");
+        new CobolCatalogStock("GMEE", "GameStonk", "To the moon!", valueOf(45.0), valueOf(0.3), "BULL");
 
     when(cobolPortOut.execute(PROGRAM, null, CobolCatalogStock[].class))
         .thenReturn(new CobolCatalogStock[] {cobolStock});
@@ -39,7 +39,7 @@ class StockCatalogCobolAdapterMockTest {
     List<Stock> result = adapter.getStocks();
 
     assertEquals(
-        List.of(new Stock("GMEE", "GameStonk", valueOf(45.0), valueOf(0.3), Trend.BULL)), result);
+        List.of(new Stock("GMEE", "GameStonk", "To the moon!", valueOf(45.0), valueOf(0.3), Trend.BULL)), result);
     verify(cobolPortOut).execute(PROGRAM, null, CobolCatalogStock[].class);
     verify(mapper).map(cobolStock);
   }

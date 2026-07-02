@@ -38,6 +38,7 @@ class ChaoticEventGeneratorFallbackAdapterTest {
           new StockPrice(
               "GMEE",
               "GameStonk",
+              "To the moon!",
               valueOf(45),
               valueOf(44),
               valueOf(1),

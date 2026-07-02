@@ -25,24 +25,34 @@ public class StockCatalogCobolAdapterStub implements StockCatalogPortOut {
     log.warn("Using dev stub for StockCatalogPortOut — no real COBOL engine is running");
     return of(
         new Stock(
-            "COBL", "COBOL Corp", new BigDecimal("100.00"), new BigDecimal("0.05"), Trend.BULL),
+            "COBL", "COBOL Corp", "Legacy systems never die",
+            new BigDecimal("100.00"), new BigDecimal("0.05"), Trend.BULL),
         new Stock(
-            "GMEE", "GameStonks", new BigDecimal("50.00"), new BigDecimal("0.25"), Trend.MOON),
+            "GMEE", "GameStonks", "To the moon!",
+            new BigDecimal("50.00"), new BigDecimal("0.25"), Trend.MOON),
         new Stock(
-            "DOGE", "DogeCoin Ltd", new BigDecimal("10.00"), new BigDecimal("0.30"), Trend.CHAOS),
+            "DOGE", "DogeCoin Ltd", "Much profit, very wow",
+            new BigDecimal("10.00"), new BigDecimal("0.30"), Trend.CHAOS),
         new Stock(
-            "TEND", "Tendie Inc", new BigDecimal("25.00"), new BigDecimal("0.20"), Trend.BEAR),
+            "TEND", "Tendie Inc", "WSB favorite",
+            new BigDecimal("25.00"), new BigDecimal("0.20"), Trend.BEAR),
         new Stock(
-            "FOMO", "FOMO Holdings", new BigDecimal("75.00"), new BigDecimal("0.15"), Trend.BULL),
+            "FOMO", "FOMO Holdings", "Buy high, sell higher",
+            new BigDecimal("75.00"), new BigDecimal("0.15"), Trend.BULL),
         new Stock(
-            "PAPR", "Paper Hands", new BigDecimal("15.00"), new BigDecimal("0.10"), Trend.BEAR),
+            "PAPR", "Paper Hands", "For the weak",
+            new BigDecimal("15.00"), new BigDecimal("0.10"), Trend.BEAR),
         new Stock(
-            "YOLO", "YOLO Capital", new BigDecimal("20.00"), new BigDecimal("0.50"), Trend.CHAOS),
+            "YOLO", "YOLO Capital", "You only live once",
+            new BigDecimal("20.00"), new BigDecimal("0.50"), Trend.CHAOS),
         new Stock(
-            "MEME", "MemeStonks", new BigDecimal("10.00"), new BigDecimal("0.20"), Trend.MOON),
+            "MEME", "MemeStonks", "Viral potential",
+            new BigDecimal("10.00"), new BigDecimal("0.20"), Trend.MOON),
         new Stock(
-            "BUGS", "Buggy Software", new BigDecimal("30.00"), new BigDecimal("0.20"), Trend.CRASH),
+            "BUGS", "Buggy Software", "It compiles, ship it!",
+            new BigDecimal("30.00"), new BigDecimal("0.20"), Trend.CRASH),
         new Stock(
-            "JAVA", "JavaBeans", new BigDecimal("150.00"), new BigDecimal("0.05"), Trend.BULL));
+            "JAVA", "JavaBeans", "Write once, run anywhere",
+            new BigDecimal("150.00"), new BigDecimal("0.05"), Trend.BULL));
   }
 }

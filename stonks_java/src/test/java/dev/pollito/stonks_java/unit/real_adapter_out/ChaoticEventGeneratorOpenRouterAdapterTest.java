@@ -82,6 +82,7 @@ class ChaoticEventGeneratorOpenRouterAdapterTest {
             new StockPrice(
                 "GMEE",
                 "GameStonk",
+                "To the moon!",
                 valueOf(45),
                 valueOf(44),
                 valueOf(1),
@@ -92,6 +93,7 @@ class ChaoticEventGeneratorOpenRouterAdapterTest {
             new StockPrice(
                 "DOGE",
                 "Dogecoin",
+                "Much profit, very wow",
                 valueOf(5),
                 valueOf(4.9),
                 valueOf(0.1),
