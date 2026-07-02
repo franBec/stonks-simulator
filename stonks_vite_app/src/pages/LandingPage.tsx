@@ -86,18 +86,6 @@ export function LandingPage() {
             >
               [ ENTER ]
             </Button>
-            <p className="mt-12 text-[10px] text-muted-foreground/50">
-              made with React + Vite + Java Spring Boot + COBOL{" "}
-              by{" "}
-              <a
-                href="https://pollito.dev/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-muted-foreground/70 hover:text-foreground transition-colors"
-              >
-                Pollito &lt;🐤/&gt;
-              </a>
-            </p>
           </div>
         )}
       </div>

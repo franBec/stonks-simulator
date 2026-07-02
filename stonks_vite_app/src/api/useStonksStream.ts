@@ -13,7 +13,6 @@ export type PriceHistory = Record<string, PricePoint[]>
 
 export interface SpeedConfig {
   tickIntervalMs: number
-  chaosCheckIntervalMs: number
   intensityLevel: string
   volatilityMultiplier: number
   aiEventIntervalMs: number

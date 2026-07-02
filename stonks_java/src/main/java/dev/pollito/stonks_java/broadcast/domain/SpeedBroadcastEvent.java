@@ -4,7 +4,6 @@ import java.time.OffsetDateTime;
 
 public record SpeedBroadcastEvent(
     long tickIntervalMs,
-    long chaosCheckIntervalMs,
     String intensityLevel,
     double volatilityMultiplier,
     long aiEventIntervalMs,
@@ -13,13 +12,11 @@ public record SpeedBroadcastEvent(
 
   public SpeedBroadcastEvent(
       long tickIntervalMs,
-      long chaosCheckIntervalMs,
       String intensityLevel,
       double volatilityMultiplier,
       long aiEventIntervalMs) {
     this(
         tickIntervalMs,
-        chaosCheckIntervalMs,
         intensityLevel,
         volatilityMultiplier,
         aiEventIntervalMs,

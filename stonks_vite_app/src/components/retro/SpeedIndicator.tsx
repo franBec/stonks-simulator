@@ -54,44 +54,31 @@ export function SpeedIndicator({ config }: SpeedIndicatorProps) {
 
   return (
     <div className="terminal-border animate-fade-in p-4 font-mono text-xs">
-      <div className="mb-2 border-b border-green-500/10 pb-1 text-muted-foreground">
-        SIMULATION SPEED
+      <div className="group/header relative mb-2 border-b border-green-500/10 pb-1 text-muted-foreground cursor-help">
+        SIMULATION SPEED - {label}
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden w-56 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover/header:block">
+          Current market intensity level. Higher levels mean faster AI events and more volatility.
+        </span>
       </div>
       <div className="space-y-1.5">
         <TooltipRow
-          label="LEVEL: "
-          value={label}
-          colorClass="text-foreground"
-          tooltip="Current market intensity level. Higher levels mean faster AI events and more volatility."
+          label="MULTIPLIER: "
+          value={`${config.volatilityMultiplier}x`}
+          colorClass="text-yellow-400"
+          tooltip="Price volatility multiplier applied to every tick. Higher = wilder price swings."
         />
-        <div className="border-t border-green-500/10 pt-1.5">
-          <div className="space-y-1.5">
-            <TooltipRow
-              label="MULTIPLIER: "
-              value={`${config.volatilityMultiplier}x`}
-              colorClass="text-yellow-400"
-              tooltip="Price volatility multiplier applied to every tick. Higher = wilder price swings."
-            />
-            <TooltipRow
-              label="TICK: "
-              value={formatIntervalMs(config.tickIntervalMs)}
-              colorClass="text-green-400"
-              tooltip="Interval at which stock prices are recalculated by the COBOL price engine."
-            />
-            <TooltipRow
-              label="CHAOS CHECK: "
-              value={formatIntervalMs(config.chaosCheckIntervalMs)}
-              colorClass="text-orange-400"
-              tooltip="How often the chaos engine checks whether it's time to fire a new chaotic event."
-            />
-            <TooltipRow
-              label="AI EVENTS: "
-              value={`every ${formatIntervalMs(config.aiEventIntervalMs)}`}
-              colorClass="text-red-400/80"
-              tooltip="Minimum interval between AI-generated chaos events at the current intensity level."
-            />
-          </div>
-        </div>
+        <TooltipRow
+          label="TICK: "
+          value={formatIntervalMs(config.tickIntervalMs)}
+          colorClass="text-green-400"
+          tooltip="Interval at which stock prices are recalculated by the COBOL price engine."
+        />
+        <TooltipRow
+          label="AI EVENTS: "
+          value={`every ${formatIntervalMs(config.aiEventIntervalMs)}`}
+          colorClass="text-red-400/80"
+          tooltip="Minimum interval between AI-generated chaos events at the current intensity level."
+        />
       </div>
     </div>
   )

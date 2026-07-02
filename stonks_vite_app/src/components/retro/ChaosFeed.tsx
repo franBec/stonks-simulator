@@ -38,8 +38,12 @@ export function ChaosFeed({ sidebar = false }: ChaosFeedProps) {
 
   return (
     <div className="terminal-border animate-fade-in p-4 font-mono text-xs">
-      <div className="mb-3 border-b border-green-500/10 pb-1 text-muted-foreground">
+      <div className="group/header relative mb-3 border-b border-green-500/10 pb-1 text-muted-foreground cursor-help">
         CHAOS FEED
+        <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden w-56 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover/header:block">
+          AI-generated chaotic events based on real-world news. Events cause
+          price swings in affected stocks, from market dumps to moon shots.
+        </span>
       </div>
 
       {!events?.length ? (

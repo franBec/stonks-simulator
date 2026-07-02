@@ -70,7 +70,6 @@ stonks:
         - https://www.theguardian.com/uk/business/rss
   chaos:
     enabled: true
-    event-check-interval-ms: 30000
   logging:
     max-collection-print-size: 3
     adapter-out:

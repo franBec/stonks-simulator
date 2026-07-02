@@ -44,9 +44,6 @@ public class BroadcastSseService implements BroadcastPortIn {
   @Value("${stonks.market.simulation.interval-ms:5000}")
   private long tickIntervalMs;
 
-  @Value("${stonks.chaos.event-check-interval-ms:30000}")
-  private long chaosCheckIntervalMs;
-
   private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
   private final AtomicLong paperTapeSequence = new AtomicLong(0);
 
@@ -158,7 +155,6 @@ public class BroadcastSseService implements BroadcastPortIn {
           dataToSend =
               of(
                   "tickIntervalMs", sc.tickIntervalMs(),
-                  "chaosCheckIntervalMs", sc.chaosCheckIntervalMs(),
                   "intensityLevel", sc.intensityLevel(),
                   "volatilityMultiplier", sc.volatilityMultiplier(),
                   "aiEventIntervalMs", sc.aiEventIntervalMs());
@@ -187,7 +183,6 @@ public class BroadcastSseService implements BroadcastPortIn {
     IntensityLevel level = intensityPortIn.getCurrentLevel();
     return new SpeedBroadcastEvent(
         tickIntervalMs,
-        chaosCheckIntervalMs,
         level.name(),
         level.getVolatilityMultiplier(),
         level.getAiEventIntervalMs());
