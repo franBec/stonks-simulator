@@ -9,6 +9,7 @@ import dev.pollito.stonks_java.cobol.application.port.out.CobolAppPortOut;
 import dev.pollito.stonks_java.stock.adapter.out.cobol.StockPriceEngineCobolAdapter;
 import dev.pollito.stonks_java.stock.adapter.out.cobol.dto.CobolPriceEngineRequest;
 import dev.pollito.stonks_java.stock.adapter.out.cobol.dto.CobolPriceEngineResult;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import java.math.BigDecimal;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,12 +28,12 @@ class StockPriceEngineCobolAdapterMockTest {
   void calculate() {
     BigDecimal currentPrice = valueOf(45.0);
     BigDecimal volatility = valueOf(0.3);
-    String trend = "neutral";
+    Trend trend = Trend.BULL;
     BigDecimal newPrice = valueOf(47.5);
 
     when(cobolPortOut.execute(
             PROGRAM,
-            new CobolPriceEngineRequest(currentPrice, volatility, trend),
+            new CobolPriceEngineRequest(currentPrice, volatility, trend.name()),
             CobolPriceEngineResult.class))
         .thenReturn(new CobolPriceEngineResult(newPrice));
 
@@ -40,7 +41,7 @@ class StockPriceEngineCobolAdapterMockTest {
     verify(cobolPortOut)
         .execute(
             PROGRAM,
-            new CobolPriceEngineRequest(currentPrice, volatility, trend),
+            new CobolPriceEngineRequest(currentPrice, volatility, trend.name()),
             CobolPriceEngineResult.class);
   }
 }

@@ -260,6 +260,11 @@ components:
               example: "No static resource for request '/'."
           required:
             - title
+    Trend:
+      type: string
+      enum: [BULL, BEAR, MOON, CHAOS, CRASH]
+      description: Inherent directional bias for a stock
+      example: BULL
     TradeAction:
       type: string
       enum: [BUY, SELL]
@@ -451,6 +456,15 @@ components:
           multipleOf: 0.01
           description: Percentage price change since last tick
           example: 5.17
+        trend:
+          $ref: '#/components/schemas/Trend'
+        volatility:
+          type: number
+          format: double
+          multipleOf: 0.01
+          description: Volatility coefficient controlling random shock magnitude per tick
+          example: 0.25
+          minimum: 0
         timestamp:
           type: string
           format: date-time
@@ -462,6 +476,8 @@ components:
         - price
         - change
         - changePercent
+        - trend
+        - volatility
         - timestamp
     StocksResponse:
       x-implements:

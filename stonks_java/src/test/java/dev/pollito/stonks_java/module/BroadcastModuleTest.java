@@ -10,6 +10,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeExecutionResult;
@@ -102,6 +103,8 @@ class BroadcastModuleTest {
         BigDecimal.valueOf(145.00),
         BigDecimal.valueOf(5.25),
         BigDecimal.valueOf(3.62),
+        Trend.MOON,
+        BigDecimal.valueOf(0.25),
         OffsetDateTime.now());
   }
 

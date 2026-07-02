@@ -3,15 +3,33 @@ import { useGetStocks } from "@/api/hooks"
 import { unwrap } from "@/api/hooks"
 import type { StockPrice } from "@/api/hooks"
 
-type SortColumn = "symbol" | "name" | "price" | "change"
+type SortColumn = "symbol" | "name" | "price" | "change" | "trend" | "trendBias"
 type SortDir = "asc" | "desc"
 
 const COLUMNS: { key: SortColumn; label: string; className?: string }[] = [
   { key: "symbol", label: "SYMBOL" },
   { key: "name", label: "NAME" },
+  { key: "trend", label: "TREND" },
+  { key: "trendBias", label: "BIAS/TICK", className: "text-right" },
   { key: "price", label: "PRICE", className: "text-right" },
   { key: "change", label: "CHANGE", className: "text-right" },
 ]
+
+const TREND_BIAS: Record<string, string> = {
+  BULL: "+0.3%",
+  BEAR: "-0.3%",
+  MOON: "+1.0%",
+  CHAOS: "±2.0%",
+  CRASH: "-5.0%",
+}
+
+const TREND_DESC: Record<string, string> = {
+  BULL: "Steady upward drift — price gains ~0.3% per tick",
+  BEAR: "Steady downward drift — price loses ~0.3% per tick",
+  MOON: "Strong upward momentum — price surges ~1.0% per tick",
+  CHAOS: "Unpredictable swings — random bias between -2% and +2% per tick",
+  CRASH: "Heavy downward momentum — price drops ~5.0% per tick",
+}
 
 function SortArrow({ column, sort, dir }: { column: SortColumn; sort: SortColumn; dir: SortDir }) {
   if (column !== sort) return <span className="ml-1 text-green-500/20">↕</span>
@@ -37,6 +55,24 @@ function ChangeCell({ change, changePercent }: { change: number; changePercent: 
       {changePercent.toFixed(2)}%)
     </span>
   )
+}
+
+function TrendCell({ trend }: { trend: string }) {
+  const desc = TREND_DESC[trend] ?? "Unknown trend type"
+  return (
+    <span className="group relative cursor-help text-muted-foreground">
+      {trend}
+      <span className="pointer-events-none absolute bottom-full left-1/2 z-50 mb-1 hidden w-56 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover:block">
+        {desc}
+      </span>
+    </span>
+  )
+}
+
+function BiasCell({ bias }: { bias: string }) {
+  const up = bias.startsWith("+")
+  const cls = up ? "text-green-400" : bias.startsWith("-") ? "text-red-400" : "text-yellow-400"
+  return <span className={cls}>{bias}</span>
 }
 
 export function StockTicker() {
@@ -68,6 +104,12 @@ export function StockTicker() {
           break
         case "name":
           cmp = a.name.localeCompare(b.name)
+          break
+        case "trend":
+          cmp = a.trend.localeCompare(b.trend)
+          break
+        case "trendBias":
+          cmp = (TREND_BIAS[a.trend] ?? "").localeCompare(TREND_BIAS[b.trend] ?? "")
           break
         case "price":
           cmp = a.price - b.price
@@ -127,6 +169,12 @@ export function StockTicker() {
             >
               <td className="px-4 py-2 font-bold text-foreground">{s.symbol}</td>
               <td className="px-4 py-2 text-muted-foreground">{s.name}</td>
+              <td className="px-4 py-2">
+                <TrendCell trend={s.trend} />
+              </td>
+              <td className="px-4 py-2 text-right font-mono">
+                <BiasCell bias={TREND_BIAS[s.trend] ?? "?"} />
+              </td>
               <td className="px-4 py-2 text-right">
                 <PriceCell price={s.price} change={s.change} />
               </td>

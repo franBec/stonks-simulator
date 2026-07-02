@@ -15,6 +15,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventSeverity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import io.github.resilience4j.ratelimiter.RateLimiter;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
 import java.time.OffsetDateTime;
@@ -85,6 +86,8 @@ class ChaoticEventGeneratorOpenRouterAdapterTest {
                 valueOf(44),
                 valueOf(1),
                 valueOf(2.27),
+                Trend.MOON,
+                valueOf(0.25),
                 OffsetDateTime.now()),
             new StockPrice(
                 "DOGE",
@@ -93,6 +96,8 @@ class ChaoticEventGeneratorOpenRouterAdapterTest {
                 valueOf(4.9),
                 valueOf(0.1),
                 valueOf(2.04),
+                Trend.CHAOS,
+                valueOf(0.30),
                 OffsetDateTime.now()));
   }
 

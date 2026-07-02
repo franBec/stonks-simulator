@@ -10,4 +10,6 @@ public record StockPrice(
     BigDecimal previousPrice,
     BigDecimal change,
     BigDecimal changePercent,
+    Trend trend,
+    BigDecimal volatility,
     OffsetDateTime timestamp) {}

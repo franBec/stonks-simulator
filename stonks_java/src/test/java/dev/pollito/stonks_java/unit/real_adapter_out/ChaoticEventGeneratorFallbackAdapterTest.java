@@ -11,6 +11,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventSeverity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
 import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import java.time.OffsetDateTime;
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -41,6 +42,8 @@ class ChaoticEventGeneratorFallbackAdapterTest {
               valueOf(44),
               valueOf(1),
               valueOf(2.27),
+              Trend.MOON,
+              valueOf(0.25),
               OffsetDateTime.now()));
 
   @Test

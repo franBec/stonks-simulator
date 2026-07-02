@@ -3,6 +3,7 @@ package dev.pollito.stonks_java.stock.adapter.out.cobol;
 import static java.math.BigDecimal.ONE;
 
 import dev.pollito.stonks_java.stock.application.port.out.StockPriceEnginePortOut;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.security.SecureRandom;
@@ -25,17 +26,16 @@ public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut
   private final SecureRandom random = new SecureRandom();
 
   @Override
-  public BigDecimal calculate(BigDecimal currentPrice, BigDecimal volatility, String trend) {
+  public BigDecimal calculate(BigDecimal currentPrice, BigDecimal volatility, Trend trend) {
     log.debug("Using dev stub for StockPriceEnginePortOut — no real COBOL engine is running");
 
     BigDecimal trendBias =
         switch (trend) {
-          case "BULL" -> new BigDecimal("0.003");
-          case "BEAR" -> new BigDecimal("-0.003");
-          case "MOON" -> new BigDecimal("0.01");
-          case "CHAOS" -> BigDecimal.valueOf((random.nextDouble() - 0.5) * 0.04);
-          case "CRASH" -> new BigDecimal("-0.05");
-          default -> BigDecimal.ZERO;
+          case BULL -> new BigDecimal("0.003");
+          case BEAR -> new BigDecimal("-0.003");
+          case MOON -> new BigDecimal("0.01");
+          case CHAOS -> BigDecimal.valueOf((random.nextDouble() - 0.5) * 0.04);
+          case CRASH -> new BigDecimal("-0.05");
         };
 
     BigDecimal randomShock =

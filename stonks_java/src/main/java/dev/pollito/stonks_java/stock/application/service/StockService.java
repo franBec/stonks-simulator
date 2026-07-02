@@ -16,6 +16,7 @@ import dev.pollito.stonks_java.stock.domain.Stock;
 import dev.pollito.stonks_java.stock.domain.StockPrice;
 import dev.pollito.stonks_java.stock.domain.StockPriceSnapshot;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
+import dev.pollito.stonks_java.stock.domain.Trend;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.math.BigDecimal;
@@ -63,7 +64,9 @@ public class StockService implements StockPortIn {
       BigDecimal price = persisted.prices().getOrDefault(stock.symbol(), stock.basePrice());
       prices.put(
           stock.symbol(),
-          new StockPrice(stock.symbol(), stock.name(), price, price, ZERO, ZERO, now));
+          new StockPrice(
+              stock.symbol(), stock.name(), price, price, ZERO, ZERO,
+              stock.trend(), stock.volatility(), now));
     }
   }
 
@@ -84,7 +87,8 @@ public class StockService implements StockPortIn {
 
         StockPrice stockPrice =
             buildStockPrice(
-                stock.symbol(), stock.name(), newPrice, currentPrice, OffsetDateTime.now());
+                stock.symbol(), stock.name(), newPrice, currentPrice,
+                stock.trend(), stock.volatility(), OffsetDateTime.now());
         prices.put(stock.symbol(), stockPrice);
 
         events.publishEvent(new StockPriceUpdatedEvent(stockPrice));
@@ -113,7 +117,9 @@ public class StockService implements StockPortIn {
               .setScale(2, HALF_UP);
 
       StockPrice updated =
-          buildStockPrice(symbol, existing.name(), newPrice, currentPrice, OffsetDateTime.now());
+          buildStockPrice(
+              symbol, existing.name(), newPrice, currentPrice,
+              existing.trend(), existing.volatility(), OffsetDateTime.now());
       prices.put(symbol, updated);
 
       events.publishEvent(new StockPriceUpdatedEvent(updated));
@@ -153,13 +159,16 @@ public class StockService implements StockPortIn {
       String name,
       BigDecimal newPrice,
       BigDecimal currentPrice,
+      Trend trend,
+      BigDecimal volatility,
       OffsetDateTime now) {
     BigDecimal change = newPrice.subtract(currentPrice).setScale(2, HALF_UP);
     BigDecimal changePercent =
         currentPrice.compareTo(ZERO) > 0
             ? change.multiply(new BigDecimal("100")).divide(currentPrice, 2, HALF_UP)
             : ZERO;
-    return new StockPrice(symbol, name, newPrice, currentPrice, change, changePercent, now);
+    return new StockPrice(
+        symbol, name, newPrice, currentPrice, change, changePercent, trend, volatility, now);
   }
 
   private StockPriceSnapshot currentPricesSnapshot() {
