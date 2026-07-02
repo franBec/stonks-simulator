@@ -277,7 +277,7 @@ REST endpoints follow an **OpenAPI-first** (contract-first) approach:
 2. DTOs and server interfaces are generated from that spec into the `generated` module (see [Module Architecture Graph](#module-architecture-graph)).
 3. Generated DTOs are the canonical request/response types in the adapter layer and are never modified manually. Controllers implement the generated interfaces.
 
-**Exceptions:** Endpoints whose primary purpose is streaming or real-time communication (e.g., `GET /stream`) are defined directly as controller methods rather than via OpenAPI, because their response semantics (`SseEmitter`) do not map cleanly to the OpenAPI 3.x request/response model. Exceptions are kept to a minimum and noted inline in the controller.
+**Exceptions:** Endpoints whose primary purpose is streaming or real-time communication (e.g., `GET /api/stream`) are defined directly as controller methods rather than via OpenAPI, because their response semantics (`SseEmitter`) do not map cleanly to the OpenAPI 3.x request/response model. Exceptions are kept to a minimum and noted inline in the controller.
 
 ---
 

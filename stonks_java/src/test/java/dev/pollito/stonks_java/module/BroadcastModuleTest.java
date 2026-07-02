@@ -65,7 +65,7 @@ class BroadcastModuleTest {
 
   private HttpRequest sseRequest() {
     return HttpRequest.newBuilder()
-        .uri(URI.create("http://localhost:" + port + "/stream"))
+        .uri(URI.create("http://localhost:" + port + "/api/stream"))
         .header("Accept", "text/event-stream")
         .GET()
         .build();

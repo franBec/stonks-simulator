@@ -14,7 +14,7 @@ public class BroadcastController {
 
   private final BroadcastPortIn broadcastPortIn;
 
-  @GetMapping(value = "/stream", produces = TEXT_EVENT_STREAM_VALUE)
+  @GetMapping(value = "/api/stream", produces = TEXT_EVENT_STREAM_VALUE)
   public SseEmitter streamEvents() {
     return broadcastPortIn.createEmitter();
   }
