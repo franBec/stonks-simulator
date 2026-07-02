@@ -10,8 +10,12 @@ import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
+import dev.pollito.stonks_java.broadcast.domain.SpeedBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
+import dev.pollito.stonks_java.intensity.application.port.in.IntensityPortIn;
+import dev.pollito.stonks_java.intensity.domain.IntensityLevel;
+import dev.pollito.stonks_java.intensity.domain.IntensityLevelChanged;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
@@ -23,6 +27,7 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -34,6 +39,13 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 public class BroadcastSseService implements BroadcastPortIn {
 
   private final BroadcastProperties broadcastProperties;
+  private final IntensityPortIn intensityPortIn;
+
+  @Value("${stonks.market.simulation.interval-ms:5000}")
+  private long tickIntervalMs;
+
+  @Value("${stonks.chaos.event-check-interval-ms:30000}")
+  private long chaosCheckIntervalMs;
 
   private final CopyOnWriteArrayList<SseEmitter> emitters = new CopyOnWriteArrayList<>();
   private final AtomicLong paperTapeSequence = new AtomicLong(0);
@@ -62,8 +74,9 @@ public class BroadcastSseService implements BroadcastPortIn {
 
     try {
       emitter.send(event().name("connected").data("{\"message\":\"Connected to stonks stream\"}"));
+      emitter.send(buildSseEvent(buildSpeedConfig()));
     } catch (IOException e) {
-      log.warn("Failed to send initial connection event", e);
+      log.warn("Failed to send initial connection events", e);
     }
 
     return emitter;
@@ -104,6 +117,11 @@ public class BroadcastSseService implements BroadcastPortIn {
             event.chaoticEvent().explanation()));
   }
 
+  @EventListener
+  void onIntensityLevelChanged(IntensityLevelChanged event) {
+    broadcast(buildSpeedConfig());
+  }
+
   @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
   void sendHeartbeat() {
     for (SseEmitter emitter : emitters) {
@@ -136,6 +154,14 @@ public class BroadcastSseService implements BroadcastPortIn {
                   "symbol", ch.symbol(),
                   "impact", ch.impact(),
                   "explanation", ch.explanation());
+      case SpeedBroadcastEvent sc ->
+          dataToSend =
+              of(
+                  "tickIntervalMs", sc.tickIntervalMs(),
+                  "chaosCheckIntervalMs", sc.chaosCheckIntervalMs(),
+                  "intensityLevel", sc.intensityLevel(),
+                  "volatilityMultiplier", sc.volatilityMultiplier(),
+                  "aiEventIntervalMs", sc.aiEventIntervalMs());
       default -> dataToSend = event;
     }
 
@@ -155,5 +181,15 @@ public class BroadcastSseService implements BroadcastPortIn {
         symbol,
         unitPrice,
         result.totalCost());
+  }
+
+  private SpeedBroadcastEvent buildSpeedConfig() {
+    IntensityLevel level = intensityPortIn.getCurrentLevel();
+    return new SpeedBroadcastEvent(
+        tickIntervalMs,
+        chaosCheckIntervalMs,
+        level.name(),
+        level.getVolatilityMultiplier(),
+        level.getAiEventIntervalMs());
   }
 }

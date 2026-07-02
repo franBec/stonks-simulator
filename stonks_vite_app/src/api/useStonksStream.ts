@@ -11,6 +11,14 @@ export interface PricePoint {
 
 export type PriceHistory = Record<string, PricePoint[]>
 
+export interface SpeedConfig {
+  tickIntervalMs: number
+  chaosCheckIntervalMs: number
+  intensityLevel: string
+  volatilityMultiplier: number
+  aiEventIntervalMs: number
+}
+
 const MAX_POINTS = 240
 const RECENT_WINDOW = 60
 
@@ -31,6 +39,7 @@ export function useStonksStream() {
   const esRef = useRef<EventSource | null>(null)
   const historyRef = useRef<Map<string, PricePoint[]>>(new Map())
   const [priceHistory, setPriceHistory] = useState<PriceHistory>({})
+  const [speedConfig, setSpeedConfig] = useState<SpeedConfig | null>(null)
   const connectRef = useRef<() => void>(() => {})
 
   useEffect(() => {
@@ -73,6 +82,14 @@ export function useStonksStream() {
         })
       })
 
+      es.addEventListener("SPEED_CONFIG", (event: MessageEvent) => {
+        try {
+          setSpeedConfig(JSON.parse(event.data))
+        } catch {
+          // ignore malformed event data
+        }
+      })
+
       es.onerror = () => {
         es.close()
         esRef.current = null
@@ -100,5 +117,5 @@ export function useStonksStream() {
     connectRef.current()
   }
 
-  return { esRef, priceHistory, reconnect }
+  return { esRef, priceHistory, speedConfig, reconnect }
 }

@@ -4,9 +4,10 @@ import { Scanlines } from "@/components/retro/Scanlines"
 import { StockTicker } from "@/components/retro/StockTicker"
 import { StockChart } from "@/components/retro/StockChart"
 import { ChaosFeed } from "@/components/retro/ChaosFeed"
+import { SpeedIndicator } from "@/components/retro/SpeedIndicator"
 
 export function DashboardPage() {
-  const { priceHistory, reconnect } = useStonksStream()
+  const { priceHistory, speedConfig, reconnect } = useStonksStream()
 
   return (
     <div className="min-h-svh p-4 font-mono">
@@ -31,7 +32,7 @@ export function DashboardPage() {
             >
               RECONNECT
             </button>
-            <span className="pointer-events-none absolute top-full left-1/2 z-50 mt-1 hidden w-64 -translate-x-1/2 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover:block">
+            <span className="pointer-events-none absolute top-full right-0 z-50 mt-1 hidden w-56 rounded border border-green-500/20 bg-background px-2 py-1.5 text-xs text-muted-foreground group-hover:block">
               If prices stop updating, click RECONNECT to close the
               current SSE connection and open a fresh stream.
             </span>
@@ -41,6 +42,7 @@ export function DashboardPage() {
 
       <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
+          <SpeedIndicator config={speedConfig} />
           <ChaosFeed sidebar />
         </aside>
 

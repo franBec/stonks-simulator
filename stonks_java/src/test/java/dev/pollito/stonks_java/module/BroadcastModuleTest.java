@@ -78,6 +78,10 @@ class BroadcastModuleTest {
     readers.add(reader);
     assertThat(reader.readLine()).isEqualTo("event:connected");
     assertThat(reader.readLine()).startsWith("data:");
+    reader.readLine();
+    assertThat(reader.readLine()).isEqualTo("event:SPEED_CONFIG");
+    assertThat(reader.readLine()).startsWith("data:");
+    reader.readLine();
     return reader;
   }
 

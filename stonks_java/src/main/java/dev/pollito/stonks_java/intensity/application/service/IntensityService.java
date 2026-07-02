@@ -5,10 +5,12 @@ import static java.math.BigDecimal.valueOf;
 import dev.pollito.stonks_java.intensity.application.port.in.IntensityPortIn;
 import dev.pollito.stonks_java.intensity.application.port.out.IntensityLevelPortOut;
 import dev.pollito.stonks_java.intensity.domain.IntensityLevel;
+import dev.pollito.stonks_java.intensity.domain.IntensityLevelChanged;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import jakarta.annotation.PostConstruct;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +20,7 @@ public class IntensityService implements IntensityPortIn {
 
   private final StockPortIn stockPortIn;
   private final IntensityLevelPortOut intensityLevelPortOut;
+  private final ApplicationEventPublisher eventPublisher;
 
   private final AtomicReference<IntensityLevel> currentLevel =
       new AtomicReference<>(IntensityLevel.PAPER_HANDS);
@@ -44,5 +47,6 @@ public class IntensityService implements IntensityPortIn {
     currentLevel.set(level);
     stockPortIn.setVolatilityMultiplier(valueOf(level.getVolatilityMultiplier()));
     intensityLevelPortOut.saveLevel(level);
+    eventPublisher.publishEvent(new IntensityLevelChanged(level));
   }
 }

@@ -5,6 +5,9 @@
       "trade :: domain",
       "chaosevent",
       "chaosevent :: domain",
+      "intensity",
+      "intensity :: domain",
+      "intensity :: in",
       "portfolio",
       "portfolio :: domain"
     })

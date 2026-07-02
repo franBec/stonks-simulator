@@ -142,7 +142,7 @@ export function StockTicker() {
   return (
     <div className="terminal-border animate-fade-in overflow-x-auto">
       <div className="border-b border-green-500/10 px-4 py-2 text-xs text-muted-foreground">
-        LIVE MARKET DATA — UPDATING EVERY 5s
+        LIVE MARKET DATA
       </div>
       <table className="w-full font-mono text-xs sm:text-sm">
         <thead>
