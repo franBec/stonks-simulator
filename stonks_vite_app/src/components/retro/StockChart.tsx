@@ -101,6 +101,16 @@ export function StockChart({ priceHistory }: StockChartProps) {
     })
   }
 
+  const allSelected = selected.size === ALL_SYMBOLS.length
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set())
+    } else {
+      setSelected(new Set(ALL_SYMBOLS))
+    }
+  }
+
   const mergedData = useMemo(
     () => mergeHistory(priceHistory, selected),
     [priceHistory, selected],
@@ -126,6 +136,17 @@ export function StockChart({ priceHistory }: StockChartProps) {
       </div>
 
       <div className="flex flex-wrap gap-1.5 px-4 py-2 border-b border-green-500/5">
+        <button
+          onClick={toggleAll}
+          className={`px-2 py-0.5 text-xs border font-mono transition-colors cursor-pointer ${
+            allSelected
+              ? "border-green-500/40 bg-green-500/10 text-foreground"
+              : "border-green-500/10 bg-transparent text-muted-foreground hover:border-green-500/25"
+          }`}
+        >
+          ALL
+        </button>
+        <span className="text-muted-foreground/30 text-xs self-center">|</span>
         {ALL_SYMBOLS.map((symbol) => {
           const isSelected = selected.has(symbol)
           return (

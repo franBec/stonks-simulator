@@ -3,7 +3,6 @@ import { useStonksStream } from "@/api/useStonksStream"
 import { Scanlines } from "@/components/retro/Scanlines"
 import { StockTicker } from "@/components/retro/StockTicker"
 import { StockChart } from "@/components/retro/StockChart"
-import { PortfolioSidebar } from "@/components/retro/PortfolioSidebar"
 import { IntensityIndicator } from "@/components/retro/IntensityIndicator"
 import { ChaosFeed } from "@/components/retro/ChaosFeed"
 
@@ -28,15 +27,14 @@ export function DashboardPage() {
         <IntensityIndicator />
       </header>
 
-      <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
         <aside className="space-y-4">
-          <PortfolioSidebar />
+          <ChaosFeed sidebar />
         </aside>
 
         <main className="min-w-0 space-y-4">
           <StockTicker />
           <StockChart priceHistory={priceHistory} />
-          <ChaosFeed />
         </main>
       </div>
     </div>

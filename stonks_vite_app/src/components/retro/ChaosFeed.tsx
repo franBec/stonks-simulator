@@ -9,7 +9,19 @@ const SEVERITY_COLORS: Record<string, string> = {
   CRITICAL: "text-red-500",
 }
 
-export function ChaosFeed() {
+function formatEventTime(iso: string): string {
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  })
+}
+
+interface ChaosFeedProps {
+  sidebar?: boolean
+}
+
+export function ChaosFeed({ sidebar = false }: ChaosFeedProps) {
   const { data: events, isLoading } = useGetChaoticEvents<ChaoticEvent[]>({
     query: { select: unwrap<ChaoticEvent[]> },
   })
@@ -35,7 +47,13 @@ export function ChaosFeed() {
           NO ACTIVE CHAOS EVENTS — MARKET CALM
         </div>
       ) : (
-        <div className="max-h-64 space-y-3 overflow-y-auto">
+        <div
+          className={
+            sidebar
+              ? "max-h-[calc(100svh-13rem)] space-y-3 overflow-y-auto"
+              : "max-h-64 space-y-3 overflow-y-auto"
+          }
+        >
           {events.map((e) => (
             <div
               key={e.eventId}
@@ -46,6 +64,9 @@ export function ChaosFeed() {
                   [{e.severity}]
                 </span>
                 <span className="font-bold text-foreground">{e.title}</span>
+              </div>
+              <div className="mt-0.5 text-muted-foreground/60 text-[10px]">
+                {formatEventTime(e.startedAt)}
               </div>
               {e.targetSymbol && (
                 <div className="mt-0.5 text-muted-foreground">
