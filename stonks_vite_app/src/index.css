@@ -191,3 +191,116 @@
     animation: fade-in 0.3s ease-out;
   }
 }
+
+@layer utilities {
+  @keyframes edge-flow {
+    0% {
+      stroke-dashoffset: 20;
+    }
+    100% {
+      stroke-dashoffset: 0;
+    }
+  }
+
+  @keyframes edge-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .edge-glow {
+    filter: drop-shadow(0 0 6px rgba(0, 255, 65, 0.6))
+      drop-shadow(0 0 12px rgba(0, 255, 65, 0.3));
+  }
+
+  @keyframes section-enter {
+    from {
+      opacity: 0;
+      transform: translateY(24px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .section-reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+  }
+
+  .section-reveal.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @keyframes node-glow-pulse {
+    0%,
+    100% {
+      box-shadow: 0 0 4px rgba(0, 255, 65, 0.15),
+        inset 0 0 4px rgba(0, 255, 65, 0.05);
+    }
+    50% {
+      box-shadow: 0 0 12px rgba(0, 255, 65, 0.35),
+        inset 0 0 12px rgba(0, 255, 65, 0.1);
+    }
+  }
+
+  @keyframes particle-move {
+    0% {
+      offset-distance: 0%;
+      opacity: 0;
+    }
+    10% {
+      opacity: 1;
+    }
+    90% {
+      opacity: 1;
+    }
+    100% {
+      offset-distance: 100%;
+      opacity: 0;
+    }
+  }
+
+  @keyframes scanline-diagram {
+    0% {
+      transform: translateY(-100%);
+    }
+    100% {
+      transform: translateY(100%);
+    }
+  }
+
+  .diagram-container .react-flow__attribution {
+    display: none !important;
+  }
+
+  .react-flow__edge-path {
+    filter: drop-shadow(0 0 4px rgba(0, 255, 65, 0.3));
+  }
+
+  .react-flow__background pattern circle {
+    fill: rgba(0, 255, 65, 0.04);
+  }
+
+  .react-flow__minimap {
+    border: 1px solid rgba(0, 255, 65, 0.1) !important;
+    background: #0a0d0a !important;
+  }
+
+  .react-flow__controls-button {
+    background: #0d100d !important;
+    border: 1px solid rgba(0, 255, 65, 0.15) !important;
+    fill: #00ff41 !important;
+  }
+
+  .react-flow__controls-button:hover {
+    background: #112211 !important;
+  }
+}

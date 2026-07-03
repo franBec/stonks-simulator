@@ -25,6 +25,12 @@ export function DashboardPage() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/how-it-works"
+            className="rounded border border-green-500/15 px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-green-400/40 hover:text-green-400"
+          >
+            HOW IT WORKS
+          </Link>
           <span className="group relative inline-block">
             <button
               onClick={reconnect}
