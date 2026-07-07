@@ -25,100 +25,109 @@ const nodes: Node[] = [
   {
     id: "chaos-scheduler",
     type: "scheduler",
-    position: { x: 20, y: 180 },
+    position: { x: 40, y: 300 },
     data: {
       label: "Chaos Scheduler",
       typeTag: "Trigger",
       description: "Dynamic interval based on intensity level",
       detail: "30s (Max Overdrive) to 15min (Paper Hands)",
+      width: 200,
     },
   },
   {
     id: "chaos-service",
     type: "service",
-    position: { x: 240, y: 60 },
+    position: { x: 300, y: 60 },
     data: {
       label: "ChaoseventService",
       typeTag: "Orchestrator",
       description: "Core chaos pipeline: fetch news → generate event → apply impact → broadcast",
       detail: "Composite pattern for AI/stub adapters",
+      width: 220,
     },
   },
   {
     id: "rss-feeds",
     type: "rss",
-    position: { x: 240, y: 340 },
+    position: { x: 300, y: 360 },
     data: {
       label: "RSS News Feeds",
       typeTag: "External",
       description: "BBC Tech, TechCrunch, The Guardian Business",
       detail: "Cached 60s — Rome RSS parser",
+      width: 220,
     },
   },
   {
     id: "ai-openrouter",
     type: "ai",
-    position: { x: 520, y: 150 },
+    position: { x: 640, y: 60 },
     data: {
       label: "OpenRouter AI",
       typeTag: "Primary Adapter",
       description: "Llama 3.1 8B — generates chaotic trading event from real headlines",
       detail: "Rate limited: 20/min, 50/day",
+      width: 220,
     },
   },
   {
     id: "fallback",
     type: "service",
-    position: { x: 520, y: 340 },
+    position: { x: 640, y: 360 },
     data: {
       label: "Fallback Catalog",
       typeTag: "Fallback Adapter",
       description: "18 pre-baked meme events: 'COBOL Programmer Retired', 'Elon Tweets Doge', etc.",
       detail: "Used when stonks.adapters.ai=stub or AI rate limit hit",
+      width: 220,
     },
   },
   {
     id: "stock-impact",
     type: "service",
-    position: { x: 780, y: 60 },
+    position: { x: 980, y: 60 },
     data: {
       label: "StockService",
       typeTag: "Impact Handler",
       description: "Applies chaotic impact to in-memory stock price",
       detail: "onApplyStockImpact() — capped at ±50%",
-    },
-  },
-  {
-    id: "broadcast",
-    type: "sseEdge",
-    position: { x: 520, y: 510 },
-    data: {
-      label: "BroadcastSseService",
-      typeTag: "Streaming",
-      description: "SSE CHAOS_EVENT with headline, symbol, impact, explanation",
-      detail: "Broadcast to all connected clients",
-    },
-  },
-  {
-    id: "frontend",
-    type: "service",
-    position: { x: 780, y: 510 },
-    data: {
-      label: "React Frontend",
-      typeTag: "UI",
-      description: "ChaosFeed component renders chaotic events in sidebar",
-      detail: "SSE CHAOS_EVENT → toast notification",
+      width: 220,
     },
   },
   {
     id: "db-audit",
     type: "service",
-    position: { x: 780, y: 340 },
+    position: { x: 980, y: 360 },
     data: {
       label: "Incident Log",
       typeTag: "Persistence",
       description: "All events logged to chaosevent_incident_log table",
       detail: "Audit trail: headline, symbol, impact%, type, severity",
+      width: 220,
+    },
+  },
+  {
+    id: "broadcast",
+    type: "sseEdge",
+    position: { x: 640, y: 640 },
+    data: {
+      label: "BroadcastSseService",
+      typeTag: "Streaming",
+      description: "SSE CHAOS_EVENT with headline, symbol, impact, explanation",
+      detail: "Broadcast to all connected clients",
+      width: 220,
+    },
+  },
+  {
+    id: "frontend",
+    type: "service",
+    position: { x: 980, y: 640 },
+    data: {
+      label: "React Frontend",
+      typeTag: "UI",
+      description: "ChaosFeed component renders chaotic events in sidebar",
+      detail: "SSE CHAOS_EVENT → toast notification",
+      width: 220,
     },
   },
 ]
@@ -128,6 +137,8 @@ const edges: Edge[] = [
     id: "trigger",
     source: "chaos-scheduler",
     target: "chaos-service",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -148,6 +159,8 @@ const edges: Edge[] = [
     id: "fetch-news",
     source: "chaos-service",
     target: "rss-feeds",
+    sourceHandle: "bottom-source",
+    targetHandle: "top",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -168,6 +181,8 @@ const edges: Edge[] = [
     id: "return-headlines",
     source: "rss-feeds",
     target: "chaos-service",
+    sourceHandle: "top-source",
+    targetHandle: "bottom",
     type: "animated",
     animated: true,
     style: {
@@ -181,6 +196,8 @@ const edges: Edge[] = [
     id: "ai-generate",
     source: "chaos-service",
     target: "ai-openrouter",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -201,9 +218,11 @@ const edges: Edge[] = [
     id: "ai-response",
     source: "ai-openrouter",
     target: "chaos-service",
+    sourceHandle: "bottom-source",
+    targetHandle: "bottom",
     type: "animated",
     animated: true,
-    data: { label: "ChaoticEvent" },
+    data: { label: "ChaoticEvent", arcHeight: 100 },
     style: {
       stroke: "#cc33ff",
       strokeWidth: 1.5,
@@ -215,6 +234,8 @@ const edges: Edge[] = [
     id: "fallback-gen",
     source: "chaos-service",
     target: "fallback",
+    sourceHandle: "bottom-source",
+    targetHandle: "top",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -235,6 +256,8 @@ const edges: Edge[] = [
     id: "fallback-response",
     source: "fallback",
     target: "chaos-service",
+    sourceHandle: "top-source",
+    targetHandle: "bottom",
     type: "animated",
     animated: true,
     style: {
@@ -248,6 +271,8 @@ const edges: Edge[] = [
     id: "impact",
     source: "chaos-service",
     target: "stock-impact",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -268,6 +293,8 @@ const edges: Edge[] = [
     id: "broadcast-event",
     source: "chaos-service",
     target: "broadcast",
+    sourceHandle: "bottom-source",
+    targetHandle: "top",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -283,6 +310,8 @@ const edges: Edge[] = [
     id: "sse-to-client",
     source: "broadcast",
     target: "frontend",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -303,6 +332,8 @@ const edges: Edge[] = [
     id: "audit-log",
     source: "chaos-service",
     target: "db-audit",
+    sourceHandle: "bottom-source",
+    targetHandle: "top",
     type: "animated",
     animated: true,
     markerEnd: {
@@ -328,7 +359,7 @@ export function ChaosFeedFlow() {
       edges={edges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
-      defaultViewport={{ x: 0, y: 0, zoom: 0.7 }}
+      height={720}
     />
   )
 }

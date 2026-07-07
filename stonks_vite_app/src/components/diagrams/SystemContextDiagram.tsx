@@ -21,7 +21,7 @@ const nodes: Node[] = [
   {
     id: "trader",
     type: "person",
-    position: { x: 50, y: 180 },
+    position: { x: 10, y: 220 },
     data: {
       label: "Trader",
       typeTag: "Person",
@@ -31,11 +31,11 @@ const nodes: Node[] = [
   {
     id: "system-boundary",
     type: "systemBoundary",
-    position: { x: 300, y: 40 },
+    position: { x: 260, y: 60 },
     data: {
       label: "STONKS Simulator [Software System]",
-      width: 320,
-      height: 400,
+      width: 440,
+      height: 340,
     },
     selectable: false,
     draggable: false,
@@ -43,13 +43,14 @@ const nodes: Node[] = [
   {
     id: "stonks-system",
     type: "external",
-    position: { x: 350, y: 200 },
+    position: { x: 340, y: 160 },
     data: {
       label: "STONKS Simulator",
       typeTag: "Software System",
       description:
         "COBOL-powered meme stock trading platform. Live price simulation, AI chaos events, portfolio tracking.",
       detail: "React + Spring Boot + COBOL + PostgreSQL",
+      width: 280,
     },
     parentId: "system-boundary",
     extent: "parent" as const,
@@ -57,7 +58,7 @@ const nodes: Node[] = [
   {
     id: "openrouter",
     type: "external",
-    position: { x: 750, y: 150 },
+    position: { x: 760, y: 140 },
     data: {
       label: "OpenRouter API",
       typeTag: "External System",
@@ -67,7 +68,7 @@ const nodes: Node[] = [
   {
     id: "rss-feeds",
     type: "external",
-    position: { x: 750, y: 320 },
+    position: { x: 760, y: 340 },
     data: {
       label: "RSS News Feeds",
       typeTag: "External System",
@@ -81,6 +82,8 @@ const edges: Edge[] = [
     id: "trader-sse",
     source: "stonks-system",
     target: "trader",
+    sourceHandle: "left-source",
+    targetHandle: "right",
     type: "animated",
     animated: true,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#00ff41", width: 12, height: 12 },
@@ -91,6 +94,8 @@ const edges: Edge[] = [
     id: "trader-rest",
     source: "trader",
     target: "stonks-system",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#00ff41", width: 12, height: 12 },
@@ -101,6 +106,8 @@ const edges: Edge[] = [
     id: "stonks-ai",
     source: "stonks-system",
     target: "openrouter",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#cc33ff", width: 12, height: 12 },
@@ -111,6 +118,8 @@ const edges: Edge[] = [
     id: "stonks-rss",
     source: "stonks-system",
     target: "rss-feeds",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: { type: MarkerType.ArrowClosed, color: "#ff9933", width: 12, height: 12 },
@@ -126,7 +135,6 @@ export function SystemContextDiagram() {
       edges={edges}
       nodeTypes={nodeTypes}
       edgeTypes={edgeTypes}
-      defaultViewport={{ x: 0, y: 0, zoom: 0.85 }}
     />
   )
 }

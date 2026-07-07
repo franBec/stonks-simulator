@@ -1,13 +1,13 @@
-import { type ReactNode } from "react"
+import { type ReactNode, useCallback } from "react"
 import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   type Node,
   type Edge,
   type NodeTypes,
   type EdgeTypes,
+  type ReactFlowInstance,
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
@@ -18,6 +18,7 @@ interface DiagramWrapperProps {
   edgeTypes: EdgeTypes
   defaultViewport?: { x: number; y: number; zoom: number }
   fitView?: boolean
+  height?: number
   children?: ReactNode
 }
 
@@ -28,6 +29,7 @@ export function DiagramWrapper({
   edgeTypes,
   defaultViewport,
   fitView = true,
+  height = 620,
   children,
 }: DiagramWrapperProps) {
   const defaultEdgeOptions = {
@@ -40,10 +42,21 @@ export function DiagramWrapper({
     },
   }
 
+  const onInit = useCallback(
+    (instance: ReactFlowInstance) => {
+      if (!fitView) return
+      // Defer fitView so ReactFlow has measured nodes and the parent layout is stable.
+      requestAnimationFrame(() => {
+        instance.fitView({ padding: 0.1, minZoom: 0.4, maxZoom: 1 })
+      })
+    },
+    [fitView]
+  )
+
   return (
     <div
       className="diagram-container terminal-border w-full rounded-lg overflow-hidden"
-      style={{ height: 420 }}
+      style={{ height }}
     >
       <ReactFlow
         nodes={nodes}
@@ -53,34 +66,26 @@ export function DiagramWrapper({
         defaultEdgeOptions={defaultEdgeOptions}
         defaultViewport={defaultViewport || { x: 0, y: 0, zoom: 1 }}
         fitView={fitView}
-        fitViewOptions={{ padding: 0.3 }}
+        fitViewOptions={{ padding: 0.1, minZoom: 0.4, maxZoom: 1 }}
+        minZoom={0.3}
+        maxZoom={1.5}
         nodesDraggable={false}
         nodesConnectable={false}
         elementsSelectable={true}
         panOnDrag
         zoomOnScroll
         zoomOnDoubleClick
+        onInit={onInit}
         proOptions={{ hideAttribution: true }}
       >
         <Background
-          color="rgba(0, 255, 65, 0.03)"
-          gap={20}
+          color="rgba(0, 255, 65, 0.04)"
+          gap={24}
           size={1}
         />
         <Controls
           className="!rounded !overflow-hidden"
           position="bottom-right"
-        />
-        <MiniMap
-          style={{
-            background: "#0a0d0a",
-            border: "1px solid rgba(0, 255, 65, 0.1)",
-          }}
-          maskColor="rgba(0, 0, 0, 0.6)"
-          nodeColor="#00ff41"
-          nodeStrokeColor="rgba(0, 255, 65, 0.3)"
-          pannable
-          zoomable
         />
         {children}
       </ReactFlow>

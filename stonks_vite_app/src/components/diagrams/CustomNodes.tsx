@@ -13,7 +13,7 @@ import {
   ArrowRightLeft,
   Layers,
 } from "lucide-react"
-import type { ComponentType, ReactNode } from "react"
+import type { ComponentType, CSSProperties, ReactNode } from "react"
 
 interface BaseNodeData {
   label: string
@@ -32,24 +32,45 @@ function BaseNode({
   selected,
   icon: Icon,
   className = "",
+  style,
   children,
 }: BaseNodeProps & {
   icon: ComponentType<{ className?: string; size?: number }>
   className?: string
+  style?: CSSProperties
   children?: ReactNode
 }) {
   return (
     <div
-      className={`rounded border px-4 py-3 font-mono text-xs transition-all ${
+      className={`rounded border px-3 py-2.5 font-mono text-xs transition-all ${
         selected
           ? "border-[#00ff41]/60 shadow-[0_0_16px_rgba(0,255,65,0.2)]"
           : "border-[#00ff4122] hover:border-[#00ff41]/40"
       } bg-[#0d100d] ${className}`}
-      style={{ minWidth: 180 }}
+      style={{ minWidth: 160, width: data.width, ...style }}
     >
       <Handle
+        id="top"
         type="target"
         position={Position.Top}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="left"
+        type="target"
+        position={Position.Left}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="bottom"
+        type="target"
+        position={Position.Bottom}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="right"
+        type="target"
+        position={Position.Right}
         className="!bg-[#00ff41]/40 !border-[#0d100d]"
       />
       <div className="flex items-center gap-2 mb-1">
@@ -62,18 +83,37 @@ function BaseNode({
         </span>
       )}
       {data.description && (
-        <p className="text-[10px] text-[#008833]/70 mt-1 leading-relaxed">
+        <p className="text-[10px] text-[#008833]/85 mt-1.5 leading-relaxed">
           {data.description}
         </p>
       )}
       {data.detail && (
-        <p className="text-[10px] text-[#00ff41]/50 mt-0.5">{data.detail}</p>
+        <p className="text-[10px] text-[#00ff41]/60 mt-1">{data.detail}</p>
       )}
       {children}
       <Handle
+        id="top-source"
+        type="source"
+        position={Position.Top}
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="left-source"
+        type="source"
+        position={Position.Left}
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="bottom-source"
         type="source"
         position={Position.Bottom}
-        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="right-source"
+        type="source"
+        position={Position.Right}
+        className="!opacity-0 !w-1 !h-1"
       />
     </div>
   )
@@ -88,7 +128,7 @@ export function ContainerNode(props: NodeProps) {
   return (
     <BaseNode {...p} icon={Monitor} className="border-[#00ff41]/25">
       {p.data.services && p.data.services.length > 0 && (
-        <div className="mt-2 flex flex-wrap gap-1">
+        <div className="mt-2 flex flex-wrap gap-1 max-w-[220px]">
           {p.data.services.map((s: string) => (
             <span
               key={s}
@@ -107,16 +147,35 @@ export function DatabaseNode(props: NodeProps) {
   const data = (props as BaseNodeProps).data
   return (
     <div
-      className={`rounded-t-[4px] rounded-b-[12px] border px-4 pt-3 pb-4 font-mono text-xs transition-all ${
+      className={`rounded-t-[4px] rounded-b-[12px] border px-3 pt-2.5 pb-3 font-mono text-xs transition-all ${
         props.selected
           ? "border-[#00ff41]/60 shadow-[0_0_16px_rgba(0,255,65,0.2)]"
           : "border-[#00ff4122] hover:border-[#00ff41]/40"
       } bg-[#0d100d]`}
-      style={{ minWidth: 160 }}
+      style={{ minWidth: 150 }}
     >
       <Handle
+        id="top"
         type="target"
         position={Position.Top}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="left"
+        type="target"
+        position={Position.Left}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="bottom"
+        type="target"
+        position={Position.Bottom}
+        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+      />
+      <Handle
+        id="right"
+        type="target"
+        position={Position.Right}
         className="!bg-[#00ff41]/40 !border-[#0d100d]"
       />
       <div className="flex items-center gap-2 mb-1">
@@ -129,21 +188,47 @@ export function DatabaseNode(props: NodeProps) {
         </span>
       )}
       {data.description && (
-        <p className="text-[10px] text-[#008833]/70 mt-1 leading-relaxed">
+        <p className="text-[10px] text-[#008833]/85 mt-1.5 leading-relaxed">
           {data.description}
         </p>
       )}
       <Handle
+        id="top-source"
+        type="source"
+        position={Position.Top}
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="left-source"
+        type="source"
+        position={Position.Left}
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="bottom-source"
         type="source"
         position={Position.Bottom}
-        className="!bg-[#00ff41]/40 !border-[#0d100d]"
+        className="!opacity-0 !w-1 !h-1"
+      />
+      <Handle
+        id="right-source"
+        type="source"
+        position={Position.Right}
+        className="!opacity-0 !w-1 !h-1"
       />
     </div>
   )
 }
 
 export function ExternalNode(props: NodeProps) {
-  return <BaseNode {...(props as BaseNodeProps)} icon={Cloud} />
+  const data = (props as BaseNodeProps).data
+  return (
+    <BaseNode
+      {...(props as BaseNodeProps)}
+      icon={Cloud}
+      style={data.width ? { width: data.width } : undefined}
+    />
+  )
 }
 
 export function SchedulerNode(props: NodeProps) {
@@ -180,7 +265,7 @@ export function SystemBoundaryNode(props: NodeProps) {
       }}
     >
       <span className="text-[10px] text-[#008833]/60 uppercase tracking-wider">
-        [{data.label}]
+        {data.label}
       </span>
     </div>
   )
