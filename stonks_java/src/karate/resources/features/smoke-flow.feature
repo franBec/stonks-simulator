@@ -108,3 +108,22 @@ Feature: Full smoke flow
     # ------------------------------------------------------------
     * def sellResult = call read('classpath:features/helpers/sell-gmee.feature')
     * assert sellResult.tradeResult.newQuantity == 0
+
+    # ------------------------------------------------------------
+    # 13. Reset portfolio to initial state
+    # ------------------------------------------------------------
+    * call read('classpath:features/helpers/reset-portfolio.feature')
+
+    Given path 'api/portfolio'
+    When method get
+    Then status 200
+    And match response.data.cashBalance == 10000.0
+    And match response.data.positions == '#[]'
+
+    Given path 'api/trades'
+    And param page = 0
+    And param size = 5
+    When method get
+    Then status 200
+    And match response.data.content == '#[]'
+    And match response.data.totalElements == 0

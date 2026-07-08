@@ -4,5 +4,6 @@ public enum BroadcastEventType {
   PRICE_TICK,
   TRADE_EXECUTED,
   CHAOS_EVENT,
-  SPEED_CONFIG
+  SPEED_CONFIG,
+  GAME_RESET
 }

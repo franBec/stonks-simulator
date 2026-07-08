@@ -70,6 +70,8 @@ stonks:
         - https://www.theguardian.com/uk/business/rss
   chaos:
     enabled: true
+  game:
+    initial-cash: 10000.00
   logging:
     max-collection-print-size: 3
     adapter-out:

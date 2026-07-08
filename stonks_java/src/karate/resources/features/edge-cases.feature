@@ -77,3 +77,16 @@ Feature: Edge cases and negative scenarios
     When method post
     Then status 500
     And match response contains { instance: '#string', status: 500, title: '#string', detail: '#string', timestamp: '#string', trace: '#string' }
+
+  Scenario: Reset is idempotent (calling twice gives same result)
+    Given path 'api/portfolio/reset'
+    When method post
+    Then status 200
+    Given path 'api/portfolio/reset'
+    When method post
+    Then status 200
+    Given path 'api/portfolio'
+    When method get
+    Then status 200
+    And match response.data.cashBalance == 10000.0
+    And match response.data.positions == '#[]'

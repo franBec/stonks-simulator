@@ -6,6 +6,7 @@ import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class TradePortfolioStateJpaAdapter implements TradePortfolioStatePortOut
   }
 
   @Override
+  @Transactional
   public void applyExecution(
       long portfolioId,
       String symbol,
@@ -42,5 +44,14 @@ public class TradePortfolioStateJpaAdapter implements TradePortfolioStatePortOut
     position.setQuantity((long) newQuantity);
     position.setCostBasis(costBasis);
     positionRepo.save(position);
+  }
+
+  @Override
+  @Transactional
+  public void resetPortfolio(long portfolioId, BigDecimal initialCash) {
+    positionRepo.deleteAll();
+    var portfolio = portfolioRepo.findById(portfolioId).orElseThrow();
+    portfolio.setCashBalance(initialCash);
+    portfolioRepo.save(portfolio);
   }
 }

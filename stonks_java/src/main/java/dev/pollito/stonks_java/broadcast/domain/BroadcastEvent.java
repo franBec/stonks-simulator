@@ -6,7 +6,8 @@ public sealed interface BroadcastEvent
     permits PriceTickBroadcastEvent,
         TradeExecutedBroadcastEvent,
         ChaosBroadcastEvent,
-        SpeedBroadcastEvent {
+        SpeedBroadcastEvent,
+        GameResetBroadcastEvent {
   BroadcastEventType type();
 
   OffsetDateTime occurredAt();

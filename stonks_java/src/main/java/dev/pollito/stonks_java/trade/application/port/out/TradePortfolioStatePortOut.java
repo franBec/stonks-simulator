@@ -12,4 +12,6 @@ public interface TradePortfolioStatePortOut {
       BigDecimal newCashBalance,
       int newQuantity,
       BigDecimal costBasis);
+
+  void resetPortfolio(long portfolioId, BigDecimal initialCash);
 }

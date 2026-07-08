@@ -89,6 +89,15 @@ export function useStonksStream() {
         }
       })
 
+      es.addEventListener("GAME_RESET", () => {
+        queryClient.invalidateQueries({
+          queryKey: getGetPortfolioQueryKey(),
+        })
+        queryClient.invalidateQueries({
+          queryKey: ["/trades"],
+        })
+      })
+
       es.onerror = () => {
         es.close()
         esRef.current = null

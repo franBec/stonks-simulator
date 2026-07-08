@@ -10,4 +10,6 @@ public interface TradeHistoryPortOut {
   Page<TradeHistoryItem> getTradeHistory(Pageable pageable);
 
   void recordExecution(Trade trade, TradeExecutionResult result, long portfolioId);
+
+  void clearHistory();
 }

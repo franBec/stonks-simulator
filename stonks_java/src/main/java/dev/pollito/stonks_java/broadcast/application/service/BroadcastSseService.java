@@ -9,6 +9,7 @@ import dev.pollito.stonks_java.broadcast.application.port.in.BroadcastPortIn;
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
+import dev.pollito.stonks_java.broadcast.domain.GameResetBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.SpeedBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
@@ -16,6 +17,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.intensity.application.port.in.IntensityPortIn;
 import dev.pollito.stonks_java.intensity.domain.IntensityLevel;
 import dev.pollito.stonks_java.intensity.domain.IntensityLevelChanged;
+import dev.pollito.stonks_java.portfolio.domain.GameResetEvent;
 import dev.pollito.stonks_java.stock.domain.StockPriceUpdatedEvent;
 import dev.pollito.stonks_java.trade.domain.TradeAction;
 import dev.pollito.stonks_java.trade.domain.TradeExecutedEvent;
@@ -119,6 +121,11 @@ public class BroadcastSseService implements BroadcastPortIn {
     broadcast(buildSpeedConfig());
   }
 
+  @EventListener
+  void onGameReset(GameResetEvent event) {
+    broadcast(new GameResetBroadcastEvent());
+  }
+
   @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
   void sendHeartbeat() {
     for (SseEmitter emitter : emitters) {
@@ -158,6 +165,8 @@ public class BroadcastSseService implements BroadcastPortIn {
                   "intensityLevel", sc.intensityLevel(),
                   "volatilityMultiplier", sc.volatilityMultiplier(),
                   "aiEventIntervalMs", sc.aiEventIntervalMs());
+      case GameResetBroadcastEvent gr ->
+          dataToSend = of("message", "Game has been reset");
       default -> dataToSend = event;
     }
 

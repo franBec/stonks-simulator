@@ -36,6 +36,7 @@ class TradeModuleTest {
 
   private static final String TRADES_URI = "/api/trades";
   private static final String HISTORY_URI = "/api/trades";
+  private static final String PORTFOLIO_RESET_URI = "/api/portfolio/reset";
 
   @Autowired private RestTestClient restTestClient;
 
@@ -203,5 +204,35 @@ class TradeModuleTest {
     assertThat(data.getContent()).isEmpty();
     assertThat(data.getTotalElements()).isZero();
     assertThat(data.getTotalPages()).isZero();
+  }
+
+  @Test
+  @Sql("/sql/portfolio-with-position.sql")
+  void resetClearsPositionsAndHistory() {
+    var result =
+        restTestClient
+            .post()
+            .uri(PORTFOLIO_RESET_URI)
+            .exchange()
+            .expectStatus()
+            .isOk();
+
+    var history =
+        restTestClient
+            .get()
+            .uri(HISTORY_URI)
+            .exchange()
+            .expectStatus()
+            .isOk()
+            .returnResult(TradeHistoryResponse.class);
+    assertThat(history.getResponseBody().getData().getContent()).isEmpty();
+    assertThat(history.getResponseBody().getData().getTotalElements()).isZero();
+  }
+
+  @Test
+  @Sql("/sql/portfolio.sql")
+  void resetIsIdempotent() {
+    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isOk();
+    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isOk();
   }
 }
