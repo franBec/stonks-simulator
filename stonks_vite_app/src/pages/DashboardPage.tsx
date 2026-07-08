@@ -26,6 +26,12 @@ export function DashboardPage() {
         </div>
         <div className="flex items-center gap-3">
           <Link
+            to="/app/trade"
+            className="rounded border border-green-400/30 px-3 py-1.5 font-mono text-xs text-green-400 transition-colors hover:border-green-400/60 hover:bg-green-500/10 hover:text-green-300"
+          >
+            [ TRADE ]
+          </Link>
+          <Link
             to="/how-it-works"
             className="rounded border border-green-500/15 px-3 py-1.5 font-mono text-xs text-muted-foreground transition-colors hover:border-green-400/40 hover:text-green-400"
           >

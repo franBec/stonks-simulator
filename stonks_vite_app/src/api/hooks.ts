@@ -16,6 +16,7 @@ export type {
   ChaoticEvent,
   IntensityLevel,
   TradeExecutionResult,
+  TradeHistoryItem,
   TradeHistoryResponseData,
   GetTradeHistoryParams,
 } from "@/__generated__/api/types"

@@ -4,7 +4,7 @@ import type { Portfolio } from "@/api/hooks"
 
 export function PortfolioSidebar() {
   const { data: portfolio, isLoading } = useGetPortfolio<Portfolio>({
-    query: { select: unwrap<Portfolio> },
+    query: { select: unwrap<Portfolio>, refetchInterval: 5000 },
   })
 
   if (isLoading) {
@@ -25,12 +25,10 @@ export function PortfolioSidebar() {
     )
   }
 
+  const activePositions = portfolio.positions.filter((p) => p.quantity > 0)
   const totalValue =
     portfolio.cashBalance +
-    portfolio.positions.reduce(
-      (sum, p) => sum + p.marketValue,
-      0,
-    )
+    activePositions.reduce((sum, p) => sum + p.marketValue, 0)
   const pnlColor =
     portfolio.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"
 
@@ -58,13 +56,13 @@ export function PortfolioSidebar() {
         </div>
       </div>
 
-      {portfolio.positions.length > 0 && (
+      {activePositions.length > 0 && (
         <>
           <div className="mb-2 mt-4 border-b border-green-500/10 pb-1 text-muted-foreground">
             POSITIONS
           </div>
           <div className="space-y-1">
-            {portfolio.positions.map((p) => {
+            {activePositions.map((p) => {
               const pnlColor =
                 p.unrealizedPnl >= 0 ? "text-green-400" : "text-red-400"
               return (
