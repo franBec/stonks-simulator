@@ -22,7 +22,7 @@ public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut
 
   private static final BigDecimal MAX_PRICE = new BigDecimal("500.00");
   private static final BigDecimal MIN_PRICE = new BigDecimal("0.10");
-  private static final BigDecimal MAX_STEP_CHANGE = new BigDecimal("0.15");
+  private static final BigDecimal MAX_STEP_CHANGE = new BigDecimal("0.25");
   private final SecureRandom random = new SecureRandom();
 
   @Override
@@ -31,11 +31,11 @@ public class StockPriceEngineCobolAdapterStub implements StockPriceEnginePortOut
 
     BigDecimal trendBias =
         switch (trend) {
-          case BULL -> new BigDecimal("0.003");
-          case BEAR -> new BigDecimal("-0.003");
-          case MOON -> new BigDecimal("0.01");
-          case CHAOS -> BigDecimal.valueOf((random.nextDouble() - 0.5) * 0.04);
-          case CRASH -> new BigDecimal("-0.05");
+          case BULL -> new BigDecimal("0.01");
+          case BEAR -> new BigDecimal("-0.01");
+          case MOON -> new BigDecimal("0.03");
+          case CHAOS -> BigDecimal.valueOf((random.nextDouble() - 0.5) * 0.1);
+          case CRASH -> new BigDecimal("-0.10");
         };
 
     BigDecimal randomShock =

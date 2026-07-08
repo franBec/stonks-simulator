@@ -16,6 +16,7 @@ import dev.pollito.stonks_java.trade.domain.TradeHistoryItem;
 import dev.pollito.stonks_java.trade.domain.TradePortfolioState;
 import java.math.BigDecimal;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -34,6 +35,9 @@ public class TradeService implements TradePortIn {
   private final StockPortIn stockPortIn;
   private final ApplicationEventPublisher events;
 
+  @Value("${stonks.trade.fee-rate:0.005}")
+  private double feeRate;
+
   @Override
   @Transactional
   public TradeExecutionResult executeTrade(Trade trade) {
@@ -50,7 +54,8 @@ public class TradeService implements TradePortIn {
                     .map(s -> s.price().doubleValue())
                     .orElse(0.0),
                 state.cashBalance(),
-                state.holdingQty()));
+                state.holdingQty(),
+                feeRate));
 
     if (result.status() == ACCEPTED) {
       double newCostBasis;

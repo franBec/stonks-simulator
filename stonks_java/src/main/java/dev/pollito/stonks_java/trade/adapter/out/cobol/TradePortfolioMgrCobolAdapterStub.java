@@ -46,20 +46,21 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
     }
 
     double totalCost = input.quantity() * input.price();
+    double fee = totalCost * input.feeRate();
     double newCashBalance;
     int newQuantity;
 
     if (input.action() == BUY) {
-      if (input.cashBalance() < totalCost) {
+      if (input.cashBalance() < totalCost + fee) {
         return rejected("S222", "JOB ABEND S222 - INSUFF FUNDS", input);
       }
-      newCashBalance = input.cashBalance() - totalCost;
+      newCashBalance = input.cashBalance() - totalCost - fee;
       newQuantity = input.holdingQty() + input.quantity();
     } else if (input.action() == SELL) {
       if (input.holdingQty() < input.quantity()) {
         return rejected("S223", "JOB ABEND S223 - INSUFF SHARES", input);
       }
-      newCashBalance = input.cashBalance() + totalCost;
+      newCashBalance = input.cashBalance() + totalCost - fee;
       newQuantity = input.holdingQty() - input.quantity();
     } else {
       return rejected("S225", "JOB ABEND S225 - INVALID ACTION", input);
@@ -68,7 +69,8 @@ public class TradePortfolioMgrCobolAdapterStub implements TradeExecutionPortOut 
     return new TradeExecutionResult(
         ACCEPTED,
         null,
-        "TRADE EXECUTED - " + input.action().getValue() + " " + input.symbol(),
+        "TRADE EXECUTED - " + input.action().getValue() + " " + input.symbol()
+            + " [FEE: $" + String.format("%.2f", fee) + "]",
         newCashBalance,
         newQuantity,
         totalCost);

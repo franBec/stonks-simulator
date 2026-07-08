@@ -89,20 +89,20 @@
        COMPUTE-NEW-PRICE.
       *    MAP TREND STRING TO NUMERIC BIAS
            MOVE 0 TO WS-TREND-BIAS
-           EVALUATE WS-PREQ-TREND
-               WHEN 'BULL'
-                   MOVE 0.003 TO WS-TREND-BIAS
-               WHEN 'BEAR'
-                   MOVE -0.003 TO WS-TREND-BIAS
-               WHEN 'MOON'
-                   MOVE 0.01 TO WS-TREND-BIAS
-               WHEN 'CHAOS'
-                   COMPUTE WS-PRANDOM = FUNCTION RANDOM
-                   COMPUTE WS-TREND-BIAS =
-                       (WS-PRANDOM - 0.5) * 0.04
-               WHEN 'CRASH'
-                   MOVE -0.05 TO WS-TREND-BIAS
-           END-EVALUATE
+            EVALUATE WS-PREQ-TREND
+                WHEN 'BULL'
+                    MOVE 0.01 TO WS-TREND-BIAS
+                WHEN 'BEAR'
+                    MOVE -0.01 TO WS-TREND-BIAS
+                WHEN 'MOON'
+                    MOVE 0.03 TO WS-TREND-BIAS
+                WHEN 'CHAOS'
+                    COMPUTE WS-PRANDOM = FUNCTION RANDOM
+                    COMPUTE WS-TREND-BIAS =
+                        (WS-PRANDOM - 0.5) * 0.1
+                WHEN 'CRASH'
+                    MOVE -0.10 TO WS-TREND-BIAS
+            END-EVALUATE
 
       *    GENERATE RANDOM WALK SHOCK
            COMPUTE WS-PRANDOM = FUNCTION RANDOM
@@ -114,17 +114,17 @@
                WS-PREQ-CURRENT *
                (1.0 + WS-TREND-BIAS + WS-RANDOM-SHOCK)
 
-      *    APPLY CIRCUIT BREAKER: MAX 15% SINGLE-STEP CHANGE
+      *    APPLY CIRCUIT BREAKER: MAX 25% SINGLE-STEP CHANGE
            MOVE WS-PREQ-CURRENT TO WS-CURRENT-F
            COMPUTE WS-STEP-CHANGE =
                (WS-NEW-PRICE-F - WS-CURRENT-F) / WS-CURRENT-F
-           IF WS-STEP-CHANGE > 0.15
+           IF WS-STEP-CHANGE > 0.25
                COMPUTE WS-CLAMPED-PRICE =
-                   WS-CURRENT-F * 1.15
+                   WS-CURRENT-F * 1.25
            ELSE
-               IF WS-STEP-CHANGE < -0.15
+               IF WS-STEP-CHANGE < -0.25
                    COMPUTE WS-CLAMPED-PRICE =
-                       WS-CURRENT-F * 0.85
+                       WS-CURRENT-F * 0.75
                ELSE
                    MOVE WS-NEW-PRICE-F TO WS-CLAMPED-PRICE
                END-IF

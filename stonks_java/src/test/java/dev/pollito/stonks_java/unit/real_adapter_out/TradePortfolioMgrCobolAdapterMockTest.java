@@ -31,13 +31,13 @@ class TradePortfolioMgrCobolAdapterMockTest {
 
   @Test
   void executeTrade() {
-    TradeExecutionInput input = new TradeExecutionInput(BUY, "GMEE", 10, 45.0, 10000.0, 0);
+    TradeExecutionInput input = new TradeExecutionInput(BUY, "GMEE", 10, 45.0, 10000.0, 0, 0.0);
     CobolPortfolioMgrResult result =
         new CobolPortfolioMgrResult("ACCEPTED", null, "Valid", 9550.0, 10, 450.0);
 
     when(cobolApp.execute(
             PROGRAM,
-            new CobolPortfolioMgrRequest("BUY", "GMEE", 10, 45.0, 10000.0, 0),
+            new CobolPortfolioMgrRequest("BUY", "GMEE", 10, 45.0, 10000.0, 0, 0.0),
             CobolPortfolioMgrResult.class))
         .thenReturn(result);
 
@@ -49,7 +49,7 @@ class TradePortfolioMgrCobolAdapterMockTest {
     verify(cobolApp)
         .execute(
             PROGRAM,
-            new CobolPortfolioMgrRequest("BUY", "GMEE", 10, 45.0, 10000.0, 0),
+            new CobolPortfolioMgrRequest("BUY", "GMEE", 10, 45.0, 10000.0, 0, 0.0),
             CobolPortfolioMgrResult.class);
   }
 }

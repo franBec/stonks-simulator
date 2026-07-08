@@ -7,7 +7,7 @@ import { getGetPortfolioQueryKey } from "@/__generated__/api/portfolio/portfolio
 import { getGetTradeHistoryQueryKey } from "@/__generated__/api/trades/trades"
 
 const WIN_THRESHOLD = 100000
-const LOSE_THRESHOLD = 10
+const LOSE_THRESHOLD = 1000
 const API_BASE = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8080"
 
 export interface GameState {

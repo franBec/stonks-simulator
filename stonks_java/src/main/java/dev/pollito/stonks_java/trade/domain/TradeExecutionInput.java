@@ -6,4 +6,5 @@ public record TradeExecutionInput(
     int quantity,
     double price,
     double cashBalance,
-    int holdingQty) {}
+    int holdingQty,
+    double feeRate) {}

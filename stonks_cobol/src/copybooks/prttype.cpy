@@ -5,12 +5,17 @@
       * REQUEST EXTENSION
        01 WS-PMG-REQUEST-EXT.
           05 WS-PMG-REQ-HOLDING-QTY  PIC 9(8).
+          05 WS-PMG-REQ-FEE-RATE     PIC V9(4).
 
       * RESPONSE FIELDS
        01 WS-PMG-RESPONSE.
           05 WS-PMG-RES-NEW-CASH     PIC S9(9)V99.
           05 WS-PMG-RES-NEW-QTY      PIC 9(8).
           05 WS-PMG-RES-TOTAL-COST   PIC 9(9)V99.
+
+      * WORK FIELDS
+       01 WS-PMG-FEE                 PIC 9(9)V99.
+       01 WS-PMG-FEE-DISPLAY         PIC -(9)9.99.
 
       * DISPLAY FIELDS
        01 WS-DISPLAY-NEW-CASH        PIC -(9)9.99.
