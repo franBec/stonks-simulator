@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.trade.adapter.in.rest;
 
+import dev.pollito.stonks_java.config.GameStateService;
 import dev.pollito.stonks_java.portfolio.domain.GameResetEvent;
 import dev.pollito.stonks_java.trade.application.port.out.TradeHistoryPortOut;
 import dev.pollito.stonks_java.trade.application.port.out.TradePortfolioStatePortOut;
@@ -19,6 +20,7 @@ public class PortfolioResetController {
 
   private final TradePortfolioStatePortOut tradePortfolioStatePortOut;
   private final TradeHistoryPortOut tradeHistoryPortOut;
+  private final GameStateService gameStateService;
   private final ApplicationEventPublisher events;
 
   @Value("${stonks.game.initial-cash:10000.00}")
@@ -28,6 +30,7 @@ public class PortfolioResetController {
   public ResponseEntity<Void> resetPortfolio() {
     tradePortfolioStatePortOut.resetPortfolio(PORTFOLIO_ID, initialCash);
     tradeHistoryPortOut.clearHistory();
+    gameStateService.reset();
     events.publishEvent(new GameResetEvent());
     return ResponseEntity.ok().build();
   }

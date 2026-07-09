@@ -72,6 +72,8 @@ stonks:
     enabled: true
   game:
     initial-cash: 10000.00
+    win-threshold: 100000.00
+    lose-threshold: 1000.00
   trade:
     fee-rate: 0.005
   logging:

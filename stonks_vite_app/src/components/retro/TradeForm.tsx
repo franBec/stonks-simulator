@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, startTransition } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useGetStocks, useExecuteTrade } from "@/api/hooks"
 import { unwrap } from "@/api/hooks"
@@ -6,6 +6,7 @@ import type { StockPrice, TradeExecutionResult } from "@/api/hooks"
 import type { TradeExecutionRequest } from "@/api/hooks"
 import { getGetPortfolioQueryKey } from "@/__generated__/api/portfolio/portfolio"
 import { getGetTradeHistoryQueryKey } from "@/__generated__/api/trades/trades"
+import { useResetSignal } from "@/hooks/useResetSignal"
 
 type Action = "BUY" | "SELL"
 
@@ -17,10 +18,21 @@ export function TradeForm() {
 
   const [action, setAction] = useState<Action>("BUY")
   const [symbol, setSymbol] = useState("")
-  const [quantity, setQuantity] = useState(1)
+  const [quantityStr, setQuantityStr] = useState("1")
   const [result, setResult] = useState<TradeExecutionResult | null>(null)
 
+  const quantity = parseInt(quantityStr) || 0
+
   const executeMutation = useExecuteTrade()
+  const { version } = useResetSignal()
+
+  useEffect(() => {
+    startTransition(() => {
+      setResult(null)
+      setQuantityStr("1")
+      setSymbol("")
+    })
+  }, [version])
 
   const selectedStock = useMemo(() => {
     if (!stocks || !symbol) return null
@@ -46,7 +58,7 @@ export function TradeForm() {
           setResult(executionResult)
 
           if (executionResult.status === "ACCEPTED") {
-            setQuantity(1)
+            setQuantityStr("1")
             queryClient.invalidateQueries({
               queryKey: getGetPortfolioQueryKey(),
             })
@@ -155,9 +167,9 @@ export function TradeForm() {
         <input
           type="number"
           min={1}
-          value={quantity}
+          value={quantityStr}
           onChange={(e) => {
-            setQuantity(Math.max(1, parseInt(e.target.value) || 1))
+            setQuantityStr(e.target.value)
             setResult(null)
           }}
           className="w-full rounded border border-green-500/20 bg-transparent px-3 py-1.5 font-mono text-foreground outline-none focus:border-green-400/40"

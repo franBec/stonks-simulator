@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react"
+import { useState, useEffect, startTransition } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { useGetPortfolio, useGetTradeHistory } from "@/api/hooks"
 import { unwrap } from "@/api/hooks"
@@ -32,47 +32,64 @@ export function useGameState(): GameState {
     { query: { select: unwrap<TradeHistoryResponseData> } },
   )
 
-  const [dismissed, setDismissed] = useState(false)
+  const [gameEnded, setGameEnded] = useState(false)
+  const [won, setWon] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const [snapshot, setSnapshot] = useState<{
+    totalValue: number
+    unrealizedPnl: number
+    tradeCount: number
+  } | null>(null)
 
-  const totalValue = useMemo(
-    () =>
-      portfolio
-        ? portfolio.cashBalance +
-          portfolio.positions.reduce((sum, p) => sum + p.marketValue, 0)
-        : 0,
-    [portfolio],
-  )
+  const totalValue =
+    portfolio
+      ? portfolio.cashBalance +
+        portfolio.positions.reduce((sum, p) => sum + p.marketValue, 0)
+      : 0
 
-  const gameOver = useMemo(() => {
-    if (dismissed) return false
-    if (totalValue >= WIN_THRESHOLD) return true
-    if (totalValue > 0 && totalValue <= LOSE_THRESHOLD) return true
-    return false
-  }, [totalValue, dismissed])
-
-  const won = useMemo(() => totalValue >= WIN_THRESHOLD, [totalValue])
+  useEffect(() => {
+    startTransition(() => {
+      if (gameEnded) return
+      if (totalValue >= WIN_THRESHOLD) {
+        setGameEnded(true)
+        setWon(true)
+        setSnapshot({
+          totalValue,
+          unrealizedPnl: portfolio?.unrealizedPnl ?? 0,
+          tradeCount: tradeHistory?.totalElements ?? 0,
+        })
+      } else if (totalValue > 0 && totalValue <= LOSE_THRESHOLD) {
+        setGameEnded(true)
+        setWon(false)
+        setSnapshot({
+          totalValue,
+          unrealizedPnl: portfolio?.unrealizedPnl ?? 0,
+          tradeCount: tradeHistory?.totalElements ?? 0,
+        })
+      }
+    })
+  }, [totalValue, gameEnded])
 
   const reset = () => {
     setIsResetting(true)
     fetch(`${API_BASE}/api/portfolio/reset`, { method: "POST" })
+      .then(() => queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() }))
+      .then(() => queryClient.invalidateQueries({ queryKey: getGetTradeHistoryQueryKey() }))
       .then(() => {
-        setDismissed(true)
-        queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() })
-        queryClient.invalidateQueries({
-          queryKey: getGetTradeHistoryQueryKey(),
+        startTransition(() => {
+          setGameEnded(false)
+          setWon(false)
         })
-        setTimeout(() => setDismissed(false), 500)
       })
       .finally(() => setIsResetting(false))
   }
 
   return {
-    gameOver,
+    gameOver: gameEnded,
     won,
-    totalValue,
-    unrealizedPnl: portfolio?.unrealizedPnl ?? 0,
-    tradeCount: tradeHistory?.totalElements ?? 0,
+    totalValue: snapshot?.totalValue ?? totalValue,
+    unrealizedPnl: snapshot?.unrealizedPnl ?? portfolio?.unrealizedPnl ?? 0,
+    tradeCount: snapshot?.tradeCount ?? tradeHistory?.totalElements ?? 0,
     reset,
     isResetting,
   }

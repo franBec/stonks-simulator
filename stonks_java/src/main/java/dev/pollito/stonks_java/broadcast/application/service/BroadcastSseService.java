@@ -9,11 +9,15 @@ import dev.pollito.stonks_java.broadcast.application.port.in.BroadcastPortIn;
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
+import dev.pollito.stonks_java.broadcast.domain.GameLostBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.GameResetBroadcastEvent;
+import dev.pollito.stonks_java.broadcast.domain.GameWonBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.SpeedBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
+import dev.pollito.stonks_java.config.GameLostEvent;
+import dev.pollito.stonks_java.config.GameWonEvent;
 import dev.pollito.stonks_java.intensity.application.port.in.IntensityPortIn;
 import dev.pollito.stonks_java.intensity.domain.IntensityLevel;
 import dev.pollito.stonks_java.intensity.domain.IntensityLevelChanged;
@@ -126,6 +130,16 @@ public class BroadcastSseService implements BroadcastPortIn {
     broadcast(new GameResetBroadcastEvent());
   }
 
+  @EventListener
+  void onGameWon(GameWonEvent event) {
+    broadcast(new GameWonBroadcastEvent());
+  }
+
+  @EventListener
+  void onGameLost(GameLostEvent event) {
+    broadcast(new GameLostBroadcastEvent());
+  }
+
   @Scheduled(fixedRateString = "${stonks.broadcast.heartbeat-rate-ms:15000}")
   void sendHeartbeat() {
     for (SseEmitter emitter : emitters) {
@@ -167,6 +181,10 @@ public class BroadcastSseService implements BroadcastPortIn {
                   "aiEventIntervalMs", sc.aiEventIntervalMs());
       case GameResetBroadcastEvent gr ->
           dataToSend = of("message", "Game has been reset");
+      case GameWonBroadcastEvent gw ->
+          dataToSend = of("message", "You won!");
+      case GameLostBroadcastEvent gl ->
+          dataToSend = of("message", "You lost!");
       default -> dataToSend = event;
     }
 

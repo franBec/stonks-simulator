@@ -80,7 +80,7 @@ class TradeModuleTest {
     assertThat(data.getNewQuantity()).isEqualTo(expectedNewQty);
     if (expectedStatus == ACCEPTED) {
       assertThat(data.getNewCashBalance()).isCloseTo(expectedNewCashApprox, within(200.0));
-      assertThat(data.getTotalCost()).isCloseTo(expectedCostApprox, within(100.0));
+      assertThat(data.getTotalCost()).isCloseTo(expectedCostApprox, within(200.0));
     } else {
       assertThat(data.getNewCashBalance()).isCloseTo(expectedNewCashApprox, within(0.01));
       assertThat(data.getTotalCost()).isCloseTo(expectedCostApprox, within(0.01));

@@ -90,6 +90,7 @@ export function useStonksStream() {
       })
 
       es.addEventListener("GAME_RESET", () => {
+        window.dispatchEvent(new CustomEvent("stonks-game-reset"))
         queryClient.invalidateQueries({
           queryKey: getGetPortfolioQueryKey(),
         })

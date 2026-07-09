@@ -7,7 +7,9 @@ public sealed interface BroadcastEvent
         TradeExecutedBroadcastEvent,
         ChaosBroadcastEvent,
         SpeedBroadcastEvent,
-        GameResetBroadcastEvent {
+        GameResetBroadcastEvent,
+        GameWonBroadcastEvent,
+        GameLostBroadcastEvent {
   BroadcastEventType type();
 
   OffsetDateTime occurredAt();

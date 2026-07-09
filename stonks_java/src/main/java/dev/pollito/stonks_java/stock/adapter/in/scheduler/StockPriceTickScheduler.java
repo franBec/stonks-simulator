@@ -1,5 +1,6 @@
 package dev.pollito.stonks_java.stock.adapter.in.scheduler;
 
+import dev.pollito.stonks_java.config.GameStateService;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import java.util.concurrent.atomic.AtomicBoolean;
 import lombok.RequiredArgsConstructor;
@@ -12,10 +13,14 @@ import org.springframework.stereotype.Component;
 @Slf4j
 public class StockPriceTickScheduler {
   private final StockPortIn stockPortIn;
+  private final GameStateService gameStateService;
   private final AtomicBoolean running = new AtomicBoolean(false);
 
   @Scheduled(fixedRateString = "${stonks.market.simulation.interval-ms:5000}")
   public void tick() {
+    if (!gameStateService.isPlaying()) {
+      return;
+    }
     if (!running.compareAndSet(false, true)) {
       log.warn("Skipping price tick — previous tick still running");
       return;
