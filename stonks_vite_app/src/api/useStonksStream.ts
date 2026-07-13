@@ -3,6 +3,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { getGetStocksQueryKey } from "@/__generated__/api/stocks/stocks"
 import { getGetPortfolioQueryKey } from "@/__generated__/api/portfolio/portfolio"
 import { getGetChaoticEventsQueryKey } from "@/__generated__/api/chaotic-events/chaotic-events"
+import { useGameConfig } from "@/hooks/useGameConfig"
 
 export interface PricePoint {
   timestamp: number
@@ -35,6 +36,7 @@ const STREAM_URL = `${API_BASE}/api/stream`
 
 export function useStonksStream() {
   const queryClient = useQueryClient()
+  const { setGameConfig } = useGameConfig()
   const esRef = useRef<EventSource | null>(null)
   const historyRef = useRef<Map<string, PricePoint[]>>(new Map())
   const [priceHistory, setPriceHistory] = useState<PriceHistory>({})
@@ -89,6 +91,14 @@ export function useStonksStream() {
         }
       })
 
+      es.addEventListener("GAME_CONFIG", (event: MessageEvent) => {
+        try {
+          setGameConfig(JSON.parse(event.data))
+        } catch {
+          // ignore malformed event data
+        }
+      })
+
       es.addEventListener("GAME_RESET", () => {
         window.dispatchEvent(new CustomEvent("stonks-game-reset"))
         queryClient.invalidateQueries({
@@ -120,7 +130,7 @@ export function useStonksStream() {
     return () => {
       esRef.current?.close()
     }
-  }, [queryClient])
+  }, [queryClient, setGameConfig])
 
   function reconnect() {
     connectRef.current()

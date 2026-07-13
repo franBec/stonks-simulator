@@ -7,5 +7,6 @@ public enum BroadcastEventType {
   SPEED_CONFIG,
   GAME_RESET,
   GAME_WON,
-  GAME_LOST
+  GAME_LOST,
+  GAME_CONFIG
 }

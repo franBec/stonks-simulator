@@ -9,12 +9,14 @@ import dev.pollito.stonks_java.broadcast.application.port.in.BroadcastPortIn;
 import dev.pollito.stonks_java.broadcast.config.BroadcastProperties;
 import dev.pollito.stonks_java.broadcast.domain.BroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.ChaosBroadcastEvent;
+import dev.pollito.stonks_java.broadcast.domain.GameConfigBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.GameLostBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.GameResetBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.GameWonBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.PriceTickBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.SpeedBroadcastEvent;
 import dev.pollito.stonks_java.broadcast.domain.TradeExecutedBroadcastEvent;
+import dev.pollito.stonks_java.config.properties.GameProperties;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.config.GameLostEvent;
 import dev.pollito.stonks_java.config.GameWonEvent;
@@ -46,6 +48,7 @@ public class BroadcastSseService implements BroadcastPortIn {
 
   private final BroadcastProperties broadcastProperties;
   private final IntensityPortIn intensityPortIn;
+  private final GameProperties gameProperties;
 
   @Value("${stonks.market.simulation.interval-ms:5000}")
   private long tickIntervalMs;
@@ -78,6 +81,7 @@ public class BroadcastSseService implements BroadcastPortIn {
     try {
       emitter.send(event().name("connected").data("{\"message\":\"Connected to stonks stream\"}"));
       emitter.send(buildSseEvent(buildSpeedConfig()));
+      emitter.send(buildSseEvent(buildGameConfig()));
     } catch (IOException e) {
       log.warn("Failed to send initial connection events", e);
     }
@@ -128,6 +132,7 @@ public class BroadcastSseService implements BroadcastPortIn {
   @EventListener
   void onGameReset(GameResetEvent event) {
     broadcast(new GameResetBroadcastEvent());
+    broadcast(buildGameConfig());
   }
 
   @EventListener
@@ -185,6 +190,12 @@ public class BroadcastSseService implements BroadcastPortIn {
           dataToSend = of("message", "You won!");
       case GameLostBroadcastEvent gl ->
           dataToSend = of("message", "You lost!");
+      case GameConfigBroadcastEvent gc ->
+          dataToSend =
+              of(
+                  "winThreshold", gc.winThreshold(),
+                  "loseThreshold", gc.loseThreshold(),
+                  "initialCash", gc.initialCash());
       default -> dataToSend = event;
     }
 
@@ -213,5 +224,12 @@ public class BroadcastSseService implements BroadcastPortIn {
         level.name(),
         level.getVolatilityMultiplier(),
         level.getAiEventIntervalMs());
+  }
+
+  private GameConfigBroadcastEvent buildGameConfig() {
+    return new GameConfigBroadcastEvent(
+        gameProperties.getWinThreshold(),
+        gameProperties.getLoseThreshold(),
+        gameProperties.getInitialCash());
   }
 }

@@ -5,11 +5,13 @@ import { HowItWorksPage } from "@/pages/HowItWorksPage"
 import { TradePage } from "@/pages/TradePage"
 import { AppLayout } from "@/pages/AppLayout"
 import { ResetProvider } from "@/hooks/useResetSignal"
+import { GameConfigProvider } from "@/hooks/useGameConfig"
 
 export function App() {
   return (
     <BrowserRouter>
-      <ResetProvider>
+      <GameConfigProvider>
+        <ResetProvider>
         <Routes>
           <Route path="/" element={<LandingPage />} />
           <Route path="/app" element={<AppLayout />}>
@@ -18,7 +20,8 @@ export function App() {
           </Route>
           <Route path="/how-it-works" element={<HowItWorksPage />} />
         </Routes>
-      </ResetProvider>
+        </ResetProvider>
+      </GameConfigProvider>
     </BrowserRouter>
   )
 }
