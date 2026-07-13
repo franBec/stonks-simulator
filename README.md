@@ -6,237 +6,270 @@
 > *"This is such a delightfully terrible idea!"*
 ~ Kimi K2.6 when told we are building this project
 
-_This is a work in progress. During development, tech choices might change_
-
 A chaotic meme stock trading simulator that bridges 1959 COBOL technology with modern Java Spring Boot and React. Features AI-powered real-world events memeified into market chaos, all wrapped in a retro 3270 terminal aesthetic. Built as a portfolio piece demonstrating the absurdity of connecting 60+ years of computing technology.
 
-Users can experience hilarious, chaotic fake stock trading with real-time price updates, buy/sell orders, and AI-driven market events — all through an authentic retro terminal interface powered by actual COBOL trading logic.
+## Screenshots
 
-This exists because:
+![Landing Page](/assets/landing.png)
+![Trading Dashboard](/assets/app.png)
 
-1. COBOL still runs the world's financial systems
-2. Meme stocks exist
-3. AI can make anything funnier
-4. Why not?
+### Game Over States
 
-## Desired Features
+| Wiped Out | To The Moon |
+|-----------|-------------|
+| ![BANKRUPT](/assets/BANKRUPT.png) | ![MOON ACHIEVED](/assets/MOON-ACHIEVED.png) |
 
-### AI mock UIs
+## Architecture
 
-![UI-1](/assets/39c67025-bdc6-4d49-b753-5abd58186875.png)
-![UI-2](/assets/b89b215c-d3ef-4f94-84ea-704d6646a6c7.png)
-![UI-3](/assets/e8e195b8-3bfa-4ea8-8474-c8370d411ba2.png)
-
-### Core Trading
-
-- **$10,000 play money** starting balance
-- **10 meme stocks** with unique behaviors and trends
-- **Real-time price updates** (speed adjustable)
-- **Portfolio tracking** with P&L calculations
-- **Buy/Sell orders** with "manager approval" for large trades
-
-### The Chaos System
-
-- **5 chaos levels** from "Paper Hands" to "MAXIMUM OVERDRIVE"
-- **AI-powered market events** based on real-world news
-- **Random volatility** and market crashes
-- **Event-driven price swings** (+500% to -90%)
-
-### Retro Experience
-
-- **3270 terminal emulator** UI
-- Green phosphor CRT** aesthetic
-- **Paper tape printer** output for every trade
-- **COBOL-style error messages** ("JOB ABEND S222 - INSUFFICIENT FUNDS")
-
-###  The Meme Stocks
-
-| Symbol   | Name           | Description              | Trend Behavior                  |
-|----------|----------------|--------------------------|---------------------------------|
-| **COBL** | COBOL Corp     | Legacy systems never die | Slow, steady growth             |
-| **GMEE** | GameStonks     | To the moon! 🚀          | High volatility, meme pumps     |
-| **DOGE** | DogeCoin Ltd   | Much profit, very wow    | Random spikes, Elon-sensitive   |
-| **TEND** | Tendie Inc     | WSB favorite             | Inverse market correlations     |
-| **FOMO** | FOMO Holdings  | Buy high, sell higher    | Momentum-driven                 |
-| **PAPR** | Paper Hands    | For the weak             | Generally declining             |
-| **YOLO** | YOLO Capital   | You only live once       | Extreme chaos mode              |
-| **MEME** | MemeStonks     | Viral potential          | Event-driven explosions         |
-| **BUGS** | Buggy Software | It compiles, ship it!    | Frequent crashes, then recovery |
-| **JAVA** | JavaBeans      | Write once, run anywhere | Stable, enterprise boring       |
-
-### Stock Properties
-
-Each stock has:
-- **Base price** - Starting value ($10-$150)
-- **Volatility** - How much it swings (1%-50%)
-- **Trend** - Long-term direction (bull/bear/sideways)
-- **AI keywords** - Words that trigger events (e.g., "Elon" → DOGE)
-
-### Chaos Levels and Effects
-
-Control the madness with 5 chaos levels:
-
-| Level | Name                  | Price Update | Volatility | AI Events | Description          |
-|-------|-----------------------|--------------|------------|-----------|----------------------|
-| 1     | **Paper Hands**       | 30s          | ±2%        | 10 min    | Training wheels mode |
-| 2     | **Casual**            | 10s          | ±5%        | 5 min     | Normal trading       |
-| 3     | **Degenerate**        | 5s           | ±10%       | 2 min     | Getting spicy        |
-| 4     | **YOLO**              | 2s           | ±25%       | 30s       | Pure adrenaline      |
-| 5     | **MAXIMUM OVERDRIVE** | 1s           | ±50%       | 10s       | Financial chaos      |
-
-- **Price volatility** - Random walk with trend bias
-- **Market events** - AI-generated news impacting stocks
-- **Flash crashes** - Sudden -50% drops (rare, exciting)
-- **Moon shots** - Sudden +500% pumps (even rarer)
-- **Circuit breakers** - Trading halts after extreme moves
-
-### AI-Powered Events
-
-#### How It Works
-
-1. **Scheduler runs** every X minutes (based on chaos level)
-2. **Fetches real events** via Spring AI + OpenRouter
-3. **Memeifies** the event into stock market chaos
-4. **Broadcasts** to all connected clients via SSE
-5. **Applies effects** to relevant stocks
-
-#### Event Pipeline
-
-```
-Real World News
-      ↓
-[Spring AI] → "What's happening in tech/finance?"
-      ↓
-OpenRouter API
-      ↓
-Memeification Prompt
-      ↓
-{
-  "symbol": "DOGE",
-  "headline": "ELON TWEETED ABOUT DOGS",
-  "impact": 250,
-  "explanation": "MUCH WOW, VERY PROFIT 🐕"
-}
-      ↓
-Broadcast to Frontend
-      ↓
-DOGE +250% INSTANTLY
-```
-
-#### Example Events
-
-**Real Event:** Elon Musk tweets about Mars colonization
-**AI Memeified:**
-```json
-{
-  "symbol": "GMEE",
-  "headline": "ELON MENTIONS 'GAME' IN TWEET",
-  "impact": 180,
-  "explanation": "CLEARLY ABOUT GAMESTOP. TO THE MOON! 🚀",
-  "affectedStocks": ["GMEE", "DOGE"]
-}
-```
-
-**Real Event:** Fed raises interest rates
-**AI Memeified:**
-```json
-{
-  "symbol": "PAPR",
-  "headline": "RATE HIKE = PAPER HANDS SELLING",
-  "impact": -40,
-  "explanation": "EVERYONE PANIC SELLING EXCEPT DIAMOND HANDS 💎🙌",
-  "affectedStocks": ["PAPR", "FOMO", "YOLO"]
-}
-```
-
-#### Fallback Events
-
-When AI is unavailable, use pre-made chaos:
-
-- "COBOL PROGRAMMER RETIRED" → COBL +50%
-- "BUG FOUND IN PRODUCTION" → BUGS -40%
-- "WSB DISCOVERS STOCK" → Random pump
-- "MARKET CRASH" → All stocks -20%
-
-## Out of Scope Requirements
-
-### Not now, but would like to do in the future
-
-- Multiplayer/leaderboard (implies an auth system too)
-
-### Definitely not
-
-- Real money trading — This is a simulator with play money only
-- Real stock data APIs (Twelve Data) — AI "memefied" events based on real life are primary
-- Mobile app — Web-only
-
-## Tech Constraints
-
-- **Tech stack**: Java 21, Spring Boot 4.0.6, GnuCOBOL 3.2, React 19, Tailwind CSS v4, PostgreSQL — fixed by project concept
-- **Environment**: Local development in my NixOS with BusyBox PC; Production environment should be a docker compose Coolify project
-- **Budget**: Free tier APIs where possible
-- **Timeline**: Portfolio piece, no timeline whatsoever
-
-### Key Decisions
-
-| Decision                                    | Rationale                                                                            | Outcome   |
-|---------------------------------------------|--------------------------------------------------------------------------------------|-----------|
-| Java 21 + Spring Boot 4.0.6                 | Proven LTS with virtual threads; current stable Initializr default                   | — Pending |
-| Spring Web MVC over WebFlux                 | Blocking I/O (PostgreSQL, COBOL processes) fits MVC; SseEmitter sufficient for streaming | — Pending |
-| React 19 + Tailwind CSS v4                  | Latest stable versions; v4 performance improvements fit retro UI needs               | — Pending |
-| GnuCOBOL + process execution instead of JNI | Simpler integration, authentic binary execution feel, easier debugging               | — Pending |
-| H2 (dev) + PostgreSQL (prod)                    | H2 for zero-config local dev; PostgreSQL for production durability                  | — Pending |
-| OpenRouter API for AI events                | Free tier available, multiple model options, Spring AI compatible                    | — Pending |
-| Retro terminal aesthetic (3270)             | Core differentiator and portfolio wow-factor                                         | — Pending |
-| Single anonymous user                       | Simpler scope, focus on trading mechanics not auth                                   | — Pending |
-
-### System Landscape Diagram
+### C4 Level 1: System Context
 
 ```mermaid
 C4Context
-    title System Landscape Diagram for STONKS Simulator
+    title System Context Diagram for STONKS Simulator
 
     Person(trader, "Trader", "A degenerate gambler with $10,000 play money")
 
     System_Boundary(stonks, "STONKS Simulator") {
-        System(react, "Stonks React", "React 19 SPA with 3270 terminal aesthetic", "Web App")
-        System(java, "Stonks Java", "Spring Boot 4 REST API, SSE, AI orchestration", "Backend")
-        System(cobol, "Stonks COBOL", "GnuCOBOL trading engine (TRADE-VALIDATOR, PORTFOLIO-MGR, COMPLIANCE-MGR)", "Legacy Engine")
-        SystemDb(db, "PostgreSQL", "Portfolio, trades, stock prices", "Database")
+        System(react, "Stonks React", "React 19 SPA with 3270 terminal aesthetic")
+        System(java, "Stonks Java", "Spring Boot 4 REST API + SSE streaming")
+        System(cobol, "Stonks COBOL", "GnuCOBOL trading engine")
     }
 
     System_Ext(openrouter, "OpenRouter API", "AI memeification of real-world news")
 
-    Rel(trader, react, "Trades stocks, watches chaos via", "HTTPS")
-    Rel(react, java, "REST API + Server-Sent Events", "JSON/SSE")
-    Rel(java, cobol, "Executes COBOL binaries via", "stdin/stdout")
-    Rel(java, db, "Reads/writes", "JDBC/SQL")
-    Rel(java, openrouter, "Fetches & memeifies news via", "HTTP/Spring AI")
+    Rel(trader, react, "Trades stocks, watches chaos", "HTTPS")
+    Rel(react, java, "REST + SSE stream", "JSON/SSE")
+    Rel(java, cobol, "Executes COBOL binaries", "stdin/stdout JSON")
+    Rel(java, openrouter, "Fetches & memeifies news", "HTTP")
 ```
 
-### Project Structure
+### C4 Level 2: Container View
+
+```mermaid
+C4Container
+    title Container Diagram for STONKS Simulator
+
+    Person(trader, "Trader", "A degenerate gambler")
+
+    System_Boundary(stonks, "STONKS Simulator") {
+        Container(react, "Stonks React", "React 19 + Vite + Tailwind CSS v4", "SPA with 3270 terminal aesthetic")
+        Container(java, "Stonks Java", "Spring Boot 4.0.6 + Java 21", "REST API, SSE streaming, AI orchestration")
+        Container(cobol, "Stonks COBOL", "GnuCOBOL 3.2", "Trading engine: catalog, price-engine, portfolio-mgr")
+        ContainerDb(db, "Database", "H2 (dev) / PostgreSQL (optional)", "Portfolio, trades, stock prices, events")
+    }
+
+    System_Ext(openrouter, "OpenRouter API", "LLM provider for AI chaos events")
+
+    Rel(trader, react, "Uses", "HTTPS :5173")
+    Rel(react, java, "REST API calls + SSE stream", "JSON/SSE :8080")
+    Rel(java, cobol, "Process execution", "stdin/stdout JSON")
+    Rel(java, db, "Reads/writes", "JDBC")
+    Rel(java, openrouter, "AI event generation", "HTTP/JSON")
+```
+
+### Data Flow
+
+```mermaid
+sequenceDiagram
+    actor Trader
+    participant React as Stonks React
+    participant Java as Stonks Java
+    participant COBOL as Stonks COBOL
+    participant DB as PostgreSQL
+    participant AI as OpenRouter
+
+    Note over Trader,AI: Price Tick (every 5s, configurable)
+    Java->>COBOL: Execute price-engine (stdin JSON)
+    COBOL-->>Java: New price (stdout JSON)
+    Java->>DB: Save price snapshot
+    Java-->>React: SSE: PRICE_TICK
+
+    Note over Trader,AI: Trade Flow
+    Trader->>React: BUY/SELL order
+    React->>Java: POST /api/trades
+    Java->>COBOL: Execute portfolio-mgr (stdin JSON)
+    COBOL-->>Java: Trade result (stdout JSON)
+    Java->>DB: Save trade history
+    Java-->>React: SSE: TRADE_EXECUTED
+
+    Note over Trader,AI: AI Chaos Event (timed, intensity-dependent)
+    Java->>AI: Fetch & memeify news
+    AI-->>Java: Memeified event
+    Java->>DB: Save event log
+    Java-->>React: SSE: CHAOS_EVENT
+```
+
+## Features
+
+### Core Trading
+
+- **$10,000 play money** starting balance with configurable win/loss thresholds
+- **10 meme stocks** with unique behaviors and trends
+- **Real-time price updates** via SSE streaming with configurable tick interval
+- **Portfolio tracking** with P&L calculations, unrealized gains/losses
+- **Buy/Sell orders** validated by the COBOL `portfolio-mgr` engine
+- **Game over states**: BANKRUPT when portfolio drops below $1,000, MOON ACHIEVED at $100,000
+
+### The Chaos System
+
+- **5 intensity levels** from PAPER_HANDS to MAXIMUM_OVERDRIVE
+- **AI-powered market events** generated via OpenRouter (LLM) based on real-world news headlines
+- **Fallback events** when AI is unreachable
+- Event-driven price swings broadcast in real-time via SSE
+
+### Intensity Levels
+
+| Level | Name | Volatility Multiplier | AI Event Interval |
+|-------|------|-----------------------|-------------------|
+| 1 | **PAPER_HANDS** | 1.0x | 15 min |
+| 2 | **MODERATE** | 2.0x | 5 min |
+| 3 | **HIGH_VOLATILITY** | 5.0x | 2 min |
+| 4 | **EXTREME** | 12.5x | 1 min |
+| 5 | **MAXIMUM_OVERDRIVE** | 25.0x | 30s |
+
+### Retro Experience
+
+- **3270 terminal emulator** UI with green phosphor CRT aesthetic
+- **Retro landing page** with ASCII art banner and fake boot sequence
+- **Scanlines overlay** across all screens
+- **JetBrains Mono** font throughout
+
+### SSE Event Types
+
+| Event | Payload | Trigger |
+|-------|---------|---------|
+| `PRICE_TICK` | `symbol`, `price`, `timestamp` | Every tick interval |
+| `TRADE_EXECUTED` | Trade result | After buy/sell order processed |
+| `CHAOS_EVENT` | Memeified event | When AI generates an event |
+| `SPEED_CONFIG` | `tickIntervalMs`, `intensityLevel`, `volatilityMultiplier`, `aiEventIntervalMs` | On connect + intensity change |
+| `GAME_CONFIG` | Win/lose thresholds, initial cash | On connect |
+| `GAME_WON` | — | Portfolio hits win threshold |
+| `GAME_LOST` | — | Portfolio drops to lose threshold |
+| `GAME_RESET` | — | User clicks "PLAY AGAIN" |
+
+### The Meme Stocks
+
+| Symbol | Name | Description | Trend |
+|--------|------|-------------|-------|
+| **COBL** | COBOL Corp | Legacy systems never die | BULL |
+| **GMEE** | GameStonks | To the moon! | MOON |
+| **DOGE** | DogeCoin Ltd | Much profit, very wow | CHAOS |
+| **TEND** | Tendie Inc | WSB favorite | BEAR |
+| **FOMO** | FOMO Holdings | Buy high, sell higher | BULL |
+| **PAPR** | Paper Hands | For the weak | BEAR |
+| **YOLO** | YOLO Capital | You only live once | CHAOS |
+| **MEME** | MemeStonks | Viral potential | MOON |
+| **BUGS** | Buggy Software | It compiles, ship it! | CHAOS |
+| **JAVA** | JavaBeans | Write once, run anywhere | BULL |
+
+### AI Event Pipeline
+
+```
+Real World News (RSS)
+      ↓
+News Module — fetches current headlines
+      ↓
+Chaosevent Module — builds prompt with headlines + stock catalog
+      ↓
+OpenRouter API (LLM)
+      ↓
+JSON response: { symbol, headline, impact, explanation, affectedStocks }
+      ↓
+Fallback adapter (template-based) if AI fails
+      ↓
+SSE Broadcast → CHAOS_EVENT
+      ↓
+Stock prices impacted by event severity
+```
+
+### COBOL Trading Engine
+
+Three GnuCOBOL programs communicate with the Java backend via stdin/stdout JSON:
+
+| Program | Lines | Purpose |
+|---------|-------|---------|
+| `catalog` | 148 | Source-of-truth catalog of 10 meme stocks |
+| `price-engine` | 153 | Random walk price simulation with trend bias and circuit breakers |
+| `portfolio-mgr` | 303 | Trade validation and execution with fee calculation |
+
+## Project Structure
 
 ```
 stonks-simulator/
-├── README.md           # This file
-├── docker-compose.yml	# Coolify compatible production deployment
-├── stonks_java/        # Java Spring Boot App
-├── stonks_cobol/       # COBOL Trading Engine
-├── stonks_vite_app/    # React Vite SPA
-└── database/           # Database artifacts
+├── README.md
+├── assets/                 # Screenshots and images
+├── stonks_java/            # Spring Boot 4 backend (see stonks_java/README.md)
+├── stonks_cobol/           # GnuCOBOL trading engine (catalog, price-engine, portfolio-mgr)
+├── stonks_vite_app/        # React 19 + Vite + Tailwind CSS v4 frontend
+└── .opencode/              # OpenCode agent configuration and skills
 ```
 
-## TO-DO List
+## Tech Stack
 
-- [ ] Core Spring Boot backend with REST API and PostgreSQL database
-- [ ] COBOL trading engine (`TRADE-VALIDATOR`, `PORTFOLIO-MGR`, `COMPLIANCE-MGR`)
-- [ ] Java ↔ COBOL process execution integration
-- [ ] Real-time stock price simulation with configurable chaos levels
-- [ ] React frontend with 3270 terminal aesthetic
-- [ ] AI-powered chaos events via OpenRouter integration
-- [ ] Paper tape transaction logging and retro error messages
-- [ ] Buy/sell order flow with "manager approval" for large trades
-- [ ] Portfolio tracking with P&L calculations
+| Layer | Technology | Version |
+|-------|-----------|---------|
+| Frontend | React + TypeScript | 19 / 5.9 |
+| Build | Vite | 7 |
+| CSS | Tailwind CSS | 4 |
+| UI Components | shadcn/ui (Radix) | Nova |
+| Charts | Recharts | 3 |
+| Data Fetching | TanStack React Query | 5 |
+| Diagrams | @xyflow/react (ReactFlow) | 12 |
+| API Client | Orval (OpenAPI codegen) | 7 |
+| Backend | Spring Boot + Java | 4.0.6 / 21 |
+| Build | Gradle | 8 |
+| Architecture | Hexagonal + Modulith | — |
+| COBOL | GnuCOBOL | 3.2 |
+| Database | H2 (dev) / PostgreSQL (optional) | — |
+| AI | OpenRouter API | — |
+| Observability | OpenTelemetry (optional) | — |
+
+## Running Locally
+
+### Prerequisites
+
+- Java 21
+- GnuCOBOL 3.2+ (for real COBOL mode; stubs work without it)
+- Node.js 22+
+
+### Backend
+
+```sh
+cd stonks_java
+./gradlew bootRun                                    # H2 + all stubs (zero deps)
+./gradlew bootRun --args='--stonks.adapters.cobol=real --stonks.adapters.ai=real --stonks.adapters.news=real'  # All real backends
+```
+
+### COBOL Programs
+
+```sh
+cd stonks_cobol
+make                    # Compile all programs to bin/
+make test               # Run test suite (12 tests across 3 programs)
+```
+
+### Frontend
+
+```sh
+cd stonks_vite_app
+pnpm install
+pnpm run dev             # Vite dev server on :5173, proxies API to :8080
+```
+
+The full stack runs at `http://localhost:5173`.
+
+## Project Status
+
+This is a **portfolio piece and learning project** — not production software. I built it to explore COBOL integration, hexagonal architecture, SSE streaming, and retro UI design. It is functionally complete for single-player local use, but I have no plans to take it further.
+
+### What was left undone
+
+- **Dockerization** — no Dockerfiles or docker-compose; everything runs locally
+- **Deployment** — no production environment; Coolify/OCI plans were shelved
+- **Observability** — OpenTelemetry export is coded but untested end-to-end
+- **Authentication** — single anonymous user only; no login system
+- **Multiplayer / leaderboards** — out of scope from the start
+- **Real stock APIs** — AI events use RSS headlines for context, not real-time market data APIs
 
 ## Credits
 

@@ -42,7 +42,7 @@ const nodes: Node[] = [
       label: "Spring Boot Backend",
       typeTag: "Container",
       description: "REST API + SSE streaming + AI orchestration",
-      detail: "Spring Boot 4.0.6 (Java 25) — Spring Modulith",
+      detail: "Spring Boot 4.0.6 (Java 21) — Spring Modulith",
       width: 260,
       services: [
         "StockService",

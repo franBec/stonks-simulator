@@ -16,7 +16,9 @@ import { Scanlines } from "@/components/retro/Scanlines"
 import { SystemContextDiagram } from "@/components/diagrams/SystemContextDiagram"
 import { ContainerDiagram } from "@/components/diagrams/ContainerDiagram"
 import { PriceTickFlow } from "@/components/diagrams/PriceTickFlow"
+import { TradeFlow } from "@/components/diagrams/TradeFlow"
 import { ChaosFeedFlow } from "@/components/diagrams/ChaosFeedFlow"
+import { GameStateFlow } from "@/components/diagrams/GameStateFlow"
 import { IntensityLevelsSection } from "@/components/retro/IntensityLevelsSection"
 import { StockCatalogSection } from "@/components/retro/StockCatalogSection"
 
@@ -101,9 +103,8 @@ const TECH_STACK = [
     icon: Server,
     items: [
       "Spring Boot 4.0.6",
-      "Java 25",
+      "Java 21",
       "Spring Modulith",
-      "Spring AI",
       "Resilience4j",
       "Rome RSS Parser",
       "Hibernate / JPA",
@@ -117,7 +118,7 @@ const TECH_STACK = [
       "3 COBOL binaries",
       "stdin/stdout JSON IPC",
       "Random walk algorithm",
-      "Circuit breaker (±15%)",
+      "Circuit breaker (±25%)",
       "Price floor/ceiling",
     ],
   },
@@ -127,7 +128,6 @@ const TECH_STACK = [
     items: [
       "PostgreSQL (prod)",
       "H2 Database (dev)",
-      "Docker / Coolify",
       "SSE streaming",
       "OpenAPI 3.0",
       "Orval codegen",
@@ -262,10 +262,34 @@ export function HowItWorksPage() {
             <span className="text-[#008833]">
               Every 5 seconds, the StockPriceTickScheduler calls StockService.simulate(),
               which iterates all 10 stocks. For each, it delegates to the COBOL price-engine
-              binary (random walk with trend bias + circuit breaker ±15%). Results are
+              binary (random walk with trend bias + circuit breaker ±25%). Results are
               published as StockPriceUpdatedEvent → BroadcastSseService fans out to all
               connected SSE clients. Prices are persisted to the database every 60 seconds
               and on shutdown. Volatility is multiplied by the current intensity level (1x–25x).
+            </span>
+          </div>
+        </Section>
+
+        <Section
+          id="trade-flow"
+          icon={GitBranch}
+          title="Data Flow: Trade Execution"
+          subtitle="How a BUY/SELL order travels from the trader to the COBOL engine and back"
+        >
+          <div className="terminal-border rounded-lg bg-[#0d100d] p-4 mb-4">
+            <TradeFlow />
+          </div>
+          <div className="rounded border border-[#00ff41]/10 bg-[#0d100d] p-3 font-mono text-xs">
+            <span className="text-[#00ff41] font-bold">The Pipeline: </span>
+            <span className="text-[#008833]">
+              Trader submits BUY/SELL order via TradePage → TradeService validates input and
+              delegates to COBOL portfolio-mgr (303 lines, 9 validation rules). The COBOL binary
+              checks: valid action, valid symbol, non-zero quantity, non-zero price, sufficient
+              funds (BUY with 0.5% fee), sufficient shares (SELL). On success, it returns new
+              cash balance and holding quantity. TradeService persists to trade_history and
+              portfolio_position tables, publishes TradeExecutedEvent → SSE broadcast to all
+              clients → frontend invalidates portfolio/trade caches. After each trade, the game
+              state is evaluated against win ($100k) and lose ($1k) thresholds.
             </span>
           </div>
         </Section>
@@ -297,6 +321,39 @@ export function HowItWorksPage() {
                 catalog of 18 pre-baked meme events: "COBOL Programmer Retired" → COBL +50%,
                 "Elon Tweets Doge Again" → DOGE +25%, "Market Crash" → all -20%, etc. All
                 events are logged to the chaosevent_incident_log table for audit.
+              </span>
+            </div>
+          </div>
+        </Section>
+
+        <Section
+          id="game-state-flow"
+          icon={Layers}
+          title="Data Flow: Game State Lifecycle"
+          subtitle="Win/loss conditions, game over states, and the reset cycle"
+        >
+          <div className="terminal-border rounded-lg bg-[#0d100d] p-4 mb-4">
+            <GameStateFlow />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded border border-[#00ff41]/10 bg-[#0d100d] p-3 font-mono text-xs">
+              <span className="text-[#00ff41] font-bold">Win/Loss Detection: </span>
+              <span className="text-[#008833]">
+                After every trade and price tick, PortfolioService evaluates total portfolio
+                value (cash + positions × current prices) against configurable thresholds.
+                GameStateService transitions from PLAYING → WON at $100,000 or → LOST at
+                $1,000. Both schedulers (price ticks and AI events) check gameStateService.
+                isPlaying() before each execution — the entire simulation freezes on game over.
+              </span>
+            </div>
+            <div className="rounded border border-[#00ff41]/10 bg-[#0d100d] p-3 font-mono text-xs">
+              <span className="text-[#00ff41] font-bold">Reset Cycle: </span>
+              <span className="text-[#008833]">
+                GameOverlay renders "MOON ACHIEVED!" or "BANKRUPT!" with final P&L and trade
+                count. The "PLAY AGAIN" button calls POST /api/game/reset → PortfolioResetController
+                → TradeService.resetPortfolio() → clears positions, restores $10k cash, sets
+                GameStateService back to PLAYING → SSE GAME_RESET broadcast → both schedulers
+                resume. A GAME_CONFIG event with thresholds is sent on every SSE connection.
               </span>
             </div>
           </div>

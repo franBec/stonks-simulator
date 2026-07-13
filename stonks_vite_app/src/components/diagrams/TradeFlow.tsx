@@ -1,13 +1,18 @@
 import { type Node, type Edge, MarkerType } from "@xyflow/react"
 import { DiagramWrapper } from "./DiagramWrapper"
-import { SchedulerNode, ServiceNode, CobolNode, SseEdgeNode } from "./CustomNodes"
+import {
+  ServiceNode,
+  CobolNode,
+  SseEdgeNode,
+  ConnectorNode,
+} from "./CustomNodes"
 import { AnimatedEdge } from "./AnimatedEdge"
 
 const nodeTypes = {
-  scheduler: SchedulerNode,
   service: ServiceNode,
   cobol: CobolNode,
   sseEdge: SseEdgeNode,
+  connector: ConnectorNode,
 }
 
 const edgeTypes = {
@@ -16,96 +21,96 @@ const edgeTypes = {
 
 const nodes: Node[] = [
   {
-    id: "scheduler",
-    type: "scheduler",
+    id: "trader",
+    type: "service",
     position: { x: 40, y: 240 },
     data: {
-      label: "Scheduler",
-      typeTag: "Trigger",
-      description: "Every 5 seconds",
-      detail: "StockPriceTickScheduler",
-      width: 180,
+      label: "Trader",
+      typeTag: "UI",
+      description: "Trade form: BUY/SELL with symbol + quantity",
+      detail: "TradePage → POST /api/trades",
+      width: 200,
     },
   },
   {
-    id: "stock-service",
+    id: "trade-service",
     type: "service",
-    position: { x: 300, y: 60 },
+    position: { x: 340, y: 60 },
     data: {
-      label: "StockService",
+      label: "TradeService",
       typeTag: "Service",
-      description: "Iterates 10 stocks, applies volatility, delegates to COBOL",
-      detail: "ConcurrentHashMap<String, StockPrice>",
+      description: "Validates input, fetches current price, delegates to COBOL",
+      detail: "Updates portfolio state on success",
       width: 220,
     },
   },
   {
-    id: "cobol-price",
+    id: "cobol-portfolio",
     type: "cobol",
-    position: { x: 640, y: 60 },
+    position: { x: 660, y: 60 },
     data: {
-      label: "COBOL price-engine",
+      label: "COBOL portfolio-mgr",
       typeTag: "Process",
-      description: "Random walk with trend bias + circuit breaker (±25%)",
-      detail: "Price floor $0.10 / ceiling $500.00",
+      description: "Validates trade: funds, shares, symbol, action",
+      detail: "303 lines — 9 validation rules + fee calc",
       width: 220,
     },
   },
   {
-    id: "event",
+    id: "db-persist",
     type: "service",
     position: { x: 980, y: 60 },
     data: {
-      label: "Domain Events",
-      typeTag: "Event Bus",
-      description: "StockPriceUpdatedEvent published to all listeners",
-      detail: "Spring ApplicationEventPublisher",
-      width: 220,
-    },
-  },
-  {
-    id: "persist",
-    type: "service",
-    position: { x: 300, y: 400 },
-    data: {
       label: "DB Persistence",
       typeTag: "Storage",
-      description: "Snapshots saved every 60s to stock_price table",
-      detail: "Also persists on shutdown via @PreDestroy",
+      description: "Saves trade history + updates portfolio state",
+      detail: "trade_history + portfolio_position tables",
       width: 220,
     },
   },
   {
     id: "broadcast",
     type: "sseEdge",
-    position: { x: 640, y: 400 },
+    position: { x: 340, y: 400 },
     data: {
       label: "BroadcastSseService",
       typeTag: "Streaming",
-      description: "SSE broadcast to all connected clients",
-      detail: "CopyOnWriteArrayList<SseEmitter> — 15s heartbeat",
+      description: "SSE TRADE_EXECUTED with trade result",
+      detail: "TradeExecutedEvent → all SSE clients",
       width: 220,
     },
   },
   {
-    id: "frontend",
+    id: "portfolio-ui",
     type: "service",
-    position: { x: 980, y: 400 },
+    position: { x: 660, y: 400 },
     data: {
       label: "React Frontend",
-      typeTag: "UI",
-      description: "Price table + chart update via SSE PRICE_TICK event",
-      detail: "EventSource → useStonksStream() hook",
+      typeTag: "UI Update",
+      description: "Updates portfolio sidebar + trade history log",
+      detail: "Invalidates /portfolio + /trades caches",
       width: 220,
+    },
+  },
+  {
+    id: "game-check",
+    type: "connector",
+    position: { x: 980, y: 400 },
+    data: {
+      label: "Game State Check",
+      typeTag: "Guard",
+      description: "Checks win/lose thresholds after trade",
+      detail: "Portfolio value vs win/lose thresholds",
+      width: 200,
     },
   },
 ]
 
 const edges: Edge[] = [
   {
-    id: "tick",
-    source: "scheduler",
-    target: "stock-service",
+    id: "trader-submit",
+    source: "trader",
+    target: "trade-service",
     sourceHandle: "right-source",
     targetHandle: "left",
     type: "animated",
@@ -116,7 +121,7 @@ const edges: Edge[] = [
       width: 12,
       height: 12,
     },
-    data: { label: "simulate()" },
+    data: { label: "POST /api/trades" },
     style: {
       stroke: "#00ff41",
       strokeWidth: 2,
@@ -125,9 +130,9 @@ const edges: Edge[] = [
     },
   },
   {
-    id: "delegate",
-    source: "stock-service",
-    target: "cobol-price",
+    id: "delegate-cobol",
+    source: "trade-service",
+    target: "cobol-portfolio",
     sourceHandle: "right-source",
     targetHandle: "left",
     type: "animated",
@@ -138,13 +143,13 @@ const edges: Edge[] = [
       width: 12,
       height: 12,
     },
-    data: { label: "calculate()" },
+    data: { label: "execute('portfolio-mgr')" },
     style: { stroke: "#00ff41", strokeWidth: 2, strokeOpacity: 0.7 },
   },
   {
-    id: "result",
-    source: "cobol-price",
-    target: "stock-service",
+    id: "cobol-response",
+    source: "cobol-portfolio",
+    target: "trade-service",
     sourceHandle: "bottom-source",
     targetHandle: "bottom",
     type: "animated",
@@ -155,7 +160,7 @@ const edges: Edge[] = [
       width: 12,
       height: 12,
     },
-    data: { label: "newPrice", arcHeight: 100 },
+    data: { label: "TradeResult", arcHeight: 100 },
     style: {
       stroke: "#00ff41",
       strokeWidth: 1.5,
@@ -164,9 +169,9 @@ const edges: Edge[] = [
     },
   },
   {
-    id: "publish",
-    source: "stock-service",
-    target: "event",
+    id: "persist-trade",
+    source: "trade-service",
+    target: "db-persist",
     sourceHandle: "right-source",
     targetHandle: "left",
     type: "animated",
@@ -177,23 +182,35 @@ const edges: Edge[] = [
       width: 12,
       height: 12,
     },
-    data: { label: "publish event" },
-    style: { stroke: "#00ff41", strokeWidth: 2, strokeOpacity: 0.7 },
+    data: { label: "save trade + portfolio" },
+    style: {
+      stroke: "#00ff41",
+      strokeWidth: 1,
+      strokeOpacity: 0.3,
+      strokeDasharray: "8 4",
+    },
   },
   {
-    id: "sse-broadcast",
-    source: "event",
+    id: "broadcast-trade",
+    source: "trade-service",
     target: "broadcast",
     sourceHandle: "bottom-source",
     targetHandle: "top",
     type: "animated",
     animated: true,
-    style: { stroke: "#00ff41", strokeWidth: 1.5, strokeOpacity: 0.4 },
+    markerEnd: {
+      type: MarkerType.ArrowClosed,
+      color: "#00ff41",
+      width: 12,
+      height: 12,
+    },
+    data: { label: "TradeExecutedEvent" },
+    style: { stroke: "#00ff41", strokeWidth: 2, strokeOpacity: 0.6 },
   },
   {
     id: "sse-client",
     source: "broadcast",
-    target: "frontend",
+    target: "portfolio-ui",
     sourceHandle: "right-source",
     targetHandle: "left",
     type: "animated",
@@ -204,7 +221,7 @@ const edges: Edge[] = [
       width: 12,
       height: 12,
     },
-    data: { label: "SSE: PRICE_TICK" },
+    data: { label: "SSE: TRADE_EXECUTED" },
     style: {
       stroke: "#00ff41",
       strokeWidth: 2.5,
@@ -213,30 +230,30 @@ const edges: Edge[] = [
     },
   },
   {
-    id: "persist-edge",
-    source: "stock-service",
-    target: "persist",
-    sourceHandle: "bottom-source",
-    targetHandle: "top",
+    id: "check-game",
+    source: "trade-service",
+    target: "game-check",
+    sourceHandle: "right-source",
+    targetHandle: "left",
     type: "animated",
     animated: true,
     markerEnd: {
       type: MarkerType.ArrowClosed,
-      color: "#00ff41",
+      color: "#ff9933",
       width: 12,
       height: 12,
     },
-    data: { label: "persist every 60s" },
+    data: { label: "evaluate win/loss" },
     style: {
-      stroke: "#00ff41",
-      strokeWidth: 1,
-      strokeOpacity: 0.3,
-      strokeDasharray: "8 4",
+      stroke: "#ff9933",
+      strokeWidth: 1.5,
+      strokeOpacity: 0.5,
+      strokeDasharray: "4 4",
     },
   },
 ]
 
-export function PriceTickFlow() {
+export function TradeFlow() {
   return (
     <DiagramWrapper
       nodes={nodes}

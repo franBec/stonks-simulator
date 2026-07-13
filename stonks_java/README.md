@@ -53,7 +53,7 @@ graph TB
         util["util<br/><small>ValuedEnum · metadata</small>"]
     end
 
-    config["config<br/><small>web filters · jackson · scheduling ·<br/>error handling · OTel tracing ·<br/>AOP logging · log masking</small>"]
+    config["config<br/><small>web filters · jackson · scheduling ·<br/>error handling · OTel tracing ·<br/>AOP logging · log masking ·<br/>game state · async · cache · retry ·<br/>CORS · RestClient</small>"]
 
     broadcast ---> stock
     broadcast ---> trade
@@ -78,7 +78,7 @@ graph TB
     style util fill:#e6f3ff,stroke:#4a9eff
 ```
 
-> **Note:** `config` is a cross-cutting shared package (not annotated `@ApplicationModule`) containing web filters, Jackson config, scheduling, error handling, OTel tracing, AOP logging, and log masking. Every module may depend on it implicitly.
+> **Note:** `config` is a cross-cutting shared package (not annotated `@ApplicationModule`) containing web filters, Jackson config, scheduling, error handling, OTel tracing, AOP logging, log masking, game state lifecycle, async execution, caching, retry, CORS, RestClient, and `@ConfigurationProperties` classes. Every module may depend on it implicitly.
 
 ### Core rule
 
@@ -269,6 +269,48 @@ Object mapping uses **MapStruct** with the Spring component model (`componentMod
 - **COBOL mappers** (`adapter/out/cobol/mapper/`) — convert between domain records and COBOL JSON DTOs. The `*CobolMapper` interfaces follow the same MapStruct pattern for both request serialization and response deserialization.
 - **JPA mappers** (`adapter/out/jpa/mapper/`) — convert between JPA entities and domain records. `TradeExecutionEntityMapper` builds `TradeHistory` entities from domain objects; `TradeHistoryJpaMapper` maps entities back to domain `TradeHistoryItem` records.
 - **Inline mapping** is used instead of a dedicated mapper when the conversion is trivial — directly in the controller or adapter method body.
+
+### Game State Management
+
+The `GameStateService` (`config/GameStateService.java`) manages the game lifecycle with three states: `PLAYING`, `WON`, and `LOST`. State transitions are driven by portfolio value relative to configurable thresholds defined in `GameProperties` (`stonks.game.*`):
+
+| Property | Default | Description |
+|----------|---------|-------------|
+| `stonks.game.initial-cash` | `10000.00` | Starting cash for each game session |
+| `stonks.game.win-threshold` | `100000.00` | Portfolio value that triggers a win |
+| `stonks.game.lose-threshold` | `1000.00` | Portfolio value that triggers a loss |
+
+When the game ends (won or lost), the simulation freezes — price ticks and AI chaos events stop. The game can be reset via `POST /api/game/reset`, which restores the portfolio to initial cash and resumes the simulation. State changes are broadcast to all SSE clients as `GAME_WON`, `GAME_LOST`, or `GAME_RESET` events, and the initial `GAME_CONFIG` event (sent on SSE connect) communicates the win/lose thresholds and initial cash to the frontend.
+
+### Simulation Speed & Configuration Broadcasting
+
+The `SpeedBroadcastEvent` is sent on every SSE connection and whenever the intensity level changes. It communicates real-time simulation parameters to the frontend:
+
+| Source | Fields |
+|--------|--------|
+| `MarketProperties` (`stonks.market.simulation.*`) | `tickIntervalMs` — price tick interval |
+| `IntensityLevel` (current) | `intensityLevel`, `volatilityMultiplier`, `aiEventIntervalMs` |
+
+Additionally, the `IntensityLevelChanged` domain event (published by `IntensityService` when the level is changed via the REST API) is consumed by `BroadcastSseService` to push updated speed configuration to all connected clients in real time.
+
+### Property Configuration
+
+Application behavior is configured through `@ConfigurationProperties` classes in `config/properties/`:
+
+| Class | Prefix | Purpose |
+|-------|--------|---------|
+| `StonksAdapterProperties` | `stonks.adapters` | DB, COBOL, AI, news, OTel toggles (see [Environments](#environments)) |
+| `GameProperties` | `stonks.game` | Win/lose thresholds and initial cash (see [Game State Management](#game-state-management)) |
+| `MarketProperties` | `stonks.market.simulation` | Price tick interval |
+| `StonksLoggingProperties` | `stonks.logging` | Log masking patterns and collection print size limit |
+| `BroadcastProperties` | (module-scoped) | SSE emitter heartbeat timeout and event queue size |
+| `AiConfig` / `ChaoseventProperties` | (module-scoped) | AI provider settings and chaos event scheduling |
+| `NewsProperties` | (module-scoped) | RSS feed URLs, poll interval, and cache TTL |
+| `CobolProperties` | (module-scoped) | COBOL program paths and execution settings |
+
+### CORS
+
+`CorsConfig` (`config/web/CorsConfig.java`) enables CORS for `/api/**` with configurable allowed origins (default `http://localhost:5173` for the Vite dev server), methods (`GET`, `POST`, `OPTIONS`), and credentials.
 
 ### OpenAPI-First REST Development
 
@@ -507,7 +549,7 @@ digraph stonks_request_flows {
     margin=20;
 
     node [shape=box, style="filled,rounded", penwidth=2, fontsize=9, fillcolor="#0d4194", color="#30363d", margin="0.15,0.05"];
-    trade_ctrl [label="TradeController\nGET+POST /api/trades"];
+    trade_ctrl [label="TradeController\nGET+POST /api/trades\nPOST /api/game/reset"];
 
     node [shape=box, style="filled,rounded", penwidth=1, fontsize=8, fillcolor="#0d1117", color="#30363d", margin="0.1,0.04"];
     trade_port_in [label="TradePortIn"];
@@ -629,6 +671,8 @@ digraph stonks_request_flows {
         <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← StockPriceUpdatedEvent</FONT></TD></TR>
         <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← TradeExecutedEvent</FONT></TD></TR>
         <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← ChaoticEventTriggered</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← IntensityLevelChanged</FONT></TD></TR>
+        <TR><TD><FONT POINT-SIZE="8" COLOR="#8b949e">← GameLost/GameWon/GameReset</FONT></TD></TR>
       </TABLE>
     >];
   }
@@ -862,7 +906,19 @@ digraph stonks_request_flows {
   broadcast_port_in -> broadcast_svc;
 
   edge [style=dotted, penwidth=2, color="#6e40c9"];
-  broadcast_svc -> client [label="SSE: price ticks, trades, chaos"];
+  broadcast_svc -> client [label="SSE: price ticks, trades, chaos,\n      game state, speed config"];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 8: Intensity → SpeedConfig broadcast
+  // ═══════════════════════════════════════════════
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  intensity_svc -> broadcast_svc [label="IntensityLevelChanged\n→ SpeedBroadcastEvent", constraint=false];
+
+  // ═══════════════════════════════════════════════
+  //  FLOW 9: Game state → broadcast
+  // ═══════════════════════════════════════════════
+  edge [style=dashed, penwidth=1.5, color="#1a7f37"];
+  trade_svc -> broadcast_svc [label="GameLost/GameWon/GameReset\n→ BroadcastEvent", constraint=false];
 
   // ═══════════════════════════════════════════════
   //  CobolAppPortOut → CobolProgramExecutor → COBOL Backend
@@ -915,25 +971,25 @@ Tests are organized by **type**, not by production package depth. The folder nam
 
 ```
 src/test/java/dev/pollito/stonks_java/
-├── architecture/   # Structural / smoke tests
-├── e2e/            # Full application (@SpringBootTest + HTTP)
-├── module/         # Module-isolated (@ApplicationModuleTest + HTTP or port-in)
-├── integration/    # Partial context, real DB / subprocess
-├── adapter_contract/  # Mocked contract tests for @ConditionalOnProperty adapters
-├── unit/           # Pure JUnit / Mockito — zero Spring context
-├── edge_case/      # Scenarios hard to trigger through HTTP
-└── testsupport/    # Shared helpers (e.g. RestTestClientAssertions)
+├── architecture/       # Structural / smoke tests
+├── module/             # Module-isolated (@ApplicationModuleTest + HTTP or port-in)
+├── integration/        # Partial context, real DB / subprocess
+├── unit/               # Pure JUnit / Mockito — zero Spring context
+│   ├── real_adapter_out/  # Mocked contract tests for @ConditionalOnProperty adapters
+│   ├── scheduler/         # Scheduler logic tests
+│   ├── util/              # Utility tests
+│   └── web/               # Web-layer tests (ControllerAdvice)
+└── testsupport/        # Shared helpers (e.g. RestTestClientAssertions)
 ```
 
 ### Naming Conventions
 
 | Suffix | Meaning | Example |
 |--------|---------|---------|
-| `*E2eTest` | Full app `@SpringBootTest` + HTTP | `BroadcastE2eTest` |
 | `*ModuleTest` | `@ApplicationModuleTest` + HTTP or port-in | `PortfolioModuleTest` |
 | `*IntegrationTest` | Partial context, real DB/subprocess | `CobolProgramExecutorIntegrationTest` |
 | `*MockTest` | Mocked contract for disabled adapters | `TradePortfolioMgrCobolAdapterMockTest` |
-| `*Test` | Pure unit, utility, or edge case | `EnumUtilsTest`, `ControllerAdviceTest` |
+| `*Test` | Pure unit, utility, scheduler, or web layer | `EnumUtilsTest`, `ControllerAdviceTest`, `StockPriceTickSchedulerTest` |
 
 ### `@ApplicationModuleTest` vs `@SpringBootTest`
 
@@ -947,11 +1003,11 @@ When `@ApplicationModuleTest` is used from outside the module's package (e.g. fl
 
 ### Test Hierarchy
 
-**Module and E2E tests are the default.** They exercise the full request-to-response path. If a scenario can be tested through HTTP, it should be.
+**Module tests are the default.** They exercise the full request-to-response path. If a scenario can be tested through HTTP, it should be.
 
-**`adapter_contract/` tests are second-class.** They verify adapter wiring and mapping for beans gated by `@ConditionalOnProperty` (e.g. `stonks.adapters.cobol=real`) that are never loaded in the default test profile. These are isolated mock tests — not first-class behavioral tests. They exist because the real adapters can't be reached from E2E, not because they're preferable to it.
+**`unit/real_adapter_out/` tests are second-class.** They verify adapter wiring and mapping for beans gated by `@ConditionalOnProperty` (e.g. `stonks.adapters.cobol=real`) that are never loaded in the default test profile. These are isolated mock tests — not first-class behavioral tests. They exist because the real adapters can't be reached from module tests, not because they're preferable to it.
 
-**`unit/` and `edge_case/` tests fill genuine gaps.** Some logic is unreachable from E2E because stubs don't exercise certain branches (e.g. deduplication, edge-case exception handlers) or because the behavior is push-based (SSE) rather than request-response. Class-level comments explain **what behavior is under test** and **why that behavior can't be reached from a higher layer** — they never repeat "this is not an E2E test."
+**`unit/` tests fill genuine gaps.** Some logic is unreachable from module tests because stubs don't exercise certain branches (e.g. deduplication, edge-case exception handlers) or because the behavior is push-based (SSE) rather than request-response. Class-level comments explain **what behavior is under test** and **why that behavior can't be reached from a higher layer** — they never repeat "this is not an E2E test."
 
 **MapStruct mappers in adapter tests use `@Spy` with the generated `*Impl` class** rather than `@Mock`, so real mapping logic is exercised even in mocked adapter tests.
 
