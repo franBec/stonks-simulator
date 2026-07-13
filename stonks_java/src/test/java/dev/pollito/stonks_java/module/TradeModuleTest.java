@@ -209,13 +209,7 @@ class TradeModuleTest {
   @Test
   @Sql("/sql/portfolio-with-position.sql")
   void resetClearsPositionsAndHistory() {
-    var result =
-        restTestClient
-            .post()
-            .uri(PORTFOLIO_RESET_URI)
-            .exchange()
-            .expectStatus()
-            .isOk();
+    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isNoContent();
 
     var history =
         restTestClient
@@ -232,7 +226,7 @@ class TradeModuleTest {
   @Test
   @Sql("/sql/portfolio.sql")
   void resetIsIdempotent() {
-    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isOk();
-    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isOk();
+    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isNoContent();
+    restTestClient.post().uri(PORTFOLIO_RESET_URI).exchange().expectStatus().isNoContent();
   }
 }

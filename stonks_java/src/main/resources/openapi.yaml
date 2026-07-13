@@ -22,6 +22,8 @@ tags:
     description: Endpoints related to AI-generated chaotic trading events
   - name: IntensityLevel
     description: Endpoints related to market intensity/volatility level management
+  - name: Game
+    description: Endpoints related to game lifecycle management
 paths:
   /trades:
     post:
@@ -137,6 +139,26 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PortfolioResponse'
+        default:
+          description: Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /portfolio/reset:
+    post:
+      tags:
+        - Game
+      operationId: resetGame
+      summary: Resets the player portfolio and game state
+      description: |
+        Resets the player's portfolio to the initial cash balance,
+        clears the trade history, resets the game state to playing,
+        and publishes a game reset event.
+      responses:
+        '204':
+          description: Portfolio and game state reset successfully
         default:
           description: Error
           content:

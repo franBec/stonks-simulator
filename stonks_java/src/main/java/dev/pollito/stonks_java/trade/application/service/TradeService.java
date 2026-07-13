@@ -4,8 +4,9 @@ import static dev.pollito.stonks_java.trade.domain.TradeAction.BUY;
 import static dev.pollito.stonks_java.trade.domain.ValidationStatus.ACCEPTED;
 
 import dev.pollito.stonks_java.config.GameLostEvent;
-import dev.pollito.stonks_java.config.GameWonEvent;
 import dev.pollito.stonks_java.config.GameStateService;
+import dev.pollito.stonks_java.config.GameWonEvent;
+import dev.pollito.stonks_java.portfolio.domain.GameResetEvent;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import dev.pollito.stonks_java.trade.application.port.in.TradePortIn;
 import dev.pollito.stonks_java.trade.application.port.out.TradeExecutionPortOut;
@@ -42,6 +43,9 @@ public class TradeService implements TradePortIn {
 
   @Value("${stonks.trade.fee-rate:0.005}")
   private double feeRate;
+
+  @Value("${stonks.game.initial-cash:10000.00}")
+  private BigDecimal initialCash;
 
   @Value("${stonks.game.win-threshold:100000.00}")
   private double winThreshold;
@@ -121,5 +125,13 @@ public class TradeService implements TradePortIn {
   @Override
   public Page<TradeHistoryItem> getTradeHistory(Pageable pageable) {
     return tradeHistoryPortOut.getTradeHistory(pageable);
+  }
+
+  @Override
+  public void resetPortfolio() {
+    tradePortfolioStatePortOut.resetPortfolio(PORTFOLIO_ID, initialCash);
+    tradeHistoryPortOut.clearHistory();
+    gameStateService.reset();
+    events.publishEvent(new GameResetEvent());
   }
 }

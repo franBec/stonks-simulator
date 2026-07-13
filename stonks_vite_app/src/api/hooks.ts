@@ -9,6 +9,7 @@ export {
   useGetIntensityLevel,
   useSetIntensityLevel,
 } from "@/__generated__/api/intensity-level/intensity-level"
+export { useResetGame } from "@/__generated__/api/game/game"
 
 export type {
   StockPrice,

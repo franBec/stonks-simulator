@@ -1,6 +1,6 @@
 import { useState, useEffect, startTransition } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { useGetPortfolio, useGetTradeHistory } from "@/api/hooks"
+import { useGetPortfolio, useGetTradeHistory, useResetGame } from "@/api/hooks"
 import { unwrap } from "@/api/hooks"
 import type { Portfolio, TradeHistoryResponseData } from "@/api/hooks"
 import { getGetPortfolioQueryKey } from "@/__generated__/api/portfolio/portfolio"
@@ -8,7 +8,6 @@ import { getGetTradeHistoryQueryKey } from "@/__generated__/api/trades/trades"
 
 const WIN_THRESHOLD = 100000
 const LOSE_THRESHOLD = 1000
-const API_BASE = import.meta.env.VITE_BACKEND_URL ?? "http://localhost:8080"
 
 export interface GameState {
   gameOver: boolean
@@ -35,6 +34,7 @@ export function useGameState(): GameState {
   const [gameEnded, setGameEnded] = useState(false)
   const [won, setWon] = useState(false)
   const [isResetting, setIsResetting] = useState(false)
+  const { mutateAsync: resetGameMutation } = useResetGame()
   const [snapshot, setSnapshot] = useState<{
     totalValue: number
     unrealizedPnl: number
@@ -72,7 +72,7 @@ export function useGameState(): GameState {
 
   const reset = () => {
     setIsResetting(true)
-    fetch(`${API_BASE}/api/portfolio/reset`, { method: "POST" })
+    resetGameMutation()
       .then(() => queryClient.invalidateQueries({ queryKey: getGetPortfolioQueryKey() }))
       .then(() => queryClient.invalidateQueries({ queryKey: getGetTradeHistoryQueryKey() }))
       .then(() => {

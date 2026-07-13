@@ -10,4 +10,6 @@ public interface TradePortIn {
   TradeExecutionResult executeTrade(Trade trade);
 
   Page<TradeHistoryItem> getTradeHistory(Pageable pageable);
+
+  void resetPortfolio();
 }
