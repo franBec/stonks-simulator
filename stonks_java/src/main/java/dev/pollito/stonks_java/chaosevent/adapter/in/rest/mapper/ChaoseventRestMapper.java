@@ -18,5 +18,7 @@ public interface ChaoseventRestMapper {
           "java(domainEvent.impactPercent().divide(new java.math.BigDecimal(\"100\"), 10, java.math.RoundingMode.HALF_UP).add(java.math.BigDecimal.ONE).doubleValue())")
   @Mapping(target = "startedAt", source = "occurredAt")
   @Mapping(target = "expiresAt", expression = "java(domainEvent.occurredAt().plusHours(1))")
+  @Mapping(target = "sourceHeadline", source = "sourceHeadline")
+  @Mapping(target = "sourceUrl", source = "sourceUrl")
   ChaoticEvent map(dev.pollito.stonks_java.chaosevent.domain.ChaoticEvent domainEvent);
 }

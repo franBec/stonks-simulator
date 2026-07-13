@@ -62,7 +62,8 @@ class ChaoticEventGeneratorCompositeAdapterTest {
           "News",
           OffsetDateTime.now(),
           ChaoticEventType.HYPE_WAVE,
-          ChaoticEventSeverity.HIGH);
+          ChaoticEventSeverity.HIGH,
+          null);
 
   @Test
   void shouldReturnOpenRouterResultWhenItSucceeds() {

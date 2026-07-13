@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS chaosevent_incident_log (
     explanation VARCHAR(2048),
     affected_symbols VARCHAR(2048),
     source_headline VARCHAR(512),
+    source_url VARCHAR(2048),
     event_type VARCHAR(32),
     event_severity VARCHAR(16),
     occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

@@ -199,6 +199,14 @@ class ChaoticEventFallbackGenerator {
         headlines.isEmpty()
             ? "Market Pulse"
             : headlines.get(current().nextInt(headlines.size())).title();
+    String sourceUrl =
+        headlines.isEmpty()
+            ? null
+            : headlines.stream()
+                .filter(h -> h.title() != null && h.title().equals(source))
+                .findFirst()
+                .map(NewsHeadline::url)
+                .orElse(null);
     String symbol =
         targetSymbol != null
             ? targetSymbol
@@ -220,7 +228,8 @@ class ChaoticEventFallbackGenerator {
         source,
         now(),
         fb.type,
-        fb.severity);
+        fb.severity,
+        sourceUrl);
   }
 
   private record FallbackEvent(

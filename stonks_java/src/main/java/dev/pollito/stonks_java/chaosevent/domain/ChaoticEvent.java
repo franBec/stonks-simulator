@@ -13,4 +13,5 @@ public record ChaoticEvent(
     String sourceHeadline,
     OffsetDateTime occurredAt,
     ChaoticEventType type,
-    ChaoticEventSeverity severity) {}
+    ChaoticEventSeverity severity,
+    String sourceUrl) {}

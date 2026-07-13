@@ -91,6 +91,23 @@ export function ChaosFeed({ sidebar = false }: ChaosFeedProps) {
               <div className="mt-0.5 text-muted-foreground">
                 {e.description}
               </div>
+              {e.sourceUrl && (
+                <div className="mt-0.5 text-[10px]">
+                  <a
+                    href={e.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-green-400/70 hover:text-green-400 hover:underline transition-colors"
+                  >
+                    [SOURCE]
+                  </a>
+                  {e.sourceHeadline && (
+                    <span className="ml-1 text-muted-foreground/50">
+                      {e.sourceHeadline}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

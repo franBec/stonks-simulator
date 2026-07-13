@@ -11,6 +11,7 @@ import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventSeverity;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventTriggered;
 import dev.pollito.stonks_java.chaosevent.domain.ChaoticEventType;
 import dev.pollito.stonks_java.news.application.port.in.NewsPortIn;
+import dev.pollito.stonks_java.news.domain.NewsHeadline;
 import dev.pollito.stonks_java.stock.application.port.in.StockPortIn;
 import dev.pollito.stonks_java.stock.domain.ApplyStockImpact;
 import jakarta.annotation.PostConstruct;
@@ -44,9 +45,12 @@ public class ChaoseventService implements ChaoseventPortIn {
   @Override
   public ChaoticEvent triggerEvent(
       ChaoticEventType type, ChaoticEventSeverity severity, String targetSymbol) {
+    List<NewsHeadline> headlines = newsPortIn.getHeadlines();
     ChaoticEvent generated =
         chaoticEventGenerator.generate(
-            newsPortIn.getHeadlines(), stockPortIn.getStocks(), type, severity, targetSymbol);
+            headlines, stockPortIn.getStocks(), type, severity, targetSymbol);
+    String sourceUrl =
+        resolveSourceUrl(headlines, generated.sourceHeadline());
     ChaoticEvent event =
         new ChaoticEvent(
             generated.headline(),
@@ -57,7 +61,8 @@ public class ChaoseventService implements ChaoseventPortIn {
             generated.sourceHeadline(),
             now(),
             generated.type() != null ? generated.type() : type,
-            generated.severity() != null ? generated.severity() : severity);
+            generated.severity() != null ? generated.severity() : severity,
+            sourceUrl);
 
     eventPublisher.publishEvent(new ApplyStockImpact(event.symbol(), event.impactPercent()));
     eventPublisher.publishEvent(new ChaoticEventTriggered(event));
@@ -66,6 +71,21 @@ public class ChaoseventService implements ChaoseventPortIn {
     chaoticIncidentPortOut.recordEvent(event);
 
     return event;
+  }
+
+  private String resolveSourceUrl(List<NewsHeadline> headlines, String sourceHeadline) {
+    if (sourceHeadline == null || headlines == null) {
+      return null;
+    }
+    return headlines.stream()
+        .filter(h -> h.title() != null && h.title().equalsIgnoreCase(sourceHeadline))
+        .findFirst()
+        .map(NewsHeadline::url)
+        .or(() -> headlines.stream()
+            .filter(h -> h.title() != null && h.title().toLowerCase().contains(sourceHeadline.toLowerCase()))
+            .findFirst()
+            .map(NewsHeadline::url))
+        .orElse(null);
   }
 
   @Override

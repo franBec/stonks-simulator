@@ -46,6 +46,9 @@ public class ChaoseventIncidentLogEntity {
   @Column(name = "source_headline", length = 512)
   private String sourceHeadline;
 
+  @Column(name = "source_url", length = 2048)
+  private String sourceUrl;
+
   @Column(name = "event_type", length = 32)
   private String eventType;
 

@@ -158,7 +158,8 @@ class BroadcastModuleTest {
             "Source headline",
             OffsetDateTime.now(),
             ChaoticEventType.NEWS_FLASH,
-            ChaoticEventSeverity.HIGH);
+            ChaoticEventSeverity.HIGH,
+            null);
     eventPublisher.publishEvent(new ChaoticEventTriggered(chaoticEvent));
 
     assertThat(readEventName(reader)).isEqualTo("event:CHAOS_EVENT");

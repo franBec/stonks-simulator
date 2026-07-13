@@ -733,6 +733,14 @@ components:
           type: string
           format: date-time
           description: ISO 8601 timestamp when the event expires
+        sourceHeadline:
+          type: string
+          description: Title of the real news article that inspired this event
+          nullable: true
+        sourceUrl:
+          type: string
+          description: URL of the real news article that inspired this event
+          nullable: true
       required:
         - eventId
         - type
